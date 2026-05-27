@@ -179,7 +179,7 @@ export function CRLogScreen({ patient, onBack, onUpdate }: CRLogScreenProps) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--bg)' }}>
-      <header style={{ paddingTop: 52, background: 'var(--bg)', borderBottom: '1px solid var(--line)' }}>
+      <header style={{ paddingTop: 'env(safe-area-inset-top, 0px)', background: 'var(--bg)', borderBottom: '1px solid var(--line)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 10px 10px' }}>
           <button onClick={onBack} style={crIconBtnNav()}>
             <CRIcon name="chevron-left" size={22} />

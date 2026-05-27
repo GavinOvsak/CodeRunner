@@ -61,7 +61,7 @@ export function CRHomeScreen({ patients, onNew, onOpen, onRename, onDelete }: CR
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--bg)' }}>
-      <div style={{ paddingTop: 60 }} />
+      <div style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }} />
       <div style={{ padding: '8px 22px 6px' }}>
         <h1 style={{
           margin: 0, fontSize: 34, fontWeight: 700, letterSpacing: '-0.025em',

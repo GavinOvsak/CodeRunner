@@ -319,61 +319,64 @@ export function CRPatientScreen({ patient, onChange, onBack, onOpenLog }: CRPati
           <CRCprPill cpr={cpr} elapsed={cycleElapsed} onPause={toggleCprPause} onSync={syncMetronome} />
         )}
 
-        <CRSection title="Status">
-          <CRStatusRow label="Alert" disabled={s.breathing === 'ETT'}>
-            <CRDropdown
-              value={s.alert} options={CR_OPTS_ALERT}
-              onChange={setAlert} tone="auto"
-              disabled={s.breathing === 'ETT'}
-              flashRedKey={flashTarget === 'alert' ? flashKey : null}
-            />
-          </CRStatusRow>
-          <CRStatusRow label="Breathing">
-            <CRDropdown
-              value={s.breathing} options={CR_OPTS_BREATH}
-              onChange={setBreathing} tone="auto"
-              flashRedKey={flashTarget === 'breathing' ? flashKey : null}
-            />
-          </CRStatusRow>
-          <CRStatusRow label="Pulse" disabled={cpr.active && !cpr.pausedAt}>
-            <CRDropdown
-              value={s.pulse} options={CR_OPTS_YN}
-              onChange={setPulse} tone="auto"
-              disabled={cpr.active && !cpr.pausedAt}
-              flashRedKey={flashTarget === 'pulse' ? flashKey : null}
-            />
-          </CRStatusRow>
-          {s.pulse === 'Yes' && (
-            <CRStatusRow label="Rate">
-              <CRDropdown value={s.rate} options={CR_OPTS_RATE} onChange={setRate} tone="auto"/>
-            </CRStatusRow>
-          )}
-          {(s.pulse === 'No' || cpr.active || (s.pulse === 'Yes' && (s.rate === 'Fast' || s.rate === 'Slow'))) && (
-            <CRStatusRow label="Rhythm">
+        <div className="cr-patient-grid">
+          <CRSection className="cr-s-status" title="Status">
+            <CRStatusRow label="Alert" disabled={s.breathing === 'ETT'}>
               <CRDropdown
-                value={s.rhythm}
-                options={
-                  (s.pulse === 'No' || cpr.active) ? CR_OPTS_RHYTHM_ARREST
-                  : s.rate === 'Fast' ? CR_OPTS_RHYTHM_TACH
-                  : CR_OPTS_RHYTHM_BRADY
-                }
-                onChange={setRhythm} tone="auto"
-                flashRedKey={flashTarget === 'rhythm' ? flashKey : null}
+                value={s.alert} options={CR_OPTS_ALERT}
+                onChange={setAlert} tone="auto"
+                disabled={s.breathing === 'ETT'}
+                flashRedKey={flashTarget === 'alert' ? flashKey : null}
               />
             </CRStatusRow>
-          )}
-        </CRSection>
+            <CRStatusRow label="Breathing">
+              <CRDropdown
+                value={s.breathing} options={CR_OPTS_BREATH}
+                onChange={setBreathing} tone="auto"
+                flashRedKey={flashTarget === 'breathing' ? flashKey : null}
+              />
+            </CRStatusRow>
+            <CRStatusRow label="Pulse" disabled={cpr.active && !cpr.pausedAt}>
+              <CRDropdown
+                value={s.pulse} options={CR_OPTS_YN}
+                onChange={setPulse} tone="auto"
+                disabled={cpr.active && !cpr.pausedAt}
+                flashRedKey={flashTarget === 'pulse' ? flashKey : null}
+              />
+            </CRStatusRow>
+            {s.pulse === 'Yes' && (
+              <CRStatusRow label="Rate">
+                <CRDropdown value={s.rate} options={CR_OPTS_RATE} onChange={setRate} tone="auto"/>
+              </CRStatusRow>
+            )}
+            {(s.pulse === 'No' || cpr.active || (s.pulse === 'Yes' && (s.rate === 'Fast' || s.rate === 'Slow'))) && (
+              <CRStatusRow label="Rhythm">
+                <CRDropdown
+                  value={s.rhythm}
+                  options={
+                    (s.pulse === 'No' || cpr.active) ? CR_OPTS_RHYTHM_ARREST
+                    : s.rate === 'Fast' ? CR_OPTS_RHYTHM_TACH
+                    : CR_OPTS_RHYTHM_BRADY
+                  }
+                  onChange={setRhythm} tone="auto"
+                  flashRedKey={flashTarget === 'rhythm' ? flashKey : null}
+                />
+              </CRStatusRow>
+            )}
+          </CRSection>
 
-        <CRSection title="Next">
-          <CRNextList tasks={tasks} fading={fadingTasks} onCheck={checkTask} />
-        </CRSection>
+          <CRSection className="cr-s-next" title="Next">
+            <CRNextList tasks={tasks} fading={fadingTasks} onCheck={checkTask} />
+          </CRSection>
 
-        <CRSection
-          title="Gave"
-          right={<CRGaveSearch onPick={(k) => addMedRow(k)} />}
-        >
-          <CRGaveList state={s} recKeys={recKeys} onGive={giveMed} />
-        </CRSection>
+          <CRSection
+            className="cr-s-gave"
+            title="Gave"
+            right={<CRGaveSearch onPick={(k) => addMedRow(k)} />}
+          >
+            <CRGaveList state={s} recKeys={recKeys} onGive={giveMed} />
+          </CRSection>
+        </div>
       </div>
 
       {infoOpen && <CRInfoModal onClose={() => setInfoOpen(false)} />}
@@ -388,7 +391,7 @@ export function CRPatientHeader({ patient, onBack, onOpenLog, onInfo }: CRPatien
   const elapsed = Date.now() - patient.startedAt;
   return (
     <header style={{
-      paddingTop: 52,
+      paddingTop: 'env(safe-area-inset-top, 0px)',
       background: 'var(--bg)',
       borderBottom: '1px solid var(--line)',
     }}>

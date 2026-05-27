@@ -54,3 +54,26 @@ html, body, #root { margin: 0; padding: 0; height: 100%; }
 body { -webkit-font-smoothing: antialiased; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", system-ui, sans-serif; color: var(--ink); }
 button { font: inherit; color: inherit; }
 *, *::before, *::after { box-sizing: border-box; }
+
+.cr-patient-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+@media (min-width: 640px) {
+  .cr-patient-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas: "status next" "gave gave";
+    align-items: start;
+  }
+  .cr-s-status { grid-area: status; }
+  .cr-s-next   { grid-area: next; }
+  .cr-s-gave   { grid-area: gave; }
+}
+@media (min-width: 1024px) {
+  .cr-patient-grid {
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-areas: "status next gave";
+  }
+}

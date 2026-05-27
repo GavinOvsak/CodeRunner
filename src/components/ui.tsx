@@ -170,11 +170,12 @@ interface CRSectionProps {
   right?: React.ReactNode;
   children: React.ReactNode;
   accent?: boolean;
+  className?: string;
 }
 
-export function CRSection({ title, right, children, accent }: CRSectionProps) {
+export function CRSection({ title, right, children, accent, className }: CRSectionProps) {
   return (
-    <section style={{
+    <section className={className} style={{
       background: 'var(--surface)',
       border: '1px solid var(--line)',
       borderRadius: 14,
