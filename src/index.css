@@ -1,84 +1,56 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
-@layer base {
-  body {
-    @apply bg-brand-dark text-gray-200;
-    -webkit-tap-highlight-color: transparent;
-  }
-}
-
-/* Premium Scrollbars */
-.custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #1f2937;
-  border-radius: 999px;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #3b82f6;
+:root {
+  --bg: #F5F4F0;
+  --surface: #FFFFFF;
+  --surface-2: #F0EFEA;
+  --line: #E3E1DA;
+  --line-strong: #C9C6BC;
+  --ink: #16140F;
+  --ink-2: #4A463C;
+  --ink-3: #8A8576;
+  --accent: oklch(0.55 0.16 245);
+  --accent-soft: oklch(0.95 0.04 245);
+  --red: oklch(0.58 0.20 25);
+  --red-soft: oklch(0.95 0.05 25);
+  --amber: oklch(0.78 0.16 75);
+  --amber-soft: oklch(0.95 0.07 80);
+  --green: oklch(0.62 0.14 155);
+  --green-soft: oklch(0.95 0.05 155);
+  --shock: oklch(0.62 0.20 60);
 }
 
-/* Hide scrollbars for guideline selectors */
-.scrollbar-none::-webkit-scrollbar {
-  display: none;
+@keyframes crFade {
+  0% { opacity: 1; transform: translateX(0); max-height: 80px; }
+  60% { opacity: 0; transform: translateX(10px); max-height: 80px; }
+  100% { opacity: 0; transform: translateX(10px); max-height: 0; padding-top: 0; padding-bottom: 0; margin: 0; border-width: 0; }
 }
-.scrollbar-none {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+@keyframes crFlashRed {
+  0%, 100% { box-shadow: 0 0 0 0 transparent; border-color: var(--line); }
+  50% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--red) 30%, transparent); border-color: var(--red); }
 }
+@keyframes crPulseAmber {
+  0%, 100% { background: var(--amber-soft); }
+  50% { background: color-mix(in srgb, var(--amber) 40%, white); }
+}
+@keyframes crPulseRed {
+  0%, 100% { background: color-mix(in srgb, var(--red) 18%, white); }
+  50% { background: color-mix(in srgb, var(--red) 55%, white); color: white; }
+}
+@keyframes crMetronome {
+  0% { transform: scale(1); opacity: 1; }
+  20% { transform: scale(1.25); opacity: 1; }
+  100% { transform: scale(1); opacity: 0.55; }
+}
+.cr-fade { animation: crFade 600ms forwards ease; pointer-events: none; }
+.cr-flash-red { animation: crFlashRed 700ms 2; }
+.cr-near-2min { animation: crPulseAmber 800ms infinite; }
+.cr-past-2min { animation: crPulseRed 600ms infinite; }
+.cr-scroll::-webkit-scrollbar { width: 0; }
+.mono { font-family: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace; font-feature-settings: "tnum" 1; }
 
-/* Responsive clinical layouts */
-.aspect-square {
-  aspect-ratio: 1 / 1;
-}
-
-/* Animation Keyframes */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes slideLeft {
-  from {
-    transform: translateX(100%);
-  }
-  to {
-    transform: translateX(0);
-  }
-}
-
-@keyframes scaleUp {
-  from {
-    opacity: 0;
-    transform: scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-.animate-fadeIn {
-  animation: fadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.animate-slideLeft {
-  animation: slideLeft 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.animate-scaleUp {
-  animation: scaleUp 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
+html, body, #root { margin: 0; padding: 0; height: 100%; }
+body { -webkit-font-smoothing: antialiased; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", system-ui, sans-serif; color: var(--ink); }
+button { font: inherit; color: inherit; }
+*, *::before, *::after { box-sizing: border-box; }

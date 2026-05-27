@@ -1,0 +1,709 @@
+import { useState, useEffect, useRef, useCallback } from 'react'
+import type { Patient, CPRState, NextTask } from '../types'
+import { CR_MEDS, CR_MED_BY_KEY, crNextTasks, crRecommendedMedKeys } from '../data'
+import { crFmt, crSince } from '../utils'
+import { CRIcon, CRDropdown, CRSection, CRStatusRow } from './ui'
+
+// ─────────────────────────────────────────────────────────────
+// Status dropdown option sets
+// ─────────────────────────────────────────────────────────────
+const CR_OPTS_YN = [{ value: 'Yes', label: 'Yes' }, { value: 'No', label: 'No' }];
+const CR_OPTS_ALERT = [
+  { value: 'Yes', label: 'Yes' },
+  { value: 'No', label: 'No' },
+  { value: 'Altered', label: 'Altered' },
+  { value: 'Sedated', label: 'Sedated' },
+];
+const CR_OPTS_BREATH = [{ value: 'Yes', label: 'Yes' }, { value: 'No', label: 'No' }, { value: 'ETT', label: 'ETT' }];
+const CR_OPTS_RATE = [
+  { value: 'Fast',   label: 'Fast' },
+  { value: 'Normal', label: 'Normal' },
+  { value: 'Slow',   label: 'Slow' },
+];
+const boltIcon = <CRIcon name="bolt" size={14} color="var(--shock)" />;
+const CR_OPTS_RHYTHM_ARREST = [
+  { value: 'VT',       label: 'VT',       icon: boltIcon },
+  { value: 'VF',       label: 'VF',       icon: boltIcon },
+  { value: 'PEA',      label: 'PEA' },
+  { value: 'Asystole', label: 'Asystole' },
+  { value: 'NSR',      label: 'NSR' },
+];
+const CR_OPTS_RHYTHM_TACH = [
+  { value: 'SVT',      label: 'SVT' },
+  { value: 'Afib',     label: 'A-Fib' },
+  { value: 'Aflutter', label: 'A-Flutter' },
+  { value: 'WideTach', label: 'Wide VT' },
+];
+const CR_OPTS_RHYTHM_BRADY = [
+  { value: 'SinusBrady', label: 'Sinus Brady' },
+  { value: 'AVB1',       label: '1° AVB' },
+  { value: 'AVB2',       label: '2° AVB' },
+  { value: 'AVB3',       label: '3° AVB' },
+];
+
+// ─────────────────────────────────────────────────────────────
+// Prop interfaces
+// ─────────────────────────────────────────────────────────────
+interface CRPatientScreenProps {
+  patient: Patient;
+  onChange: (mut: Patient | ((p: Patient) => Patient)) => void;
+  onBack: () => void;
+  onOpenLog: () => void;
+}
+
+interface CRPatientHeaderProps {
+  patient: Patient;
+  onBack: () => void;
+  onOpenLog: () => void;
+  onInfo: () => void;
+}
+
+interface CRCprPillProps {
+  cpr: CPRState;
+  elapsed: number;
+  onPause: () => void;
+  onSync: () => void;
+}
+
+interface CRNextListProps {
+  tasks: NextTask[];
+  fading: Record<string, boolean>;
+  onCheck: (t: NextTask) => void;
+}
+
+interface CRGaveListProps {
+  state: Patient;
+  recKeys: Set<string>;
+  onGive: (key: string) => void;
+}
+
+interface CRGaveSearchProps {
+  onPick: (key: string) => void;
+}
+
+// ─────────────────────────────────────────────────────────────
+// Style helpers
+// ─────────────────────────────────────────────────────────────
+function crIconBtn(): React.CSSProperties {
+  return {
+    width: 36, height: 36, borderRadius: 10,
+    background: 'transparent', border: 'none', cursor: 'pointer',
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    color: 'var(--ink-2)',
+  };
+}
+
+function crCprBtn(invertOnDark: boolean): React.CSSProperties {
+  return {
+    height: 30, minWidth: 30, padding: 0,
+    borderRadius: 8,
+    background: invertOnDark ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.7)',
+    border: invertOnDark ? '1px solid rgba(255,255,255,0.3)' : '1px solid var(--line-strong)',
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    cursor: 'pointer',
+    color: invertOnDark ? 'white' : 'var(--ink)',
+  };
+}
+
+// ─────────────────────────────────────────────────────────────
+// CRPatientScreen
+// ─────────────────────────────────────────────────────────────
+export function CRPatientScreen({ patient, onChange, onBack, onOpenLog }: CRPatientScreenProps) {
+  const s = patient;
+  const dispatch = onChange;
+  const [infoOpen, setInfoOpen] = useState(false);
+  const [fadingTasks, setFadingTasks] = useState<Record<string, boolean>>({});
+  const [flashKey, setFlashKey] = useState(0);
+  const [flashTarget, setFlashTarget] = useState<string | null>(null);
+
+  const update = useCallback((mut: Patient | ((p: Patient) => Patient)) => {
+    dispatch(prev => {
+      const next = typeof mut === 'function' ? mut(prev) : { ...prev, ...mut };
+      return next;
+    });
+  }, [dispatch]);
+
+  const log = useCallback((text: string, type: 'note' | 'status' | 'task' | 'med' | 'cpr' = 'note') => {
+    update(p => ({ ...p, log: [...p.log, { at: Date.now(), type, text }] }));
+  }, [update]);
+
+  // tick (1Hz) to drive timers
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick(t => t + 1), 250);
+    return () => clearInterval(id);
+  }, []);
+
+  // derived
+  const cpr = s.cpr;
+  const cycleElapsed = cpr.active && !cpr.pausedAt
+    ? Date.now() - cpr.cycleStartAt
+    : (cpr.pausedAt ? cpr.pausedAt - cpr.cycleStartAt : 0);
+
+  const recKeys = crRecommendedMedKeys(s);
+
+  // Status field setters
+  function setAlert(v: string) {
+    if (v === s.alert) return;
+    update(p => ({ ...p, alert: v as Patient['alert'] }));
+    log(`Alert: ${v}`, 'status');
+  }
+  function setBreathing(v: string) {
+    if (v === s.breathing) return;
+    update(p => {
+      const next = { ...p, breathing: v as Patient['breathing'] };
+      if (v === 'ETT' && p.alert !== 'Sedated') next.alert = 'Sedated';
+      return next;
+    });
+    log(`Breathing: ${v}`, 'status');
+    if (v === 'ETT' && s.alert !== 'Sedated') {
+      setTimeout(() => log('Alert: Sedated (auto, ETT)', 'status'), 0);
+    }
+  }
+  function setPulse(v: string) {
+    if (v === s.pulse) return;
+    update(p => {
+      const next = { ...p, pulse: v as Patient['pulse'] };
+      if (v === 'Yes') { next.rhythm = '?'; }
+      if (v !== 'Yes') { next.rate = '?'; }
+      return next;
+    });
+    log(`Pulse: ${v}`, 'status');
+  }
+  function setRate(v: string) {
+    if (v === s.rate) return;
+    update(p => ({ ...p, rate: v as Patient['rate'], rhythm: '?' }));
+    log(`Rate: ${v}`, 'status');
+  }
+  function setRhythm(v: string) {
+    if (v === s.rhythm) return;
+    update(p => ({ ...p, rhythm: v as Patient['rhythm'] }));
+    log(`Rhythm: ${v}`, 'status');
+  }
+
+  // Task interactions
+  function flashField(field: string) {
+    setFlashTarget(field);
+    setFlashKey(k => k + 1);
+    setTimeout(() => setFlashTarget(null), 1400);
+  }
+
+  function checkTask(t: NextTask) {
+    if (t.need === 'alert'     && s.alert === '?')     { flashField('alert');     return; }
+    if (t.need === 'breathing' && s.breathing === '?') { flashField('breathing'); return; }
+    if (t.need === 'pulse'     && s.pulse === '?')     { flashField('pulse');     return; }
+    if (t.need === 'rhythm'    && s.rhythm === '?')    { flashField('rhythm');    return; }
+
+    if (t.id === 'start-cpr') {
+      const now = Date.now();
+      update(p => ({
+        ...p,
+        cpr: { active: true, cycleNumber: 1, cycleStartAt: now, pausedAt: null, metronomeAnchor: now },
+        pulse: '?', rhythm: '?',
+      }));
+      log('CPR started — cycle 1', 'cpr');
+      return;
+    }
+    if (t.id === 'resume-cpr') {
+      const now = Date.now();
+      update(p => ({
+        ...p,
+        cpr: { ...p.cpr, cycleNumber: p.cpr.cycleNumber + 1, cycleStartAt: now, pausedAt: null, metronomeAnchor: now },
+        pulse: '?', rhythm: '?',
+      }));
+      log(`CPR resumed — cycle ${s.cpr.cycleNumber + 1}`, 'cpr');
+      return;
+    }
+    if (t.id === 'rosc') {
+      update(p => ({ ...p, cpr: { ...p.cpr, active: false, pausedAt: null } }));
+      log('ROSC — code ended', 'cpr');
+      return;
+    }
+    if (t.id === 'pause-pulse-check') {
+      toggleCprPause();
+      return;
+    }
+    if (t.id === 'pulse-rhythm-check') {
+      flashField('pulse'); flashField('rhythm');
+      return;
+    }
+    if (t.id === 'get-aed') {
+      log('AED requested', 'task');
+      hideTask(t.id);
+      return;
+    }
+    if (t.id === 'airway') {
+      update(p => ({ ...p, breathing: 'ETT' }));
+      log('Airway secured (ETT)', 'task');
+      hideTask(t.id);
+      return;
+    }
+    if (t.id === 'access') {
+      log('IV/IO access obtained', 'task');
+      hideTask(t.id);
+      markDone('access');
+      return;
+    }
+    if (t.id === 'shock')      { giveMed('shock');     return; }
+    if (t.id === 'cardiovert') { giveMed('shock');     return; }
+    if (t.kind === 'med' && t.medKey) { giveMed(t.medKey); return; }
+
+    log(`✓ ${t.label}`, 'task');
+    hideTask(t.id);
+  }
+
+  function hideTask(id: string) {
+    setFadingTasks(prev => ({ ...prev, [id]: true }));
+    setTimeout(() => {
+      update(p => ({ ...p, doneTasks: { ...p.doneTasks, [id + '__hidden']: true } }));
+    }, 620);
+  }
+  function markDone(id: string) {
+    update(p => ({ ...p, doneTasks: { ...p.doneTasks, [id]: true } }));
+  }
+
+  function giveMed(key: string) {
+    const med = CR_MED_BY_KEY[key];
+    if (!med) return;
+    const now = Date.now();
+    update(p => {
+      const existing = p.gave.find(g => g.key === key);
+      let gave;
+      if (existing) {
+        gave = p.gave.map(g => g.key === key ? { ...g, doses: [...g.doses, now] } : g);
+      } else {
+        gave = [...p.gave, { key, doses: [now] }];
+      }
+      return { ...p, gave };
+    });
+    log(`+1 ${med.short}`, 'med');
+  }
+
+  function addMedRow(key: string) {
+    update(p => {
+      if (p.gave.find(g => g.key === key)) return p;
+      return { ...p, gave: [...p.gave, { key, doses: [] }] };
+    });
+  }
+
+  // CPR controls
+  function toggleCprPause() {
+    const now = Date.now();
+    update(p => {
+      const c = p.cpr;
+      if (c.pausedAt) {
+        log(`CPR resumed — cycle ${c.cycleNumber + 1}`, 'cpr');
+        return {
+          ...p,
+          cpr: { ...c, cycleNumber: c.cycleNumber + 1, cycleStartAt: now, pausedAt: null, metronomeAnchor: now },
+          pulse: '?', rhythm: '?',
+        };
+      } else {
+        log(`CPR cycle ${c.cycleNumber} ended (pause)`, 'cpr');
+        return { ...p, cpr: { ...c, pausedAt: now } };
+      }
+    });
+  }
+  function syncMetronome() {
+    update(p => ({ ...p, cpr: { ...p.cpr, metronomeAnchor: Date.now() } }));
+  }
+
+  const tasks = crNextTasks(s);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--bg)' }}>
+      <CRPatientHeader patient={s} onBack={onBack} onOpenLog={onOpenLog} onInfo={() => setInfoOpen(true)} />
+
+      <div className="cr-scroll" style={{ flex: 1, overflowY: 'auto', padding: '8px 12px 24px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {cpr.active && (
+          <CRCprPill cpr={cpr} elapsed={cycleElapsed} onPause={toggleCprPause} onSync={syncMetronome} />
+        )}
+
+        <CRSection title="Status">
+          <CRStatusRow label="Alert" disabled={s.breathing === 'ETT'}>
+            <CRDropdown
+              value={s.alert} options={CR_OPTS_ALERT}
+              onChange={setAlert} tone="auto"
+              disabled={s.breathing === 'ETT'}
+              flashRedKey={flashTarget === 'alert' ? flashKey : null}
+            />
+          </CRStatusRow>
+          <CRStatusRow label="Breathing">
+            <CRDropdown
+              value={s.breathing} options={CR_OPTS_BREATH}
+              onChange={setBreathing} tone="auto"
+              flashRedKey={flashTarget === 'breathing' ? flashKey : null}
+            />
+          </CRStatusRow>
+          <CRStatusRow label="Pulse" disabled={cpr.active && !cpr.pausedAt}>
+            <CRDropdown
+              value={s.pulse} options={CR_OPTS_YN}
+              onChange={setPulse} tone="auto"
+              disabled={cpr.active && !cpr.pausedAt}
+              flashRedKey={flashTarget === 'pulse' ? flashKey : null}
+            />
+          </CRStatusRow>
+          {s.pulse === 'Yes' && (
+            <CRStatusRow label="Rate">
+              <CRDropdown value={s.rate} options={CR_OPTS_RATE} onChange={setRate} tone="auto"/>
+            </CRStatusRow>
+          )}
+          {(s.pulse === 'No' || cpr.active || (s.pulse === 'Yes' && (s.rate === 'Fast' || s.rate === 'Slow'))) && (
+            <CRStatusRow label="Rhythm">
+              <CRDropdown
+                value={s.rhythm}
+                options={
+                  (s.pulse === 'No' || cpr.active) ? CR_OPTS_RHYTHM_ARREST
+                  : s.rate === 'Fast' ? CR_OPTS_RHYTHM_TACH
+                  : CR_OPTS_RHYTHM_BRADY
+                }
+                onChange={setRhythm} tone="auto"
+                flashRedKey={flashTarget === 'rhythm' ? flashKey : null}
+              />
+            </CRStatusRow>
+          )}
+        </CRSection>
+
+        <CRSection title="Next">
+          <CRNextList tasks={tasks} fading={fadingTasks} onCheck={checkTask} />
+        </CRSection>
+
+        <CRSection
+          title="Gave"
+          right={<CRGaveSearch onPick={(k) => addMedRow(k)} />}
+        >
+          <CRGaveList state={s} recKeys={recKeys} onGive={giveMed} />
+        </CRSection>
+      </div>
+
+      {infoOpen && <CRInfoModal onClose={() => setInfoOpen(false)} />}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// CRPatientHeader
+// ─────────────────────────────────────────────────────────────
+export function CRPatientHeader({ patient, onBack, onOpenLog, onInfo }: CRPatientHeaderProps) {
+  const elapsed = Date.now() - patient.startedAt;
+  return (
+    <header style={{
+      paddingTop: 52,
+      background: 'var(--bg)',
+      borderBottom: '1px solid var(--line)',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 10px 10px' }}>
+        <button onClick={onBack} style={crIconBtn()}>
+          <CRIcon name="chevron-left" size={22} />
+        </button>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, minWidth: 0, flex: 1 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-0.005em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{patient.name}</div>
+          <div className="mono" style={{ fontSize: 11, color: 'var(--ink-3)', whiteSpace: 'nowrap' }}>
+            {patient.type === 'pediatric' ? 'PEDS' : 'ADULT'} · {crFmt(elapsed)}
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 2 }}>
+          <button onClick={onOpenLog} style={crIconBtn()}>
+            <CRIcon name="list" size={20} />
+          </button>
+          <button onClick={onInfo} style={crIconBtn()}>
+            <CRIcon name="info" size={20} />
+          </button>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// CRCprPill
+// ─────────────────────────────────────────────────────────────
+export function CRCprPill({ cpr, elapsed, onPause, onSync }: CRCprPillProps) {
+  const paused = !!cpr.pausedAt;
+  const past = !paused && elapsed >= 120000;
+  const near = !paused && !past && elapsed >= 105000;
+  const cls = past ? 'cr-past-2min' : near ? 'cr-near-2min' : '';
+
+  const period = 500;
+  const since = Date.now() - cpr.metronomeAnchor;
+  const beatIndex = Math.floor(since / period);
+
+  const bg = paused ? 'var(--surface-2)'
+           : past ? 'color-mix(in srgb, var(--red) 18%, white)'
+           : near ? 'var(--amber-soft)'
+           : 'color-mix(in srgb, var(--red) 8%, white)';
+  const border = paused ? 'var(--line-strong)'
+              : past ? 'var(--red)'
+              : near ? 'var(--amber)'
+              : 'color-mix(in srgb, var(--red) 25%, transparent)';
+  const ink = past ? 'white' : 'var(--ink)';
+  const badgeBg = paused ? 'var(--ink-3)' : past ? 'rgba(255,255,255,0.18)' : 'color-mix(in srgb, var(--red) 80%, white)';
+  const badgeLabel = paused ? `PAUSED · #${cpr.cycleNumber}` : `CPR #${cpr.cycleNumber}`;
+
+  return (
+    <div className={cls} style={{
+      display: 'flex', alignItems: 'center', gap: 10,
+      padding: '8px 10px 8px 12px',
+      borderRadius: 14,
+      background: bg, border: `1px solid ${border}`, color: ink,
+    }}>
+      <div style={{
+        fontSize: 11, fontWeight: 800, letterSpacing: '0.08em',
+        padding: '3px 7px', borderRadius: 6,
+        background: badgeBg, color: 'white',
+        whiteSpace: 'nowrap',
+      }}>
+        {badgeLabel}
+      </div>
+      <div className="mono" style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', minWidth: 56 }}>
+        {crFmt(elapsed)}
+      </div>
+      <div style={{ flex: 1 }} />
+      {!paused && (
+        <button onClick={onSync} aria-label="sync metronome" style={crCprBtn(past)} title="Tap to sync to compressions">
+          <span key={beatIndex} style={{
+            display: 'inline-block', width: 14, height: 14, borderRadius: '50%',
+            background: past ? 'white' : 'var(--red)',
+            animation: 'crMetronome 500ms linear',
+          }} />
+        </button>
+      )}
+      <button onClick={onPause} aria-label={paused ? 'resume' : 'pause'} style={{
+        ...crCprBtn(past), width: 'auto', padding: '0 12px', fontSize: 12, fontWeight: 700,
+        gap: 5,
+      }}>
+        <CRIcon name={paused ? 'play' : 'pause'} size={14} color={past ? 'white' : 'var(--ink)'} />
+        <span>{paused ? 'Resume' : 'Pause'}</span>
+      </button>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// CRNextList
+// ─────────────────────────────────────────────────────────────
+export function CRNextList({ tasks, fading, onCheck }: CRNextListProps) {
+  if (tasks.length === 0) {
+    return <div style={{ padding: '18px 14px', color: 'var(--ink-3)', fontSize: 14 }}>No actions pending. Reassess.</div>;
+  }
+  return (
+    <div>
+      {tasks.map((t, i) => {
+        const critical = t.kind === 'critical';
+        const shock    = t.kind === 'shock';
+        const isFading = fading[t.id];
+        return (
+          <div key={t.id} className={isFading ? 'cr-fade' : ''} style={{
+            display: 'flex', alignItems: 'center', gap: 12,
+            padding: '12px 14px',
+            borderBottom: i === tasks.length - 1 ? 'none' : '1px solid var(--line)',
+            background: critical ? 'color-mix(in srgb, var(--red) 6%, white)' : 'transparent',
+          }}>
+            <button onClick={() => onCheck(t)} aria-label="check" style={{
+              width: 26, height: 26, borderRadius: 7,
+              background: '#fff',
+              border: `1.5px solid ${critical ? 'var(--red)' : shock ? 'var(--shock)' : 'var(--line-strong)'}`,
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', flex: 'none',
+            }}>
+              {shock && <CRIcon name="bolt" size={14} color="var(--shock)" />}
+            </button>
+            <div style={{
+              flex: 1,
+              fontSize: 16, fontWeight: critical ? 700 : 500,
+              color: critical ? 'var(--red)' : 'var(--ink)',
+              letterSpacing: '-0.005em',
+            }}>
+              {t.label}
+            </div>
+            {critical && (
+              <span style={{
+                fontSize: 10, fontWeight: 700, letterSpacing: '0.08em',
+                color: 'var(--red)', textTransform: 'uppercase',
+              }}>now</span>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// CRGaveList
+// ─────────────────────────────────────────────────────────────
+export function CRGaveList({ state, recKeys, onGive }: CRGaveListProps) {
+  const givenKeys = state.gave.filter(g => g.doses.length > 0)
+    .sort((a, b) => Math.max(...b.doses) - Math.max(...a.doses))
+    .map(g => g.key);
+  const givenSet = new Set(givenKeys);
+  const recList = [...recKeys].filter(k => !givenSet.has(k));
+  const stagedKeys = state.gave.filter(g => g.doses.length === 0 && !recKeys.has(g.key)).map(g => g.key);
+  const keys = [...givenKeys, ...recList, ...stagedKeys];
+  if (keys.length === 0) {
+    return <div style={{ padding: '18px 14px', color: 'var(--ink-3)', fontSize: 14 }}>Nothing given yet. Add from search.</div>;
+  }
+  return (
+    <div>
+      {keys.map((k, i) => {
+        const med = CR_MED_BY_KEY[k];
+        const row = state.gave.find(g => g.key === k);
+        const count = row ? row.doses.length : 0;
+        const last = row && row.doses.length ? row.doses[row.doses.length - 1] : null;
+        const recommended = recKeys.has(k);
+        const isShock = k === 'shock';
+        return (
+          <div key={k} style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: '10px 10px 10px 12px',
+            borderBottom: i === keys.length - 1 ? 'none' : '1px solid var(--line)',
+          }}>
+            <button onClick={() => onGive(k)} style={{
+              minWidth: 44, height: 30, padding: '0 9px', borderRadius: 7,
+              background: recommended && count === 0 ? (isShock ? 'var(--shock)' : 'var(--accent)') : '#fff',
+              border: `1.5px solid ${isShock ? 'var(--shock)' : 'var(--accent)'}`,
+              color: recommended && count === 0 ? '#fff' : (isShock ? 'var(--shock)' : 'var(--accent)'),
+              fontSize: 13, fontWeight: 700, cursor: 'pointer',
+              display: 'inline-flex', alignItems: 'center', gap: 3,
+            }}>
+              +1
+            </button>
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+              {isShock && <CRIcon name="bolt" size={14} color="var(--shock)" />}
+              <div style={{
+                fontSize: 15, fontWeight: 600, letterSpacing: '-0.005em',
+                color: isShock ? 'var(--shock)' : 'var(--ink)',
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}>
+                {med?.name || k}
+              </div>
+              <div className="mono" style={{
+                fontSize: 12, fontWeight: 600,
+                padding: '2px 6px', borderRadius: 5,
+                background: 'var(--surface-2)', color: 'var(--ink-2)',
+              }}>
+                {count}
+              </div>
+            </div>
+            <div className="mono" style={{ fontSize: 12, color: 'var(--ink-3)', minWidth: 44, textAlign: 'right' }}>
+              {last ? crSince(Date.now() - last) : '—'}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// CRGaveSearch
+// ─────────────────────────────────────────────────────────────
+export function CRGaveSearch({ onPick }: CRGaveSearchProps) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState('');
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) { setOpen(false); setQ(''); }
+    };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [open]);
+  const results = q.trim()
+    ? CR_MEDS.filter(m => m.name.toLowerCase().includes(q.toLowerCase()) || m.short.toLowerCase().includes(q.toLowerCase()))
+    : CR_MEDS;
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      {!open ? (
+        <button onClick={() => setOpen(true)} style={{
+          height: 28, padding: '0 8px', borderRadius: 7,
+          background: '#fff', border: '1px solid var(--line-strong)',
+          color: 'var(--ink-2)', display: 'inline-flex', alignItems: 'center', gap: 4,
+          cursor: 'pointer', fontSize: 12, fontWeight: 600,
+        }}>
+          <CRIcon name="plus" size={14} /> Add
+        </button>
+      ) : (
+        <>
+          <input
+            autoFocus
+            value={q}
+            onChange={e => setQ(e.target.value)}
+            placeholder="Search meds / blood"
+            style={{
+              height: 28, padding: '0 8px', borderRadius: 7,
+              background: '#fff', border: '1px solid var(--accent)',
+              fontSize: 13, width: 170, outline: 'none',
+              fontFamily: 'inherit',
+            }}
+          />
+          <div style={{
+            position: 'absolute', top: 'calc(100% + 4px)', right: 0, zIndex: 30,
+            background: '#fff', border: '1px solid var(--line-strong)',
+            borderRadius: 10, padding: 4, boxShadow: '0 12px 32px rgba(0,0,0,0.12)',
+            minWidth: 200, maxHeight: 280, overflowY: 'auto',
+          }}>
+            {results.length === 0 && <div style={{ padding: 10, color: 'var(--ink-3)', fontSize: 13 }}>No match.</div>}
+            {results.map(m => (
+              <button key={m.key}
+                onClick={() => { onPick(m.key); setOpen(false); setQ(''); }}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  width: '100%', padding: '8px 10px', borderRadius: 6,
+                  background: 'transparent', border: 'none',
+                  fontSize: 14, fontWeight: 500, color: 'var(--ink)',
+                  textAlign: 'left', cursor: 'pointer',
+                }}>
+                <span>{m.name}</span>
+                <span style={{ fontSize: 10, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  {m.cat}
+                </span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// CRInfoModal
+// ─────────────────────────────────────────────────────────────
+export function CRInfoModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div onClick={onClose} style={{
+      position: 'absolute', inset: 0, zIndex: 70,
+      background: 'rgba(20,18,12,0.5)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: 20,
+    }}>
+      <div onClick={e => e.stopPropagation()} style={{
+        background: 'var(--surface)', borderRadius: 16, padding: 18,
+        maxWidth: 320, width: '100%',
+        boxShadow: '0 20px 50px rgba(0,0,0,0.25)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>About CodeRunner</h3>
+          <button onClick={onClose} style={crIconBtn()}><CRIcon name="close" size={20}/></button>
+        </div>
+        <div style={{ fontSize: 13.5, lineHeight: 1.55, color: 'var(--ink-2)' }}>
+          <p style={{ marginTop: 0 }}>
+            <strong style={{ color: 'var(--red)' }}>Not a medical device.</strong>{' '}
+            CodeRunner is an unofficial study/teamwork aid for trained providers running resuscitations. It is
+            <em> not</em> a substitute for clinical judgement, an institutional protocol, or current
+            published guidelines.
+          </p>
+          <p>
+            All times, dose suggestions, and pathways are simplified for prototype use. Verify everything against
+            your facility's reference before administering.
+          </p>
+          <p style={{ marginBottom: 0, color: 'var(--ink-3)', fontSize: 12 }}>
+            v0.1 · prototype · no patient data leaves this device.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
