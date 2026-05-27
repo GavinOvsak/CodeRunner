@@ -156,8 +156,13 @@ export function CRPatientScreen({ patient, onChange, onBack, onOpenLog }: CRPati
   // Status field setters
   function setAlert(v: string) {
     if (v === s.alert) return;
-    update(p => ({ ...p, alert: v as Patient['alert'] }));
+    update(p => {
+      const next: Patient = { ...p, alert: v as Patient['alert'] };
+      if (v === 'Yes' && p.pulse !== 'Yes') next.pulse = 'Yes';
+      return next;
+    });
     log(`Alert: ${v}`, 'status');
+    if (v === 'Yes' && s.pulse !== 'Yes') log('Pulse: Yes (auto, alert)', 'status');
   }
   function setBreathing(v: string) {
     if (v === s.breathing) return;
@@ -359,7 +364,7 @@ export function CRPatientScreen({ patient, onChange, onBack, onOpenLog }: CRPati
                 buttonGroup
               />
             </CRStatusRow>
-            <CRStatusRow label="Pulse" disabled={cpr.active && !cpr.pausedAt} uncertain={s.pulse === '?'}>
+            {s.alert !== 'Yes' && <CRStatusRow label="Pulse" disabled={cpr.active && !cpr.pausedAt} uncertain={s.pulse === '?'}>
               <CRDropdown
                 value={s.pulse} options={CR_OPTS_YN}
                 onChange={setPulse} tone="auto"
@@ -367,7 +372,7 @@ export function CRPatientScreen({ patient, onChange, onBack, onOpenLog }: CRPati
                 flashRedKey={flashTarget === 'pulse' ? flashKey : null}
                 buttonGroup
               />
-            </CRStatusRow>
+            </CRStatusRow>}
             {s.pulse === 'Yes' && (
               <CRStatusRow label="Rate" uncertain={s.rate === '?'}>
                 <CRDropdown value={s.rate} options={CR_OPTS_RATE} onChange={setRate} tone="auto" buttonGroup />
