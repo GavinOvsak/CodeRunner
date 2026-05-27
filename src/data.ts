@@ -43,7 +43,7 @@ export function crNextTasks(s: Patient): NextTask[] {
   // ===== Initial assessment (always relevant when unknown) =====
   if (s.alert === '?') push({ id: 'check-alert',     label: 'Check Responsiveness', need: 'alert' });
   if (s.breathing === '?') push({ id: 'check-breath', label: 'Check Breathing',      need: 'breathing' });
-  if (s.pulse === '?' && !s.cpr.active) push({ id: 'check-pulse', label: 'Check for Pulse', need: 'pulse' });
+  if (s.pulse === '?' && !s.cpr.active && s.alert !== 'Yes') push({ id: 'check-pulse', label: 'Check for Pulse', need: 'pulse' });
 
   // ===== Cardiac arrest pathway =====
   if (s.pulse === 'No' || s.cpr.active) {

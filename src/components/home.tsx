@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { Patient, PatientType } from "../types";
 import { CRIcon } from "./ui";
 
@@ -95,6 +95,16 @@ export function CRHomeScreen({
   onDelete,
 }: CRHomeScreenProps) {
   const [menuFor, setMenuFor] = useState<string | null>(null);
+  const [installPrompt, setInstallPrompt] = useState<Event & { prompt: () => Promise<void> } | null>(null);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setInstallPrompt(e as Event & { prompt: () => Promise<void> });
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
 
   function startedLabel(ts: number) {
     const d = new Date(ts);
@@ -139,6 +149,31 @@ export function CRHomeScreen({
         <div style={{ marginTop: 4, fontSize: 13, color: "var(--ink-3)" }}>
           ACLS / PALS companion
         </div>
+        {installPrompt && (
+          <button
+            onClick={async () => {
+              await installPrompt.prompt();
+              setInstallPrompt(null);
+            }}
+            style={{
+              marginTop: 10,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "6px 12px",
+              borderRadius: 8,
+              background: "var(--surface-2)",
+              border: "1px solid var(--line-strong)",
+              fontSize: 13,
+              fontWeight: 600,
+              color: "var(--ink)",
+              cursor: "pointer",
+            }}
+          >
+            <CRIcon name="download" size={14} />
+            Install App
+          </button>
+        )}
       </div>
 
       <div
