@@ -1,3 +1,11 @@
+/**
+ * # clinical data and recommendation rules
+ *
+ * This file defines the standard medical medications (`CR_MEDS`) and contains
+ * the rules engine (`crNextTasks`) for determining the next clinical actions
+ * based on the patient's current reconstructed state.
+ */
+
 import type { Med, NextTask, Patient } from './types';
 
 export const CR_MEDS: Med[] = [
@@ -35,7 +43,16 @@ export function crGiven(s: Patient, key: string): number {
   return row ? row.doses.length : 0;
 }
 
-// Next-task generator
+/**
+ * # Generate Next Clinical Tasks
+ *
+ * Evaluates the patient's physiological metrics, CPR cycle progress,
+ * and medication counts to compute recommended clinical next actions
+ * across pathways (Cardiac Arrest, Tachycardia, Bradycardia, Stroke, Choking).
+ *
+ * @param s Current patient state
+ * @returns Array of active recommendation next tasks
+ */
 export function crNextTasks(s: Patient): NextTask[] {
   const tasks: NextTask[] = [];
   const push = (t: NextTask) => tasks.push(t);
@@ -47,12 +64,12 @@ export function crNextTasks(s: Patient): NextTask[] {
 
   // ===== Cardiac arrest pathway =====
   if (s.pulse === 'No' || s.cpr.active) {
+    push({ id: 'get-aed',     label: 'Get AED / Defibrillator' });
     if (!s.cpr.active) {
       if (s.rhythm === 'VF' || s.rhythm === 'VT') {
         push({ id: 'shock', label: 'Shock', kind: 'shock' });
       }
       push({ id: 'start-cpr',   label: 'Start CPR',           kind: 'critical' });
-      push({ id: 'get-aed',     label: 'Get AED / Defibrillator' });
     } else if (s.cpr.pausedAt) {
       // PAUSED between cycles — assess, treat, then resume
       if (s.pulse === 'Yes') {
@@ -64,7 +81,7 @@ export function crNextTasks(s: Patient): NextTask[] {
         if (s.rhythm === 'VF' || s.rhythm === 'VT') {
           push({ id: 'shock', label: 'Shock', kind: 'shock' });
         }
-        push({ id: 'epi', label: 'Give Epi 1mg', kind: 'med', medKey: 'epi' });
+        push({ id: 'epi', label: 'Give Epi 1mg (every 3-5 min)', kind: 'med', medKey: 'epi', recurring: true });
         if (s.rhythm === 'VF' || s.rhythm === 'VT') {
           const shockCount = crGiven(s, 'shock');
           if (shockCount >= 2) {
@@ -80,7 +97,11 @@ export function crNextTasks(s: Patient): NextTask[] {
       }
     } else {
       // RUNNING — keep doing compressions; setup-only tasks
-      if (s.rhythm === 'NSR') {
+      if (s.pulse === 'Yes') {
+        const label = s.alert === 'Yes' ? 'Pause CPR (Patient responsive)' : 'Pause CPR (Pulse detected)';
+        push({ id: 'pause-pulse-check', label, kind: 'critical' });
+      }
+      if (s.rhythm === 'NSR' && s.pulse !== 'Yes') {
         push({ id: 'pause-pulse-check', label: 'Pause for Pulse Check', kind: 'critical' });
       }
       if (s.breathing !== 'ETT') push({ id: 'airway',       label: 'Airway → advanced (ETT)' });
@@ -90,7 +111,7 @@ export function crNextTasks(s: Patient): NextTask[] {
   }
 
   // ===== Tachycardia with a pulse =====
-  if (s.pulse === 'Yes' && s.rate === 'Fast') {
+  if (s.pulse === 'Yes' && s.rate === 'Fast' && s.symptomatic === 'Yes') {
     push({ id: 'ecg',       label: '12-Lead ECG' });
     push({ id: 'access',    label: 'IV Access + Monitor' });
     if (s.rhythm === 'SVT')      push({ id: 'adenosine', label: 'Adenosine 6mg rapid push', kind: 'med', medKey: 'adenosine' });
@@ -104,7 +125,7 @@ export function crNextTasks(s: Patient): NextTask[] {
   }
 
   // ===== Bradycardia with a pulse =====
-  if (s.pulse === 'Yes' && s.rate === 'Slow') {
+  if (s.pulse === 'Yes' && s.rate === 'Slow' && s.symptomatic === 'Yes') {
     push({ id: 'access',    label: 'IV Access + Monitor' });
     push({ id: 'atropine',  label: 'Atropine 1mg',          kind: 'med', medKey: 'atropine' });
     push({ id: 'pace',      label: 'Transcutaneous Pacing' });
@@ -120,7 +141,10 @@ export function crNextTasks(s: Patient): NextTask[] {
   }
 
   // ===== Choking pathway =====
-  if (s.breathing === 'No' && s.pulse === 'Yes') {
+  if (s.breathing === 'No' && s.alert === 'Yes') {
+    push({ id: 'choking-cycles', label: '5 back blows then 5 abdominal thrusts', recurring: true });
+    push({ id: 'reassess-responsiveness', label: 'Reassess Responsiveness', recurring: true });
+  } else if (s.breathing === 'No' && s.pulse === 'Yes') {
     push({ id: 'backblows', label: '5 Back Blows' });
     push({ id: 'thrusts',   label: '5 Abdominal Thrusts' });
     push({ id: 'reassess',  label: 'Reassess Airway' });

@@ -3,6 +3,7 @@ import type { Patient, PatientType } from '../types'
 import { CRHomeScreen } from './home'
 import { CRPatientScreen } from './patient'
 import { CRLogScreen } from './log'
+import { reconstructStateFromLog } from '../utils'
 
 // ─────────────────────────────────────────────────────────────
 // Helpers
@@ -32,6 +33,7 @@ export function makeBlankPatient(type: PatientType, name?: string): Patient {
     breathing: '?',
     pulse: '?',
     rate: '?',
+    symptomatic: '?',
     rhythm: '?',
     cpr: { active: false, cycleNumber: 0, cycleStartAt: 0, pausedAt: null, metronomeAnchor: 0 },
     gave: [],
@@ -43,41 +45,60 @@ export function makeBlankPatient(type: PatientType, name?: string): Patient {
 export function seedPatients(): Patient[] {
   const t = Date.now();
   return [
-    {
+    reconstructStateFromLog({
       ...makeBlankPatient('adult', 'Bay 4 — VF arrest'),
       startedAt: t - 11 * 60 * 1000,
-      alert: 'Sedated', breathing: 'ETT', pulse: 'No', rate: '?', rhythm: 'VF',
       cpr: { active: true, cycleNumber: 5, cycleStartAt: t - 120 * 1000, pausedAt: t - 4 * 1000, metronomeAnchor: t },
-      gave: [
-        { key: 'epi',   doses: [t - 9*60*1000, t - 5.5*60*1000, t - 2*60*1000] },
-        { key: 'amio',  doses: [t - 4*60*1000] },
-        { key: 'shock', doses: [t - 10*60*1000, t - 6*60*1000, t - 2.5*60*1000] },
-      ],
-      doneTasks: { 'access': true, 'access__hidden': true, 'airway__hidden': true, 'get-aed__hidden': true },
       log: [
         { at: t - 11*60*1000,    type: 'note',   text: 'Adult code initiated' },
         { at: t - 11*60*1000,    type: 'status', text: 'Alert: No' },
         { at: t - 10.8*60*1000,  type: 'status', text: 'Breathing: No' },
         { at: t - 10.5*60*1000,  type: 'status', text: 'Pulse: No' },
-        { at: t - 10.5*60*1000,  type: 'cpr',    text: 'CPR started' },
+        
+        // Cycle 1 running
+        { at: t - 10.5*60*1000,  type: 'cpr',    text: 'CPR started — cycle 1' },
         { at: t - 10*60*1000,    type: 'status', text: 'Rhythm: VF' },
         { at: t - 10*60*1000,    type: 'med',    text: '+1 Shock' },
         { at: t - 9*60*1000,     type: 'med',    text: '+1 Epi' },
         { at: t - 8*60*1000,     type: 'task',   text: '✓ Obtain IV / IO Access' },
+        
+        // Cycle 1 pause
+        { at: t - 8.5*60*1000,   type: 'cpr',    text: 'CPR cycle 1 ended (pause) — 2:00' },
+        
+        // Cycle 2 running
+        { at: t - 8.4*60*1000,   type: 'cpr',    text: 'CPR resumed — cycle 2' },
         { at: t - 7*60*1000,     type: 'task',   text: '✓ Airway → advanced (ETT)' },
+        
+        // Cycle 2 pause
+        { at: t - 6.4*60*1000,   type: 'cpr',    text: 'CPR cycle 2 ended (pause) — 2:00' },
+        
+        // Cycle 3 running
+        { at: t - 6.3*60*1000,   type: 'cpr',    text: 'CPR resumed — cycle 3' },
         { at: t - 6*60*1000,     type: 'med',    text: '+1 Shock' },
         { at: t - 5.5*60*1000,   type: 'med',    text: '+1 Epi' },
         { at: t - 4*60*1000,     type: 'med',    text: '+1 Amio' },
+        
+        // Cycle 3 pause
+        { at: t - 4.3*60*1000,   type: 'cpr',    text: 'CPR cycle 3 ended (pause) — 2:00' },
+        
+        // Cycle 4 running
+        { at: t - 4.2*60*1000,   type: 'cpr',    text: 'CPR resumed — cycle 4' },
         { at: t - 2.5*60*1000,   type: 'med',    text: '+1 Shock' },
         { at: t - 2*60*1000,     type: 'med',    text: '+1 Epi' },
+        
+        // Cycle 4 pause
+        { at: t - 2.2*60*1000,   type: 'cpr',    text: 'CPR cycle 4 ended (pause) — 2:00' },
+        
+        // Cycle 5 running
+        { at: t - 120*1000,      type: 'cpr',    text: 'CPR resumed — cycle 5' },
+        
+        // Cycle 5 pause (paused at t - 4*1000, which is 1m 56s into the cycle)
+        { at: t - 4*1000,        type: 'cpr',    text: 'CPR cycle 5 ended (pause) — 1:56' },
       ],
-    },
-    {
+    }),
+    reconstructStateFromLog({
       ...makeBlankPatient('adult', 'Rm 312 — Brady'),
       startedAt: t - 47 * 60 * 1000,
-      alert: 'Altered', breathing: 'Yes', pulse: 'Yes', rate: 'Slow', rhythm: 'AVB3',
-      cpr: { active: false, cycleNumber: 0, cycleStartAt: 0, pausedAt: null, metronomeAnchor: 0 },
-      gave: [{ key: 'atropine', doses: [t - 42*60*1000, t - 38*60*1000, t - 34*60*1000] }],
       log: [
         { at: t - 47*60*1000, type: 'note',   text: 'Adult code initiated' },
         { at: t - 46*60*1000, type: 'status', text: 'Pulse: Yes' },
@@ -87,17 +108,16 @@ export function seedPatients(): Patient[] {
         { at: t - 38*60*1000, type: 'med',    text: '+1 Atropine' },
         { at: t - 34*60*1000, type: 'med',    text: '+1 Atropine' },
       ],
-    },
-    {
+    }),
+    reconstructStateFromLog({
       ...makeBlankPatient('pediatric', 'ED — 4 y/o choke'),
       startedAt: t - 6.5 * 60 * 60 * 1000,
-      alert: 'Yes', breathing: 'Yes', pulse: 'Yes', rate: 'Normal',
       log: [
         { at: t - 6.5*60*60*1000, type: 'note', text: 'Pediatric code initiated' },
         { at: t - 6.4*60*60*1000, type: 'task', text: '✓ 5 Back Blows' },
         { at: t - 6.3*60*60*1000, type: 'task', text: '✓ Reassess Airway' },
       ],
-    },
+    }),
   ];
 }
 
@@ -108,7 +128,10 @@ export function CRApp() {
   const [patients, setPatients] = useState<Patient[]>(() => {
     try {
       const raw = localStorage.getItem('cr_patients');
-      if (raw) return JSON.parse(raw) as Patient[];
+      if (raw) {
+        const parsed = JSON.parse(raw) as Patient[];
+        return parsed.map(reconstructStateFromLog);
+      }
     } catch { /* ignore */ }
     return seedPatients();
   });
@@ -122,13 +145,17 @@ export function CRApp() {
   const active = patients.find(p => p.id === activeId);
 
   const updatePatient = useCallback((mut: Patient | ((p: Patient) => Patient)) => {
-    setPatients(list => list.map(p => p.id === activeId
-      ? (typeof mut === 'function' ? mut(p) : { ...p, ...mut })
-      : p));
+    setPatients(list => list.map(p => {
+      if (p.id === activeId) {
+        const next = typeof mut === 'function' ? mut(p) : { ...p, ...mut };
+        return reconstructStateFromLog(next);
+      }
+      return p;
+    }));
   }, [activeId]);
 
   function startNew(type: PatientType) {
-    const np = makeBlankPatient(type);
+    const np = reconstructStateFromLog(makeBlankPatient(type));
     setPatients(list => [np, ...list]);
     setActiveId(np.id);
     setView('patient');
@@ -138,7 +165,7 @@ export function CRApp() {
     setView('patient');
   }
   function rename(id: string, name: string) {
-    setPatients(list => list.map(p => p.id === id ? { ...p, name } : p));
+    setPatients(list => list.map(p => p.id === id ? reconstructStateFromLog({ ...p, name }) : p));
   }
   function del(id: string) {
     setPatients(list => list.filter(p => p.id !== id));

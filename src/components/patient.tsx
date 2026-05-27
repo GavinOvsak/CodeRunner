@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import type { Patient, CPRState, NextTask } from '../types'
 import { CR_MEDS, CR_MED_BY_KEY, crNextTasks, crRecommendedMedKeys } from '../data'
 import { crFmt, crSince } from '../utils'
@@ -83,6 +83,7 @@ interface CRGaveListProps {
   /** Called whenever the layout mode switches between list rows and pill grid. */
   onLayoutChange?: (isPills: boolean) => void;
   lastAction?: { key: string; time: number } | null;
+  currentTime?: number;
 }
 
 interface CRGaveSearchProps {
@@ -146,9 +147,14 @@ export function CRPatientScreen({ patient, onChange, onBack, onOpenLog }: CRPati
   }, []);
 
   // derived
+  const lastLog = s.log.length > 0 ? [...s.log].sort((a, b) => b.at - a.at)[0] : null;
+  const lastLogAt = lastLog ? lastLog.at : Date.now();
+  const isRecent = Date.now() - lastLogAt < 5 * 60 * 1000;
+  const currentTime = (isRecent || s.cpr.active) ? Date.now() : lastLogAt;
+
   const cpr = s.cpr;
   const cycleElapsed = cpr.active && !cpr.pausedAt
-    ? Date.now() - cpr.cycleStartAt
+    ? currentTime - cpr.cycleStartAt
     : (cpr.pausedAt ? cpr.pausedAt - cpr.cycleStartAt : 0);
 
   const recKeys = crRecommendedMedKeys(s);
@@ -156,8 +162,33 @@ export function CRPatientScreen({ patient, onChange, onBack, onOpenLog }: CRPati
   // Status field setters
   function setAlert(v: string) {
     if (v === s.alert) return;
-    update(p => ({ ...p, alert: v as Patient['alert'] }));
+    const now = Date.now();
+    update(p => {
+      const next = { ...p, alert: v as Patient['alert'] };
+      if ((v === 'No' || v === 'Altered') && s.alert === 'Yes') {
+        next.pulse = '?';
+      }
+      if (v === 'Yes') {
+        next.pulse = 'Yes';
+        // If CPR is active and running, automatically pause it
+        if (p.cpr.active && !p.cpr.pausedAt) {
+          next.cpr = { ...p.cpr, pausedAt: now };
+        }
+      }
+      return next;
+    });
     log(`Alert: ${v}`, 'status');
+    if ((v === 'No' || v === 'Altered') && s.alert === 'Yes') {
+      setTimeout(() => log('Pulse: ?', 'status'), 0);
+    }
+    if (v === 'Yes' && s.pulse !== 'Yes') {
+      setTimeout(() => log('Pulse: Yes', 'status'), 0);
+    }
+    if (v === 'Yes' && cpr.active && !cpr.pausedAt) {
+      const elapsed = now - cpr.cycleStartAt;
+      const text = `CPR cycle ${cpr.cycleNumber} ended (pause) — ${crFmt(elapsed)}`;
+      setTimeout(() => log(text, 'cpr'), 0);
+    }
   }
   function setBreathing(v: string) {
     if (v === s.breathing) return;
@@ -186,10 +217,24 @@ export function CRPatientScreen({ patient, onChange, onBack, onOpenLog }: CRPati
     update(p => ({ ...p, rate: v as Patient['rate'], rhythm: '?' }));
     log(`Rate: ${v}`, 'status');
   }
+  function setSymptomatic(v: string) {
+    if (v === s.symptomatic) return;
+    update(p => ({ ...p, symptomatic: v as Patient['symptomatic'] }));
+    log(`Symptomatic: ${v}`, 'status');
+  }
   function setRhythm(v: string) {
     if (v === s.rhythm) return;
-    update(p => ({ ...p, rhythm: v as Patient['rhythm'] }));
+    update(p => {
+      const next = { ...p, rhythm: v as Patient['rhythm'] };
+      if (['VT', 'VF', 'PEA', 'Asystole'].includes(v)) {
+        next.pulse = 'No';
+      }
+      return next;
+    });
     log(`Rhythm: ${v}`, 'status');
+    if (['VT', 'VF', 'PEA', 'Asystole'].includes(v) && s.pulse !== 'No') {
+      setTimeout(() => log('Pulse: No', 'status'), 0);
+    }
   }
 
   // Task interactions
@@ -204,6 +249,16 @@ export function CRPatientScreen({ patient, onChange, onBack, onOpenLog }: CRPati
     if (t.need === 'breathing' && s.breathing === '?') { flashField('breathing'); return; }
     if (t.need === 'pulse'     && s.pulse === '?')     { flashField('pulse');     return; }
     if (t.need === 'rhythm'    && s.rhythm === '?')    { flashField('rhythm');    return; }
+
+    if (t.id === 'choking-cycles') {
+      log('5 Back Blows & 5 Abdominal Thrusts delivered', 'task');
+      return;
+    }
+    if (t.id === 'reassess-responsiveness') {
+      flashField('alert');
+      log('Reassessed responsiveness', 'task');
+      return;
+    }
 
     if (t.id === 'start-cpr') {
       const now = Date.now();
@@ -294,12 +349,6 @@ export function CRPatientScreen({ patient, onChange, onBack, onOpenLog }: CRPati
     setLastAction({ key, time: now });
   }
 
-  function addMedRow(key: string) {
-    update(p => {
-      if (p.gave.find(g => g.key === key)) return p;
-      return { ...p, gave: [...p.gave, { key, doses: [] }] };
-    });
-  }
 
   // CPR controls
   function toggleCprPause() {
@@ -307,16 +356,21 @@ export function CRPatientScreen({ patient, onChange, onBack, onOpenLog }: CRPati
     update(p => {
       const c = p.cpr;
       if (c.pausedAt) {
-        log(`CPR resumed — cycle ${c.cycleNumber + 1}`, 'cpr');
+        const text = `CPR resumed — cycle ${c.cycleNumber + 1}`;
         return {
           ...p,
           cpr: { ...c, cycleNumber: c.cycleNumber + 1, cycleStartAt: now, pausedAt: null, metronomeAnchor: now },
           pulse: '?', rhythm: '?',
+          log: [...p.log, { at: now, type: 'cpr', text }],
         };
       } else {
         const elapsed = now - c.cycleStartAt;
-        log(`CPR cycle ${c.cycleNumber} ended (pause) — ${crFmt(elapsed)}`, 'cpr');
-        return { ...p, cpr: { ...c, pausedAt: now } };
+        const text = `CPR cycle ${c.cycleNumber} ended (pause) — ${crFmt(elapsed)}`;
+        return {
+          ...p,
+          cpr: { ...c, pausedAt: now },
+          log: [...p.log, { at: now, type: 'cpr', text }],
+        };
       }
     });
   }
@@ -354,18 +408,25 @@ export function CRPatientScreen({ patient, onChange, onBack, onOpenLog }: CRPati
                 buttonGroup
               />
             </CRStatusRow>
-            <CRStatusRow label="Pulse" disabled={cpr.active && !cpr.pausedAt} uncertain={s.pulse === '?'}>
-              <CRDropdown
-                value={s.pulse} options={CR_OPTS_YN}
-                onChange={setPulse} tone="auto"
-                disabled={cpr.active && !cpr.pausedAt}
-                flashRedKey={flashTarget === 'pulse' ? flashKey : null}
-                buttonGroup
-              />
-            </CRStatusRow>
+            {s.alert !== 'Yes' && (
+              <CRStatusRow label="Pulse" disabled={cpr.active && !cpr.pausedAt} uncertain={s.pulse === '?'}>
+                <CRDropdown
+                  value={s.pulse} options={CR_OPTS_YN}
+                  onChange={setPulse} tone="auto"
+                  disabled={cpr.active && !cpr.pausedAt}
+                  flashRedKey={flashTarget === 'pulse' ? flashKey : null}
+                  buttonGroup
+                />
+              </CRStatusRow>
+            )}
             {s.pulse === 'Yes' && (
               <CRStatusRow label="Rate" uncertain={s.rate === '?'}>
                 <CRDropdown value={s.rate} options={CR_OPTS_RATE} onChange={setRate} tone="auto" buttonGroup />
+              </CRStatusRow>
+            )}
+            {s.pulse === 'Yes' && (s.rate === 'Fast' || s.rate === 'Slow') && s.alert !== 'No' && s.alert !== 'Altered' && (
+              <CRStatusRow label="Symptomatic" uncertain={s.symptomatic === '?'}>
+                <CRDropdown value={s.symptomatic} options={CR_OPTS_YN} onChange={setSymptomatic} tone="auto" buttonGroup />
               </CRStatusRow>
             )}
             {/* Rhythm row — exactly one variant renders at a time.
@@ -416,12 +477,12 @@ export function CRPatientScreen({ patient, onChange, onBack, onOpenLog }: CRPati
                 margin: 0, fontSize: 13, fontWeight: 700, letterSpacing: '0.08em',
                 textTransform: 'uppercase', color: 'var(--ink-3)',
               }}>Gave</h2>
-              <CRGaveSearch onPick={(k) => addMedRow(k)} />
+              <CRGaveSearch onPick={(k) => giveMed(k)} />
             </div>
 
             {/* List/Grid Container */}
             <div style={{ padding: isPillGave ? 0 : undefined }}>
-              <CRGaveList state={s} recKeys={recKeys} onGive={giveMed} onLayoutChange={setIsPillGave} lastAction={lastAction} />
+              <CRGaveList state={s} recKeys={recKeys} onGive={giveMed} onLayoutChange={setIsPillGave} lastAction={lastAction} currentTime={currentTime} />
             </div>
           </div>
         </div>
@@ -436,7 +497,11 @@ export function CRPatientScreen({ patient, onChange, onBack, onOpenLog }: CRPati
 // CRPatientHeader
 // ─────────────────────────────────────────────────────────────
 export function CRPatientHeader({ patient, onBack, onOpenLog, onInfo }: CRPatientHeaderProps) {
-  const elapsed = Date.now() - patient.startedAt;
+  const lastLog = patient.log.length > 0 ? [...patient.log].sort((a, b) => b.at - a.at)[0] : null;
+  const lastLogAt = lastLog ? lastLog.at : Date.now();
+  const isRecent = Date.now() - lastLogAt < 5 * 60 * 1000;
+  const currentTime = (isRecent || patient.cpr.active) ? Date.now() : lastLogAt;
+  const elapsed = currentTime - patient.startedAt;
   return (
     <header style={{
       paddingTop: 'env(safe-area-inset-top, 0px)',
@@ -551,22 +616,41 @@ export function CRNextList({ tasks, fading, onCheck }: CRNextListProps) {
             borderBottom: i === tasks.length - 1 ? 'none' : '1px solid var(--line)',
             background: critical ? 'color-mix(in srgb, var(--red) 6%, white)' : 'transparent',
           }}>
-            <button onClick={() => onCheck(t)} aria-label="check" style={{
+            <button onClick={() => onCheck(t)} aria-label={t.recurring ? "cycle" : "check"} style={{
               width: 26, height: 26, borderRadius: 7,
               background: '#fff',
               border: `1.5px solid ${critical ? 'var(--red)' : shock ? 'var(--shock)' : 'var(--line-strong)'}`,
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
               cursor: 'pointer', flex: 'none',
             }}>
-              {shock && <CRIcon name="bolt" size={14} color="var(--shock)" />}
+              {t.recurring ? (
+                <CRIcon name="sync" size={14} color={critical ? 'var(--red)' : 'var(--line-strong)'} />
+              ) : (
+                shock && <CRIcon name="bolt" size={14} color="var(--shock)" />
+              )}
             </button>
             <div style={{
               flex: 1,
               fontSize: 16, fontWeight: critical ? 700 : 500,
               color: critical ? 'var(--red)' : 'var(--ink)',
               letterSpacing: '-0.005em',
+              display: 'flex',
+              alignItems: 'center',
             }}>
-              {t.label}
+              <span>{t.label}</span>
+              {t.medKey === 'epi' && (
+                <span style={{
+                  fontSize: 11, fontWeight: 700,
+                  color: 'var(--red)',
+                  padding: '1px 4px',
+                  border: '1.5px solid var(--red)',
+                  borderRadius: 5,
+                  fontFamily: 'monospace',
+                  marginLeft: 8,
+                  whiteSpace: 'nowrap',
+                  background: 'color-mix(in srgb, var(--red) 8%, white)',
+                }}>[ + 1 ]</span>
+              )}
             </div>
             {critical && (
               <span style={{
@@ -593,7 +677,7 @@ export function CRNextList({ tasks, fading, onCheck }: CRNextListProps) {
 /** Minimum container width (px) to switch to pill grid layout. */
 const PILL_BREAKPOINT = 480;
 
-export function CRGaveList({ state, recKeys, onGive, onLayoutChange, lastAction }: CRGaveListProps) {
+export function CRGaveList({ state, recKeys, onGive, onLayoutChange, lastAction, currentTime }: CRGaveListProps) {
   const givenKeys = state.gave.filter(g => g.doses.length > 0)
     .sort((a, b) => Math.min(...a.doses) - Math.min(...b.doses))
     .map(g => g.key);
@@ -640,7 +724,7 @@ export function CRGaveList({ state, recKeys, onGive, onLayoutChange, lastAction 
 
   if (keys.length === 0) {
     return (
-      <div ref={wrapperRef} style={{ padding: '18px 14px', color: 'var(--ink-3)', fontSize: 14 }}>
+      <div ref={wrapperRef} style={{ padding: isPills ? '2px 2px 14px' : '18px 14px', color: 'var(--ink-3)', fontSize: 14 }}>
         Nothing given yet. Add from search.
       </div>
     );
@@ -722,7 +806,7 @@ export function CRGaveList({ state, recKeys, onGive, onLayoutChange, lastAction 
             {/* Time since last dose */}
             {last ? (
               <span className="mono" style={{ fontSize: 12, color: 'var(--ink-3)', whiteSpace: 'nowrap', marginLeft: isPills ? 'auto' : undefined }}>
-                {crSince(Date.now() - last)}
+                {crSince((currentTime ?? Date.now()) - last)}
               </span>
             ) : (
               !isPills && <span className="mono" style={{ fontSize: 12, color: 'var(--ink-3)', minWidth: 44, textAlign: 'right' }}>—</span>
@@ -740,18 +824,51 @@ export function CRGaveList({ state, recKeys, onGive, onLayoutChange, lastAction 
 export function CRGaveSearch({ onPick }: CRGaveSearchProps) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
+  const [highlightedIndex, setHighlightedIndex] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (!open) return;
     const onDoc = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) { setOpen(false); setQ(''); }
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+        setQ('');
+      }
     };
     document.addEventListener('mousedown', onDoc);
     return () => document.removeEventListener('mousedown', onDoc);
   }, [open]);
+
   const results = q.trim()
     ? CR_MEDS.filter(m => m.name.toLowerCase().includes(q.toLowerCase()) || m.short.toLowerCase().includes(q.toLowerCase()))
     : CR_MEDS;
+
+  useEffect(() => {
+    setHighlightedIndex(0);
+  }, [q, open]);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (results.length === 0) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setHighlightedIndex(prev => (prev + 1) % results.length);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setHighlightedIndex(prev => (prev - 1 + results.length) % results.length);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const selected = results[highlightedIndex];
+      if (selected) {
+        onPick(selected.key);
+        setOpen(false);
+        setQ('');
+      }
+    } else if (e.key === 'Escape') {
+      setOpen(false);
+      setQ('');
+    }
+  };
+
   return (
     <div ref={ref} style={{ position: 'relative' }}>
       {!open ? (
@@ -769,6 +886,7 @@ export function CRGaveSearch({ onPick }: CRGaveSearchProps) {
             autoFocus
             value={q}
             onChange={e => setQ(e.target.value)}
+            onKeyDown={handleKeyDown}
             placeholder="Search meds / blood"
             style={{
               height: 28, padding: '0 8px', borderRadius: 7,
@@ -784,22 +902,27 @@ export function CRGaveSearch({ onPick }: CRGaveSearchProps) {
             minWidth: 200, maxHeight: 280, overflowY: 'auto',
           }}>
             {results.length === 0 && <div style={{ padding: 10, color: 'var(--ink-3)', fontSize: 13 }}>No match.</div>}
-            {results.map(m => (
-              <button key={m.key}
-                onClick={() => { onPick(m.key); setOpen(false); setQ(''); }}
-                style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  width: '100%', padding: '8px 10px', borderRadius: 6,
-                  background: 'transparent', border: 'none',
-                  fontSize: 14, fontWeight: 500, color: 'var(--ink)',
-                  textAlign: 'left', cursor: 'pointer',
-                }}>
-                <span>{m.name}</span>
-                <span style={{ fontSize: 10, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                  {m.cat}
-                </span>
-              </button>
-            ))}
+            {results.map((m, idx) => {
+              const isHighlighted = idx === highlightedIndex;
+              return (
+                <button key={m.key}
+                  onClick={() => { onPick(m.key); setOpen(false); setQ(''); }}
+                  onMouseEnter={() => setHighlightedIndex(idx)}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    width: '100%', padding: '8px 10px', borderRadius: 6,
+                    background: isHighlighted ? 'var(--accent-soft)' : 'transparent',
+                    border: 'none',
+                    fontSize: 14, fontWeight: 500, color: 'var(--ink)',
+                    textAlign: 'left', cursor: 'pointer',
+                  }}>
+                  <span>{m.name}</span>
+                  <span style={{ fontSize: 10, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    {m.cat}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </>
       )}

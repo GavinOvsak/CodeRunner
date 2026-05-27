@@ -19,6 +19,7 @@ export function CRIcon({ name, size = 18, color = 'currentColor' }: { name: stri
     case 'close':         return <svg {...props}><path d="M6 6l12 12M18 6L6 18"/></svg>;
     case 'search':        return <svg {...props}><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>;
     case 'check':         return <svg {...props}><path d="M5 12l5 5L20 7"/></svg>;
+    case 'sync':          return <svg {...props}><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>;
     case 'bolt':          return <svg viewBox="0 0 24 24" width={size} height={size} fill={color}><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z"/></svg>;
     case 'heart':         return <svg {...props}><path d="M12 21s-7-4.5-9-9c-1.5-3 0-6 3-6 2 0 3 1 4 3 1-2 2-3 4-3 3 0 4.5 3 3 6-2 4.5-9 9-9 9z"/></svg>;
     case 'trash':         return <svg {...props}><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>;

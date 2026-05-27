@@ -158,22 +158,31 @@ export function CRLogScreen({ patient, onBack, onUpdate }: CRLogScreenProps) {
     ev.stopPropagation();
     if (confirmTimer.current) clearTimeout(confirmTimer.current);
     setConfirmDel(null);
-    onUpdate(p => ({ ...p, log: p.log.filter((_, i) => i !== idx) }));
+    onUpdate(p => {
+      const nextLog = p.log.filter((_, i) => i !== idx);
+      nextLog.sort((a, b) => a.at - b.at);
+      return { ...p, log: nextLog };
+    });
   }
 
   function commitEdit() {
     if (!editing) return;
     const { idx, at, text } = editing;
-    onUpdate(p => ({
-      ...p,
-      log: p.log.map((e, i) => i === idx ? { ...e, at, text } : e),
-    }));
+    onUpdate(p => {
+      const nextLog = p.log.map((e, i) => i === idx ? { ...e, at, text } : e);
+      nextLog.sort((a, b) => a.at - b.at);
+      return { ...p, log: nextLog };
+    });
     setEditing(null);
   }
   function deleteEntry() {
     if (!editing) return;
     const { idx } = editing;
-    onUpdate(p => ({ ...p, log: p.log.filter((_, i) => i !== idx) }));
+    onUpdate(p => {
+      const nextLog = p.log.filter((_, i) => i !== idx);
+      nextLog.sort((a, b) => a.at - b.at);
+      return { ...p, log: nextLog };
+    });
     setEditing(null);
   }
 

@@ -23,6 +23,7 @@ export type AlertValue     = '?' | 'Yes' | 'No' | 'Altered' | 'Sedated';
 export type BreathingValue = '?' | 'Yes' | 'No' | 'ETT';
 export type PulseValue     = '?' | 'Yes' | 'No';
 export type RateValue      = '?' | 'Fast' | 'Normal' | 'Slow';
+export type SymptomaticValue = '?' | 'Yes' | 'No';
 export type RhythmValue    = '?' | 'VT' | 'VF' | 'PEA' | 'Asystole' | 'NSR' | 'SVT' | 'Afib' | 'Aflutter' | 'WideTach' | 'SinusBrady' | 'AVB1' | 'AVB2' | 'AVB3';
 export type PatientType    = 'adult' | 'pediatric';
 
@@ -35,6 +36,7 @@ export interface Patient {
   breathing: BreathingValue;
   pulse: PulseValue;
   rate: RateValue;
+  symptomatic: SymptomaticValue;
   rhythm: RhythmValue;
   cpr: CPRState;
   gave: DoseEntry[];
@@ -57,6 +59,7 @@ export interface NextTask {
   kind?: TaskKind;
   medKey?: string;
   need?: 'alert' | 'breathing' | 'pulse' | 'rhythm';
+  recurring?: boolean;
 }
 
 export type DropdownOptionObj = { value: string; label: string; icon?: React.ReactNode };
