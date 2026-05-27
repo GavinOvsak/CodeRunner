@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import type { DropdownOption } from '../types'
 
 // ─────────────────────────────────────────────────────────────
@@ -39,6 +39,7 @@ interface CRDropdownProps {
   tone?: string;
   disabled?: boolean;
   flashRedKey?: number | null;
+  buttonGroup?: boolean;
 }
 
 function CRDropdownLabel({ value, options, placeholder }: { value: string; options: DropdownOption[]; placeholder: string }) {
@@ -53,10 +54,69 @@ function CRDropdownLabel({ value, options, placeholder }: { value: string; optio
   );
 }
 
-export function CRDropdown({ value, options, onChange, placeholder = '?', size = 'md', tone = 'neutral', disabled, flashRedKey }: CRDropdownProps) {
+/**
+ * Estimates the minimum pixel width needed to render options as a button group.
+ * Uses 14px per character (approximate glyph width at 15px font) + 24px for padding/borders.
+ */
+function estimateButtonGroupWidth(options: DropdownOption[], size: 'md' | 'lg'): number {
+  const charWidth = size === 'lg' ? 10 : 8.5;
+  const padPerBtn = size === 'lg' ? 32 : 24;
+  return options.reduce((sum, opt) => {
+    const lbl = typeof opt === 'string' ? opt : opt.label;
+    return sum + lbl.length * charWidth + padPerBtn;
+  }, 2); // +2 for outer border
+}
+
+export function CRDropdown({ value, options, onChange, placeholder = '?', size = 'md', tone = 'neutral', disabled, flashRedKey, buttonGroup }: CRDropdownProps) {
   const [open, setOpen] = useState(false);
   const [flash, setFlash] = useState(0);
   const wrapRef = useRef<HTMLSpanElement>(null);
+
+  /**
+   * `useButtonGroup`: true when the parent container has enough room to display
+   * all options inline. Only meaningful when the `buttonGroup` prop is set.
+   * Defaults to true so there's no flicker on first render.
+   */
+  const [useButtonGroup, setUseButtonGroup] = useState(true);
+
+  /**
+   * Walks up the DOM from wrapRef to find the first ancestor whose width is
+   * substantially wider than our own element (i.e. a full-width container rather
+   * than a shrink-wrapped parent). We compare that stable width — minus a fixed
+   * label allowance — against the estimated button group minimum width.
+   */
+  const checkWidth = useCallback(() => {
+    if (!buttonGroup || !wrapRef.current) return;
+    // Walk up until we find an ancestor at least 2× wider than our element,
+    // stopping at body. This skips the shrink-wrapped wrapper divs.
+    let el: HTMLElement | null = wrapRef.current.parentElement;
+    const selfWidth = wrapRef.current.getBoundingClientRect().width || 1;
+    while (el && el !== document.body) {
+      const w = el.getBoundingClientRect().width;
+      if (w > selfWidth * 1.5) break;
+      el = el.parentElement;
+    }
+    const rowWidth = el ? el.getBoundingClientRect().width : window.innerWidth;
+    // Measure the actual label element (first child of the row) + row padding
+    const labelEl = el?.firstElementChild;
+    const labelWidth = labelEl ? labelEl.getBoundingClientRect().width : 100;
+    // CRStatusRow padding: 14px left + 8px right, plus 8px gap between label and control
+    const labelAllowance = labelWidth + 30;
+    const available = rowWidth - labelAllowance;
+    const needed = estimateButtonGroupWidth(options, size);
+    setUseButtonGroup(available >= needed);
+  }, [buttonGroup, options, size]);
+
+  useEffect(() => {
+    if (!buttonGroup) return;
+    // Initial check after paint so layout is settled
+    const raf = requestAnimationFrame(checkWidth);
+    // Observe the document root so any layout change (panel resize etc.) triggers
+    const ro = new ResizeObserver(checkWidth);
+    ro.observe(document.documentElement);
+    return () => { cancelAnimationFrame(raf); ro.disconnect(); };
+  }, [buttonGroup, checkWidth]);
+
 
   useEffect(() => {
     if (flashRedKey != null) setFlash(f => f + 1);
@@ -89,22 +149,87 @@ export function CRDropdown({ value, options, onChange, placeholder = '?', size =
     altered: 'var(--amber)',
   };
 
-  const currentTone = (() => {
+  const getTone = (v: string) => {
     if (tone !== 'auto') return tone;
-    if (value === 'Yes')      return 'yes';
-    if (value === 'No')       return 'no';
-    if (value === 'Altered')  return 'altered';
-    if (value === 'Sedated')  return 'accent';
-    if (value === 'ETT')      return 'accent';
-    if (value === 'Fast')     return 'altered';
-    if (value === 'Slow')     return 'altered';
-    if (value === 'Normal')   return 'yes';
-    if (value === 'NSR')      return 'yes';
-    if (['VF','VT'].includes(value))            return 'no';
-    if (['PEA','Asystole'].includes(value))     return 'altered';
-    if (['SVT','Afib','Aflutter','WideTach','SinusBrady'].includes(value)) return 'accent';
+    if (v === 'Yes')     return 'yes';
+    if (v === 'No')      return 'no';
+    if (v === 'Altered') return 'altered';
+    if (v === 'Sedated') return 'accent';
+    if (v === 'ETT')     return 'accent';
+    if (v === 'Fast')    return 'altered';
+    if (v === 'Slow')    return 'altered';
+    if (v === 'Normal')  return 'yes';
+    if (v === 'NSR')     return 'yes';
+    if (['VF','VT'].includes(v))            return 'no';
+    if (['PEA','Asystole'].includes(v))     return 'altered';
+    if (['SVT','Afib','Aflutter','WideTach','SinusBrady'].includes(v)) return 'accent';
     return 'neutral';
-  })();
+  };
+  const currentTone = getTone(value);
+
+  if (buttonGroup && useButtonGroup) {
+    if (disabled) {
+      if (value === '?' || !value) {
+        return <span ref={wrapRef} style={{ display: 'inline-flex', alignItems: 'center', padding: '4px 10px', color: 'var(--ink-3)', fontSize: fs, opacity: 0.45 }}>—</span>;
+      }
+      const opt = options.find(o => (typeof o === 'string' ? o : o.value) === value);
+      const lbl = opt ? (typeof opt === 'string' ? opt : opt.label) : value;
+      const icon = opt && typeof opt !== 'string' ? opt.icon : null;
+      return (
+        <span ref={wrapRef} style={{
+          display: 'inline-flex', alignItems: 'center', gap: 4,
+          padding: size === 'lg' ? '8px 14px' : '4px 10px',
+          borderRadius: 8,
+          background: toneBg[currentTone] || 'var(--surface-2)',
+          color: toneInk[currentTone] || 'var(--ink-3)',
+          fontSize: fs, fontWeight: 600,
+          opacity: 0.65,
+          border: '1px solid var(--line-strong)',
+        }}>
+          {icon}{lbl}
+        </span>
+      );
+    }
+
+    return (
+      <span
+        ref={wrapRef}
+        key={'k' + flash}
+        className={flash > 0 ? 'cr-flash-red' : ''}
+        style={{
+          display: 'inline-flex', alignItems: 'stretch',
+          border: '1px solid var(--line-strong)',
+          borderRadius: 9, overflow: 'hidden',
+          background: '#fff',
+        }}>
+        {options.map((opt, i) => {
+          const v = typeof opt === 'string' ? opt : opt.value;
+          const lbl = typeof opt === 'string' ? opt : opt.label;
+          const icon = typeof opt === 'string' ? null : opt.icon;
+          const selected = v === value;
+          const btnTone = getTone(v);
+          return (
+            <button key={v}
+              onClick={() => onChange(v)}
+              style={{
+                padding: size === 'lg' ? '8px 14px' : '5px 10px',
+                background: selected ? (toneBg[btnTone] || 'var(--accent-soft)') : '#fff',
+                border: 'none',
+                borderLeft: i > 0 ? '1px solid var(--line-strong)' : 'none',
+                color: selected ? (toneInk[btnTone] || 'var(--accent)') : 'var(--ink-3)',
+                fontSize: fs - 1, fontWeight: selected ? 700 : 400,
+                cursor: 'pointer',
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                letterSpacing: '-0.005em',
+                whiteSpace: 'nowrap',
+              }}>
+              {icon}<span>{lbl}</span>
+            </button>
+          );
+        })}
+      </span>
+    );
+  }
 
   return (
     <span ref={wrapRef} style={{ position: 'relative', display: 'inline-flex' }}
@@ -206,9 +331,10 @@ interface CRStatusRowProps {
   label: string;
   children?: React.ReactNode;
   disabled?: boolean;
+  uncertain?: boolean;
 }
 
-export function CRStatusRow({ label, children, disabled }: CRStatusRowProps) {
+export function CRStatusRow({ label, children, disabled, uncertain }: CRStatusRowProps) {
   return (
     <div style={{
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -217,8 +343,11 @@ export function CRStatusRow({ label, children, disabled }: CRStatusRowProps) {
     }}>
       <div style={{
         fontSize: 16, fontWeight: 500,
-        color: disabled ? 'var(--ink-3)' : 'var(--ink-2)',
-      }}>{label}</div>
+        paddingRight: 12,
+        color: disabled ? 'var(--ink-3)' : uncertain ? 'var(--ink-3)' : 'var(--ink-2)',
+      }}>
+        {label}{uncertain && <span style={{ fontWeight: 400 }}>?</span>}
+      </div>
       <div>{children}</div>
     </div>
   );

@@ -7,15 +7,25 @@ import { CRLogScreen } from './log'
 // ─────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────
+/**
+ * Returns a short date-time string in M/D h:mm am/pm format.
+ * e.g. "5/27 2:34 pm"
+ */
 export function nowShort(): string {
   const d = new Date();
-  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+  const month = d.getMonth() + 1;
+  const day = d.getDate();
+  const hours = d.getHours();
+  const minutes = d.getMinutes().toString().padStart(2, '0');
+  const ampm = hours >= 12 ? 'pm' : 'am';
+  const hour12 = hours % 12 || 12;
+  return `${month}/${day} ${hour12}:${minutes} ${ampm}`;
 }
 
 export function makeBlankPatient(type: PatientType, name?: string): Patient {
   return {
     id: 'p_' + Math.random().toString(36).slice(2, 9),
-    name: name || (type === 'pediatric' ? 'Pediatric ' + nowShort() : 'Adult ' + nowShort()),
+    name: name || (type === 'pediatric' ? 'Child ' + nowShort() : 'Adult ' + nowShort()),
     type,
     startedAt: Date.now(),
     alert: '?',

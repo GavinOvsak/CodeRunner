@@ -40,6 +40,11 @@ const CR_OPTS_RHYTHM_BRADY = [
   { value: 'AVB2',       label: '2° AVB' },
   { value: 'AVB3',       label: '3° AVB' },
 ];
+const CR_OPTS_RHYTHM_NORMAL = [
+  { value: 'NSR',      label: 'NSR' },
+  { value: 'Afib',     label: 'A-Fib' },
+  { value: 'Aflutter', label: 'A-Flutter' },
+];
 
 // ─────────────────────────────────────────────────────────────
 // Prop interfaces
@@ -75,6 +80,8 @@ interface CRGaveListProps {
   state: Patient;
   recKeys: Set<string>;
   onGive: (key: string) => void;
+  /** Called whenever the layout mode switches between list rows and pill grid. */
+  onLayoutChange?: (isPills: boolean) => void;
 }
 
 interface CRGaveSearchProps {
@@ -115,6 +122,8 @@ export function CRPatientScreen({ patient, onChange, onBack, onOpenLog }: CRPati
   const [fadingTasks, setFadingTasks] = useState<Record<string, boolean>>({});
   const [flashKey, setFlashKey] = useState(0);
   const [flashTarget, setFlashTarget] = useState<string | null>(null);
+  /** True when the Gave section is wide enough to render chips instead of list rows. */
+  const [isPillGave, setIsPillGave] = useState(false);
 
   const update = useCallback((mut: Patient | ((p: Patient) => Patient)) => {
     dispatch(prev => {
@@ -321,61 +330,93 @@ export function CRPatientScreen({ patient, onChange, onBack, onOpenLog }: CRPati
 
         <div className="cr-patient-grid">
           <CRSection className="cr-s-status" title="Status">
-            <CRStatusRow label="Alert" disabled={s.breathing === 'ETT'}>
+            <CRStatusRow label="Alert" disabled={s.breathing === 'ETT'} uncertain={s.alert === '?'}>
               <CRDropdown
                 value={s.alert} options={CR_OPTS_ALERT}
                 onChange={setAlert} tone="auto"
                 disabled={s.breathing === 'ETT'}
                 flashRedKey={flashTarget === 'alert' ? flashKey : null}
+                buttonGroup
               />
             </CRStatusRow>
-            <CRStatusRow label="Breathing">
+            <CRStatusRow label="Breathing" uncertain={s.breathing === '?'}>
               <CRDropdown
                 value={s.breathing} options={CR_OPTS_BREATH}
                 onChange={setBreathing} tone="auto"
                 flashRedKey={flashTarget === 'breathing' ? flashKey : null}
+                buttonGroup
               />
             </CRStatusRow>
-            <CRStatusRow label="Pulse" disabled={cpr.active && !cpr.pausedAt}>
+            <CRStatusRow label="Pulse" disabled={cpr.active && !cpr.pausedAt} uncertain={s.pulse === '?'}>
               <CRDropdown
                 value={s.pulse} options={CR_OPTS_YN}
                 onChange={setPulse} tone="auto"
                 disabled={cpr.active && !cpr.pausedAt}
                 flashRedKey={flashTarget === 'pulse' ? flashKey : null}
+                buttonGroup
               />
             </CRStatusRow>
             {s.pulse === 'Yes' && (
-              <CRStatusRow label="Rate">
-                <CRDropdown value={s.rate} options={CR_OPTS_RATE} onChange={setRate} tone="auto"/>
+              <CRStatusRow label="Rate" uncertain={s.rate === '?'}>
+                <CRDropdown value={s.rate} options={CR_OPTS_RATE} onChange={setRate} tone="auto" buttonGroup />
               </CRStatusRow>
             )}
-            {(s.pulse === 'No' || cpr.active || (s.pulse === 'Yes' && (s.rate === 'Fast' || s.rate === 'Slow'))) && (
-              <CRStatusRow label="Rhythm">
-                <CRDropdown
-                  value={s.rhythm}
-                  options={
-                    (s.pulse === 'No' || cpr.active) ? CR_OPTS_RHYTHM_ARREST
-                    : s.rate === 'Fast' ? CR_OPTS_RHYTHM_TACH
-                    : CR_OPTS_RHYTHM_BRADY
-                  }
-                  onChange={setRhythm} tone="auto"
-                  flashRedKey={flashTarget === 'rhythm' ? flashKey : null}
-                />
-              </CRStatusRow>
-            )}
+            {/* Rhythm row — exactly one variant renders at a time.
+                  Pulse:Yes always wins (rate-gated); arrest set only when pulse is No/unknown. */}
+            {s.pulse !== 'Yes' && (s.pulse === 'No' || cpr.active)
+              ? (
+                <CRStatusRow label="Rhythm" uncertain={s.rhythm === '?'}>
+                  <CRDropdown
+                    value={s.rhythm}
+                    options={CR_OPTS_RHYTHM_ARREST}
+                    onChange={setRhythm} tone="auto"
+                    flashRedKey={flashTarget === 'rhythm' ? flashKey : null}
+                    buttonGroup
+                  />
+                </CRStatusRow>
+              )
+              : s.pulse === 'Yes' && s.rate !== '?' && (
+                <CRStatusRow label="Rhythm" uncertain={s.rhythm === '?'}>
+                  <CRDropdown
+                    value={s.rhythm}
+                    options={
+                      s.rate === 'Fast'   ? CR_OPTS_RHYTHM_TACH
+                      : s.rate === 'Slow' ? CR_OPTS_RHYTHM_BRADY
+                      : CR_OPTS_RHYTHM_NORMAL
+                    }
+                    onChange={setRhythm} tone="auto"
+                    flashRedKey={flashTarget === 'rhythm' ? flashKey : null}
+                    buttonGroup
+                  />
+                </CRStatusRow>
+              )
+            }
           </CRSection>
 
           <CRSection className="cr-s-next" title="Next">
             <CRNextList tasks={tasks} fading={fadingTasks} onCheck={checkTask} />
           </CRSection>
 
-          <CRSection
-            className="cr-s-gave"
-            title="Gave"
-            right={<CRGaveSearch onPick={(k) => addMedRow(k)} />}
-          >
-            <CRGaveList state={s} recKeys={recKeys} onGive={giveMed} />
-          </CRSection>
+          {/* Gave section: always rendered in a single stable DOM branch to prevent remount loops */}
+          <div className="cr-s-gave" style={isPillGave ? { gridArea: 'gave', background: 'transparent', border: 'none' } : { gridArea: 'gave', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, position: 'relative' }}>
+            {/* Header row */}
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: isPillGave ? '4px 2px 8px' : '8px 10px 8px 14px',
+              borderBottom: isPillGave ? 'none' : '1px solid var(--line)',
+            }}>
+              <h2 style={{
+                margin: 0, fontSize: 13, fontWeight: 700, letterSpacing: '0.08em',
+                textTransform: 'uppercase', color: 'var(--ink-3)',
+              }}>Gave</h2>
+              <CRGaveSearch onPick={(k) => addMedRow(k)} />
+            </div>
+
+            {/* List/Grid Container */}
+            <div style={{ padding: isPillGave ? 0 : undefined }}>
+              <CRGaveList state={s} recKeys={recKeys} onGive={giveMed} onLayoutChange={setIsPillGave} />
+            </div>
+          </div>
         </div>
       </div>
 
@@ -458,8 +499,9 @@ export function CRCprPill({ cpr, elapsed, onPause, onSync }: CRCprPillProps) {
       }}>
         {badgeLabel}
       </div>
-      <div className="mono" style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', minWidth: 56 }}>
+      <div className="mono" style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}>
         {crFmt(elapsed)}
+        <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--ink-3)', opacity: past ? 0.7 : 1 }}> / 2:00</span>
       </div>
       <div style={{ flex: 1 }} />
       {!paused && (
@@ -534,8 +576,17 @@ export function CRNextList({ tasks, fading, onCheck }: CRNextListProps) {
 
 // ─────────────────────────────────────────────────────────────
 // CRGaveList
+//
+// Renders medication rows in two layouts depending on container width:
+//   - Narrow (< PILL_BREAKPOINT): stacked list rows with +1 button, name, count, time
+//   - Wide (≥ PILL_BREAKPOINT):  detached flex-wrap grid of compact pills
+// A ResizeObserver on the wrapper div drives the layout switch.
 // ─────────────────────────────────────────────────────────────
-export function CRGaveList({ state, recKeys, onGive }: CRGaveListProps) {
+
+/** Minimum container width (px) to switch to pill grid layout. */
+const PILL_BREAKPOINT = 480;
+
+export function CRGaveList({ state, recKeys, onGive, onLayoutChange }: CRGaveListProps) {
   const givenKeys = state.gave.filter(g => g.doses.length > 0)
     .sort((a, b) => Math.max(...b.doses) - Math.max(...a.doses))
     .map(g => g.key);
@@ -543,57 +594,196 @@ export function CRGaveList({ state, recKeys, onGive }: CRGaveListProps) {
   const recList = [...recKeys].filter(k => !givenSet.has(k));
   const stagedKeys = state.gave.filter(g => g.doses.length === 0 && !recKeys.has(g.key)).map(g => g.key);
   const keys = [...givenKeys, ...recList, ...stagedKeys];
-  if (keys.length === 0) {
-    return <div style={{ padding: '18px 14px', color: 'var(--ink-3)', fontSize: 14 }}>Nothing given yet. Add from search.</div>;
+
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const [isPills, setIsPills] = useState(false);
+
+  // Per-key animation counters — bumped on each +1 press to restart animations
+  const [rippleKeys, setRippleKeys] = useState<Record<string, number>>({});
+  const [countKeys,  setCountKeys]  = useState<Record<string, number>>({});
+
+  /** Wrap onGive to also fire button ripple + count-wipe animations. */
+  function handleGive(k: string) {
+    onGive(k);
+    setRippleKeys(prev => ({ ...prev, [k]: (prev[k] ?? 0) + 1 }));
+    setCountKeys( prev => ({ ...prev, [k]: (prev[k] ?? 0) + 1 }));
   }
+
+  useEffect(() => {
+    const el = wrapperRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(entries => {
+      const width = entries[0]?.contentRect.width ?? el.offsetWidth;
+      setIsPills(width >= PILL_BREAKPOINT);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // Notify parent whenever layout mode changes so it can swap the section wrapper
+  useEffect(() => {
+    onLayoutChange?.(isPills);
+  }, [isPills, onLayoutChange]);
+
+  if (keys.length === 0) {
+    return (
+      <div ref={wrapperRef} style={{ padding: '18px 14px', color: 'var(--ink-3)', fontSize: 14 }}>
+        Nothing given yet. Add from search.
+      </div>
+    );
+  }
+
   return (
-    <div>
-      {keys.map((k, i) => {
-        const med = CR_MED_BY_KEY[k];
-        const row = state.gave.find(g => g.key === k);
-        const count = row ? row.doses.length : 0;
-        const last = row && row.doses.length ? row.doses[row.doses.length - 1] : null;
-        const recommended = recKeys.has(k);
-        const isShock = k === 'shock';
-        return (
-          <div key={k} style={{
-            display: 'flex', alignItems: 'center', gap: 10,
-            padding: '10px 10px 10px 12px',
-            borderBottom: i === keys.length - 1 ? 'none' : '1px solid var(--line)',
-          }}>
-            <button onClick={() => onGive(k)} style={{
-              minWidth: 44, height: 30, padding: '0 9px', borderRadius: 7,
-              background: recommended && count === 0 ? (isShock ? 'var(--shock)' : 'var(--accent)') : '#fff',
-              border: `1.5px solid ${isShock ? 'var(--shock)' : 'var(--accent)'}`,
-              color: recommended && count === 0 ? '#fff' : (isShock ? 'var(--shock)' : 'var(--accent)'),
-              fontSize: 13, fontWeight: 700, cursor: 'pointer',
-              display: 'inline-flex', alignItems: 'center', gap: 3,
+    <div ref={wrapperRef}>
+      {isPills ? (
+        // ── Card grid layout: same visual design as list rows, wrapped in a CSS grid ──
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+          gap: 8,
+        }}>
+          {keys.map(k => {
+            const med = CR_MED_BY_KEY[k];
+            const row = state.gave.find(g => g.key === k);
+            const count = row ? row.doses.length : 0;
+            const last = row && row.doses.length ? row.doses[row.doses.length - 1] : null;
+            const recommended = recKeys.has(k);
+            const isShock = k === 'shock';
+            return (
+              // CSS Grid auto-fit minmax guarantees all items are equal width and wrapped nicely
+              <div key={k} style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                padding: '8px 12px 8px 10px',
+                borderRadius: 12,
+                background: 'var(--surface)',
+                border: '1px solid var(--line)',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+              }}>
+                {/* +1 button with ripple overlay */}
+                <button onClick={() => handleGive(k)} style={{
+                  position: 'relative', overflow: 'hidden',
+                  minWidth: 44, height: 30, padding: '0 9px', borderRadius: 7,
+                  background: recommended && count === 0 ? (isShock ? 'var(--shock)' : 'var(--accent)') : '#fff',
+                  border: `1.5px solid ${isShock ? 'var(--shock)' : 'var(--accent)'}`,
+                  color: recommended && count === 0 ? '#fff' : (isShock ? 'var(--shock)' : 'var(--accent)'),
+                  fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  +1
+                  {rippleKeys[k] !== undefined && (
+                    <span key={rippleKeys[k]} style={{
+                      position: 'absolute', inset: 0, margin: 'auto',
+                      width: 20, height: 20, borderRadius: '50%',
+                      background: isShock ? 'var(--shock)' : 'var(--accent)',
+                      opacity: 0, pointerEvents: 'none',
+                      animation: 'crRipple 500ms ease-out forwards',
+                    }} />
+                  )}
+                </button>
+
+                {/* Name + optional bolt icon */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                  {isShock && <CRIcon name="bolt" size={14} color="var(--shock)" />}
+                  <span style={{
+                    fontSize: 15, fontWeight: 600, letterSpacing: '-0.005em',
+                    color: isShock ? 'var(--shock)' : 'var(--ink)',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}>
+                    {med?.name || k}
+                  </span>
+                  {/* Count badge — re-keyed on each dose to trigger wipe-down animation */}
+                  <span
+                    key={countKeys[k] ?? 0}
+                    className="mono cr-count-wipe"
+                    style={{
+                      display: 'inline-block',
+                      fontSize: 12, fontWeight: 600,
+                      padding: '2px 6px', borderRadius: 5,
+                      background: 'var(--surface-2)', color: 'var(--ink-2)',
+                    }}
+                  >
+                    {count}
+                  </span>
+                </div>
+
+                {/* Time since last dose — pinned to the right edge */}
+                {last && (
+                  <span className="mono" style={{ fontSize: 12, color: 'var(--ink-3)', whiteSpace: 'nowrap', marginLeft: 'auto' }}>
+                    {crSince(Date.now() - last)}
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        // ── List row layout ───────────────────────────────────
+        keys.map((k, i) => {
+          const med = CR_MED_BY_KEY[k];
+          const row = state.gave.find(g => g.key === k);
+          const count = row ? row.doses.length : 0;
+          const last = row && row.doses.length ? row.doses[row.doses.length - 1] : null;
+          const recommended = recKeys.has(k);
+          const isShock = k === 'shock';
+          return (
+            <div key={k} style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              padding: '10px 10px 10px 12px',
+              borderBottom: i === keys.length - 1 ? 'none' : '1px solid var(--line)',
             }}>
-              +1
-            </button>
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-              {isShock && <CRIcon name="bolt" size={14} color="var(--shock)" />}
-              <div style={{
-                fontSize: 15, fontWeight: 600, letterSpacing: '-0.005em',
-                color: isShock ? 'var(--shock)' : 'var(--ink)',
-                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              {/* +1 button with ripple overlay */}
+              <button onClick={() => handleGive(k)} style={{
+                position: 'relative', overflow: 'hidden',
+                minWidth: 44, height: 30, padding: '0 9px', borderRadius: 7,
+                background: recommended && count === 0 ? (isShock ? 'var(--shock)' : 'var(--accent)') : '#fff',
+                border: `1.5px solid ${isShock ? 'var(--shock)' : 'var(--accent)'}`,
+                color: recommended && count === 0 ? '#fff' : (isShock ? 'var(--shock)' : 'var(--accent)'),
+                fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 3,
               }}>
-                {med?.name || k}
+                +1
+                {rippleKeys[k] !== undefined && (
+                  <span key={rippleKeys[k]} style={{
+                    position: 'absolute', inset: 0, margin: 'auto',
+                    width: 20, height: 20, borderRadius: '50%',
+                    background: isShock ? 'var(--shock)' : 'var(--accent)',
+                    opacity: 0, pointerEvents: 'none',
+                    animation: 'crRipple 500ms ease-out forwards',
+                  }} />
+                )}
+              </button>
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                {isShock && <CRIcon name="bolt" size={14} color="var(--shock)" />}
+                <div style={{
+                  fontSize: 15, fontWeight: 600, letterSpacing: '-0.005em',
+                  color: isShock ? 'var(--shock)' : 'var(--ink)',
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>
+                  {med?.name || k}
+                </div>
+                {/* Count badge — re-keyed on each dose to trigger wipe-down animation */}
+                <div
+                  key={countKeys[k] ?? 0}
+                  className="mono cr-count-wipe"
+                  style={{
+                    display: 'inline-block',
+                    fontSize: 12, fontWeight: 600,
+                    padding: '2px 6px', borderRadius: 5,
+                    background: 'var(--surface-2)', color: 'var(--ink-2)',
+                  }}
+                >
+                  {count}
+                </div>
               </div>
-              <div className="mono" style={{
-                fontSize: 12, fontWeight: 600,
-                padding: '2px 6px', borderRadius: 5,
-                background: 'var(--surface-2)', color: 'var(--ink-2)',
-              }}>
-                {count}
+              <div className="mono" style={{ fontSize: 12, color: 'var(--ink-3)', minWidth: 44, textAlign: 'right' }}>
+                {last ? crSince(Date.now() - last) : '—'}
               </div>
             </div>
-            <div className="mono" style={{ fontSize: 12, color: 'var(--ink-3)', minWidth: 44, textAlign: 'right' }}>
-              {last ? crSince(Date.now() - last) : '—'}
-            </div>
-          </div>
-        );
-      })}
+          );
+        })
+      )}
     </div>
   );
 }
