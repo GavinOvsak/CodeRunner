@@ -24,6 +24,7 @@ export function CRIcon({ name, size = 18, color = 'currentColor' }: { name: stri
     case 'heart':         return <svg {...props}><path d="M12 21s-7-4.5-9-9c-1.5-3 0-6 3-6 2 0 3 1 4 3 1-2 2-3 4-3 3 0 4.5 3 3 6-2 4.5-9 9-9 9z"/></svg>;
     case 'trash':         return <svg {...props}><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>;
     case 'edit':          return <svg {...props}><path d="M4 20h4l10-10-4-4L4 16zM14 6l4 4"/></svg>;
+    case 'download':      return <svg {...props}><path d="M12 3v13M7 11l5 5 5-5M5 20h14"/></svg>;
     default: return null;
   }
 }

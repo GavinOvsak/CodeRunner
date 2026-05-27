@@ -302,8 +302,13 @@ export function CRPatientScreen({ patient, onChange, onBack, onOpenLog }: CRPati
       return;
     }
     if (t.id === 'airway') {
-      update(p => ({ ...p, breathing: 'ETT' }));
+      update(p => ({
+        ...p,
+        breathing: 'ETT',
+        ...(p.alert !== 'Sedated' && { alert: 'Sedated' }),
+      }));
       log('Airway secured (ETT)', 'task');
+      if (s.alert !== 'Sedated') log('Alert: Sedated (auto, ETT)', 'status');
       hideTask(t.id);
       return;
     }
