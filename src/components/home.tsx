@@ -134,20 +134,22 @@ export function CRHomeScreen({
       }}
     >
       <div style={{ paddingTop: "env(safe-area-inset-top, 0px)" }} />
-      <div style={{ padding: "8px 22px 6px" }}>
-        <h1
-          style={{
-            margin: 0,
-            fontSize: 34,
-            fontWeight: 700,
-            letterSpacing: "-0.025em",
-            lineHeight: 1.05,
-          }}
-        >
-          Code<span style={{ color: "var(--accent)" }}>Runner</span>
-        </h1>
-        <div style={{ marginTop: 4, fontSize: 13, color: "var(--ink-3)" }}>
-          ACLS / PALS companion
+      <div style={{ padding: "8px 22px 6px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div>
+          <h1
+            style={{
+              margin: 0,
+              fontSize: 34,
+              fontWeight: 700,
+              letterSpacing: "-0.025em",
+              lineHeight: 1.05,
+            }}
+          >
+            Code<span style={{ color: "var(--accent)" }}>Runner</span>
+          </h1>
+          <div style={{ marginTop: 4, fontSize: 13, color: "var(--ink-3)" }}>
+            ACLS / PALS companion
+          </div>
         </div>
         {installPrompt && (
           <button
@@ -156,7 +158,6 @@ export function CRHomeScreen({
               setInstallPrompt(null);
             }}
             style={{
-              marginTop: 10,
               display: "inline-flex",
               alignItems: "center",
               gap: 6,
@@ -168,6 +169,7 @@ export function CRHomeScreen({
               fontWeight: 600,
               color: "var(--ink)",
               cursor: "pointer",
+              flexShrink: 0,
             }}
           >
             <CRIcon name="download" size={14} />
