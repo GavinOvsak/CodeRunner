@@ -144,10 +144,6 @@ export function crNextTasks(s: Patient): NextTask[] {
   if (s.breathing === 'No' && s.alert === 'Yes') {
     push({ id: 'choking-cycles', label: '5 back blows then 5 abdominal thrusts', recurring: true });
     push({ id: 'reassess-responsiveness', label: 'Reassess Responsiveness', recurring: true });
-  } else if (s.breathing === 'No' && s.pulse === 'Yes') {
-    push({ id: 'backblows', label: '5 Back Blows' });
-    push({ id: 'thrusts',   label: '5 Abdominal Thrusts' });
-    push({ id: 'reassess',  label: 'Reassess Airway' });
   }
 
   // strip already-completed
