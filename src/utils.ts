@@ -148,6 +148,9 @@ export function reconstructStateFromLog(p: Patient): Patient {
             base.gave.push(doseRow);
           }
           doseRow.doses.push(entry.at);
+          if (med.key === 'shock') {
+            base.rhythm = '?';
+          }
         }
       }
     } else if (type === 'task') {

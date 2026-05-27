@@ -324,4 +324,13 @@ const priorityTasks = crNextTasks(priorityPatientState);
 assertEqual(priorityTasks[0].id, 'shock', 'First task is Shock');
 assertEqual(priorityTasks[1].id, 'start-cpr', 'Second task is Start CPR');
 
+// Test Case 23: Shock resets patient rhythm to "?"
+const shockRhythmLog: LogEntry[] = [
+  { at: 1010000, type: 'status', text: 'Pulse: No' },
+  { at: 1020000, type: 'status', text: 'Rhythm: VF' },
+  { at: 1030000, type: 'med',    text: '+1 Shock' },
+];
+const shockRhythmState = reconstructStateFromLog({ ...mockPatient, log: shockRhythmLog });
+assertEqual(shockRhythmState.rhythm, '?', 'Shock event resets rhythm to "?"');
+
 console.log('\n\x1b[32m✔ All unit tests passed successfully!\x1b[0m');
