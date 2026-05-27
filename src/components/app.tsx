@@ -127,13 +127,27 @@ export function seedPatients(): Patient[] {
 export function CRApp() {
   const [patients, setPatients] = useState<Patient[]>(() => {
     try {
+      // One-time cleanup to remove any legacy seed patients from localStorage
+      // so the user starts with a clean dashboard by default, preserving custom codes.
+      const cleared = localStorage.getItem('cr_seeded_cleared_v1');
       const raw = localStorage.getItem('cr_patients');
+      if (raw && !cleared) {
+        const parsed = JSON.parse(raw) as Patient[];
+        const seedNames = ['Bay 4 — VF arrest', 'Rm 312 — Brady', 'ED — 4 y/o choke'];
+        const filtered = parsed.filter(p => !seedNames.includes(p.name));
+        localStorage.setItem('cr_patients', JSON.stringify(filtered));
+        localStorage.setItem('cr_seeded_cleared_v1', 'true');
+        return filtered.map(reconstructStateFromLog);
+      }
+      if (!cleared) {
+        localStorage.setItem('cr_seeded_cleared_v1', 'true');
+      }
       if (raw) {
         const parsed = JSON.parse(raw) as Patient[];
         return parsed.map(reconstructStateFromLog);
       }
     } catch { /* ignore */ }
-    return seedPatients();
+    return [];
   });
   const [activeId, setActiveId] = useState<string | null>(null);
   const [view, setView] = useState<'home' | 'patient' | 'log'>('home');

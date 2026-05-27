@@ -147,7 +147,13 @@ export function crNextTasks(s: Patient): NextTask[] {
   }
 
   // strip already-completed
-  return tasks.filter(t => !s.doneTasks[t.id + '__hidden']);
+  const filtered = tasks.filter(t => !s.doneTasks[t.id + '__hidden']);
+
+  // Shock and Start CPR should always be at the top of the Next list when included.
+  const topIds = ['shock', 'start-cpr'];
+  const topTasks = filtered.filter(t => topIds.includes(t.id));
+  const otherTasks = filtered.filter(t => !topIds.includes(t.id));
+  return [...topTasks, ...otherTasks];
 }
 
 // Recommended med keys (so Gave can surface them as "+1" rows even when not yet given)

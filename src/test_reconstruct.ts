@@ -312,4 +312,16 @@ const implicitSymptomaticRemovedLog: LogEntry[] = [
 const implicitSymptomaticRemovedState = reconstructStateFromLog({ ...mockPatient, log: implicitSymptomaticRemovedLog });
 assertEqual(implicitSymptomaticRemovedState.symptomatic, '?', 'Symptomatic resets to "?" when Alert transitions back to Yes');
 
+// Test Case 22: Shock and Start CPR are prioritized at the top of the next tasks list when included
+const priorityPatientLog: LogEntry[] = [
+  { at: 1010000, type: 'status', text: 'Pulse: No' },
+  { at: 1020000, type: 'status', text: 'Rhythm: VF' },
+];
+const priorityPatientState = reconstructStateFromLog({ ...mockPatient, log: priorityPatientLog });
+const priorityTasks = crNextTasks(priorityPatientState);
+
+// The tasks should be generated, and 'shock' and 'start-cpr' should be at index 0 and 1
+assertEqual(priorityTasks[0].id, 'shock', 'First task is Shock');
+assertEqual(priorityTasks[1].id, 'start-cpr', 'Second task is Start CPR');
+
 console.log('\n\x1b[32m✔ All unit tests passed successfully!\x1b[0m');
