@@ -48,14 +48,17 @@ export function crNextTasks(s: Patient): NextTask[] {
   // ===== Cardiac arrest pathway =====
   if (s.pulse === 'No' || s.cpr.active) {
     if (!s.cpr.active) {
+      if (s.rhythm === 'VF' || s.rhythm === 'VT') {
+        push({ id: 'shock', label: 'Shock', kind: 'shock' });
+      }
       push({ id: 'start-cpr',   label: 'Start CPR',           kind: 'critical' });
       push({ id: 'get-aed',     label: 'Get AED / Defibrillator' });
     } else if (s.cpr.pausedAt) {
       // PAUSED between cycles — assess, treat, then resume
-      if (s.pulse === '?' || s.rhythm === '?') {
-        push({ id: 'pulse-rhythm-check', label: 'Pulse + Rhythm Check', kind: 'critical' });
-      } else if (s.pulse === 'Yes') {
+      if (s.pulse === 'Yes') {
         push({ id: 'rosc', label: 'ROSC — End Code', kind: 'critical' });
+      } else if (s.pulse === '?' || s.rhythm === '?') {
+        push({ id: 'pulse-rhythm-check', label: 'Pulse + Rhythm Check', kind: 'critical' });
       } else {
         // Pulse = No, rhythm known. Suggest defib + drugs before resuming.
         if (s.rhythm === 'VF' || s.rhythm === 'VT') {

@@ -224,8 +224,11 @@ export function CRPatientScreen({ patient, onChange, onBack, onOpenLog }: CRPati
       return;
     }
     if (t.id === 'rosc') {
+      const elapsed = s.cpr.pausedAt
+        ? s.cpr.pausedAt - s.cpr.cycleStartAt
+        : Date.now() - s.cpr.cycleStartAt;
       update(p => ({ ...p, cpr: { ...p.cpr, active: false, pausedAt: null } }));
-      log('ROSC — code ended', 'cpr');
+      log(`ROSC — code ended (CPR cycle ${s.cpr.cycleNumber} stopped — ${crFmt(elapsed)})`, 'cpr');
       return;
     }
     if (t.id === 'pause-pulse-check') {
@@ -308,7 +311,8 @@ export function CRPatientScreen({ patient, onChange, onBack, onOpenLog }: CRPati
           pulse: '?', rhythm: '?',
         };
       } else {
-        log(`CPR cycle ${c.cycleNumber} ended (pause)`, 'cpr');
+        const elapsed = now - c.cycleStartAt;
+        log(`CPR cycle ${c.cycleNumber} ended (pause) — ${crFmt(elapsed)}`, 'cpr');
         return { ...p, cpr: { ...c, pausedAt: now } };
       }
     });
@@ -588,7 +592,7 @@ const PILL_BREAKPOINT = 480;
 
 export function CRGaveList({ state, recKeys, onGive, onLayoutChange }: CRGaveListProps) {
   const givenKeys = state.gave.filter(g => g.doses.length > 0)
-    .sort((a, b) => Math.max(...b.doses) - Math.max(...a.doses))
+    .sort((a, b) => Math.min(...a.doses) - Math.min(...b.doses))
     .map(g => g.key);
   const givenSet = new Set(givenKeys);
   const recList = [...recKeys].filter(k => !givenSet.has(k));
@@ -634,156 +638,88 @@ export function CRGaveList({ state, recKeys, onGive, onLayoutChange }: CRGaveLis
   }
 
   return (
-    <div ref={wrapperRef}>
-      {isPills ? (
-        // ── Card grid layout: same visual design as list rows, wrapped in a CSS grid ──
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-          gap: 8,
-        }}>
-          {keys.map(k => {
-            const med = CR_MED_BY_KEY[k];
-            const row = state.gave.find(g => g.key === k);
-            const count = row ? row.doses.length : 0;
-            const last = row && row.doses.length ? row.doses[row.doses.length - 1] : null;
-            const recommended = recKeys.has(k);
-            const isShock = k === 'shock';
-            return (
-              // CSS Grid auto-fit minmax guarantees all items are equal width and wrapped nicely
-              <div key={k} style={{
-                display: 'flex', alignItems: 'center', gap: 10,
-                padding: '8px 12px 8px 10px',
-                borderRadius: 12,
-                background: 'var(--surface)',
-                border: '1px solid var(--line)',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-              }}>
-                {/* +1 button with ripple overlay */}
-                <button onClick={() => handleGive(k)} style={{
-                  position: 'relative', overflow: 'hidden',
-                  minWidth: 44, height: 30, padding: '0 9px', borderRadius: 7,
-                  background: recommended && count === 0 ? (isShock ? 'var(--shock)' : 'var(--accent)') : '#fff',
-                  border: `1.5px solid ${isShock ? 'var(--shock)' : 'var(--accent)'}`,
-                  color: recommended && count === 0 ? '#fff' : (isShock ? 'var(--shock)' : 'var(--accent)'),
-                  fontSize: 13, fontWeight: 700, cursor: 'pointer',
-                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  +1
-                  {rippleKeys[k] !== undefined && (
-                    <span key={rippleKeys[k]} style={{
-                      position: 'absolute', inset: 0, margin: 'auto',
-                      width: 20, height: 20, borderRadius: '50%',
-                      background: isShock ? 'var(--shock)' : 'var(--accent)',
-                      opacity: 0, pointerEvents: 'none',
-                      animation: 'crRipple 500ms ease-out forwards',
-                    }} />
-                  )}
-                </button>
-
-                {/* Name + optional bolt icon */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-                  {isShock && <CRIcon name="bolt" size={14} color="var(--shock)" />}
-                  <span style={{
-                    fontSize: 15, fontWeight: 600, letterSpacing: '-0.005em',
-                    color: isShock ? 'var(--shock)' : 'var(--ink)',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                  }}>
-                    {med?.name || k}
-                  </span>
-                  {/* Count badge — re-keyed on each dose to trigger wipe-down animation */}
-                  <span
-                    key={countKeys[k] ?? 0}
-                    className="mono cr-count-wipe"
-                    style={{
-                      display: 'inline-block',
-                      fontSize: 12, fontWeight: 600,
-                      padding: '2px 6px', borderRadius: 5,
-                      background: 'var(--surface-2)', color: 'var(--ink-2)',
-                    }}
-                  >
-                    {count}
-                  </span>
-                </div>
-
-                {/* Time since last dose — pinned to the right edge */}
-                {last && (
-                  <span className="mono" style={{ fontSize: 12, color: 'var(--ink-3)', whiteSpace: 'nowrap', marginLeft: 'auto' }}>
-                    {crSince(Date.now() - last)}
-                  </span>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        // ── List row layout ───────────────────────────────────
-        keys.map((k, i) => {
-          const med = CR_MED_BY_KEY[k];
-          const row = state.gave.find(g => g.key === k);
-          const count = row ? row.doses.length : 0;
-          const last = row && row.doses.length ? row.doses[row.doses.length - 1] : null;
-          const recommended = recKeys.has(k);
-          const isShock = k === 'shock';
-          return (
-            <div key={k} style={{
-              display: 'flex', alignItems: 'center', gap: 10,
-              padding: '10px 10px 10px 12px',
-              borderBottom: i === keys.length - 1 ? 'none' : '1px solid var(--line)',
+    <div ref={wrapperRef} style={isPills ? {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+      gap: 8,
+    } : {
+      display: 'flex',
+      flexDirection: 'column',
+    }}>
+      {keys.map((k, i) => {
+        const med = CR_MED_BY_KEY[k];
+        const row = state.gave.find(g => g.key === k);
+        const count = row ? row.doses.length : 0;
+        const last = row && row.doses.length ? row.doses[row.doses.length - 1] : null;
+        const recommended = recKeys.has(k);
+        const isShock = k === 'shock';
+        return (
+          <div key={k} style={isPills ? {
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: '8px 12px 8px 10px',
+            borderRadius: 12,
+            background: 'var(--surface)',
+            border: '1px solid var(--line)',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+          } : {
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: '10px 10px 10px 12px',
+            borderBottom: i === keys.length - 1 ? 'none' : '1px solid var(--line)',
+          }}>
+            {/* +1 button with ripple overlay */}
+            <button onClick={() => handleGive(k)} style={{
+              position: 'relative', overflow: 'hidden',
+              minWidth: 44, height: 30, padding: '0 9px', borderRadius: 7,
+              background: recommended && count === 0 ? (isShock ? 'var(--shock)' : 'var(--accent)') : '#fff',
+              border: `1.5px solid ${isShock ? 'var(--shock)' : 'var(--accent)'}`,
+              color: recommended && count === 0 ? '#fff' : (isShock ? 'var(--shock)' : 'var(--accent)'),
+              fontSize: 13, fontWeight: 700, cursor: 'pointer',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
             }}>
-              {/* +1 button with ripple overlay */}
-              <button onClick={() => handleGive(k)} style={{
-                position: 'relative', overflow: 'hidden',
-                minWidth: 44, height: 30, padding: '0 9px', borderRadius: 7,
-                background: recommended && count === 0 ? (isShock ? 'var(--shock)' : 'var(--accent)') : '#fff',
-                border: `1.5px solid ${isShock ? 'var(--shock)' : 'var(--accent)'}`,
-                color: recommended && count === 0 ? '#fff' : (isShock ? 'var(--shock)' : 'var(--accent)'),
-                fontSize: 13, fontWeight: 700, cursor: 'pointer',
-                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 3,
+              +1
+              {rippleKeys[k] > 0 && (
+                <span key={rippleKeys[k]} style={{
+                  position: 'absolute', inset: 0, margin: 'auto',
+                  width: 20, height: 20, borderRadius: '50%',
+                  background: isShock ? 'var(--shock)' : 'var(--accent)',
+                  opacity: 0, pointerEvents: 'none',
+                  animation: 'crRipple 500ms ease-out forwards',
+                }} />
+              )}
+            </button>
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+              {isShock && <CRIcon name="bolt" size={14} color="var(--shock)" />}
+              <span style={{
+                fontSize: 15, fontWeight: 600, letterSpacing: '-0.005em',
+                color: isShock ? 'var(--shock)' : 'var(--ink)',
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               }}>
-                +1
-                {rippleKeys[k] !== undefined && (
-                  <span key={rippleKeys[k]} style={{
-                    position: 'absolute', inset: 0, margin: 'auto',
-                    width: 20, height: 20, borderRadius: '50%',
-                    background: isShock ? 'var(--shock)' : 'var(--accent)',
-                    opacity: 0, pointerEvents: 'none',
-                    animation: 'crRipple 500ms ease-out forwards',
-                  }} />
-                )}
-              </button>
-              <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-                {isShock && <CRIcon name="bolt" size={14} color="var(--shock)" />}
-                <div style={{
-                  fontSize: 15, fontWeight: 600, letterSpacing: '-0.005em',
-                  color: isShock ? 'var(--shock)' : 'var(--ink)',
-                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                }}>
-                  {med?.name || k}
-                </div>
-                {/* Count badge — re-keyed on each dose to trigger wipe-down animation */}
-                <div
-                  key={countKeys[k] ?? 0}
-                  className="mono cr-count-wipe"
-                  style={{
-                    display: 'inline-block',
-                    fontSize: 12, fontWeight: 600,
-                    padding: '2px 6px', borderRadius: 5,
-                    background: 'var(--surface-2)', color: 'var(--ink-2)',
-                  }}
-                >
-                  {count}
-                </div>
-              </div>
-              <div className="mono" style={{ fontSize: 12, color: 'var(--ink-3)', minWidth: 44, textAlign: 'right' }}>
-                {last ? crSince(Date.now() - last) : '—'}
-              </div>
+                {med?.name || k}
+              </span>
+              {/* Count badge — animation triggered ONLY on active click (countKeys[k] > 0) */}
+              <span
+                className={countKeys[k] ? "mono cr-count-wipe" : "mono"}
+                style={{
+                  display: 'inline-block',
+                  fontSize: 12, fontWeight: 600,
+                  padding: '2px 6px', borderRadius: 5,
+                  background: 'var(--surface-2)', color: 'var(--ink-2)',
+                }}
+              >
+                {count}
+              </span>
             </div>
-          );
-        })
-      )}
+            {/* Time since last dose */}
+            {last ? (
+              <span className="mono" style={{ fontSize: 12, color: 'var(--ink-3)', whiteSpace: 'nowrap', marginLeft: isPills ? 'auto' : undefined }}>
+                {crSince(Date.now() - last)}
+              </span>
+            ) : (
+              !isPills && <span className="mono" style={{ fontSize: 12, color: 'var(--ink-3)', minWidth: 44, textAlign: 'right' }}>—</span>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
