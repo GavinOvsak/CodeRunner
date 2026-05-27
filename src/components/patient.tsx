@@ -3,6 +3,7 @@ import type { Patient, CPRState, NextTask } from "../types";
 import {
   CR_MEDS,
   CR_MED_BY_KEY,
+  CR_CONTINUOUS_KEYS,
   crNextTasks,
   crRecommendedMedKeys,
 } from "../data";
@@ -384,6 +385,10 @@ export function CRPatientScreen({
       flashField("rhythm");
       return;
     }
+    if (t.id === "pace") {
+      giveMed("pace");
+      return;
+    }
     if (t.id === "get-aed") {
       log("AED requested", "task");
       hideTask(t.id);
@@ -440,6 +445,11 @@ export function CRPatientScreen({
     const med = CR_MED_BY_KEY[key];
     if (!med) return;
     const now = Date.now();
+    const isContinuous = CR_CONTINUOUS_KEYS.has(key);
+    const currentRow = s.gave.find((g) => g.key === key);
+    const currentDoseCount = currentRow ? currentRow.doses.length : 0;
+    const isCurrentlyActive = isContinuous && currentDoseCount % 2 === 1;
+
     update((p) => {
       const existing = p.gave.find((g) => g.key === key);
       let gave;
@@ -452,7 +462,12 @@ export function CRPatientScreen({
       }
       return { ...p, gave };
     });
-    log(`+1 ${med.short}`, "med");
+
+    if (isContinuous) {
+      log(isCurrentlyActive ? `Stopped ${med.short}` : `Started ${med.short}`, "med");
+    } else {
+      log(`+1 ${med.short}`, "med");
+    }
     if (key === "shock" || key == "adenosine") {
       setTimeout(() => log("Rhythm: ?", "status"), 0);
     }
@@ -1126,6 +1141,12 @@ export function CRGaveList({
           row && row.doses.length ? row.doses[row.doses.length - 1] : null;
         const recommended = recKeys.has(k);
         const isShock = k === "shock";
+        const isContinuous = CR_CONTINUOUS_KEYS.has(k);
+        // For continuous items: odd dose count = active (alternating start/stop timestamps)
+        const isActive = isContinuous && count % 2 === 1;
+        const activeStart = isActive && row ? row.doses[row.doses.length - 1] : null;
+        const activeElapsed = activeStart ? (currentTime ?? Date.now()) - activeStart : 0;
+
         return (
           <div
             key={k}
@@ -1151,56 +1172,84 @@ export function CRGaveList({
                   }
             }
           >
-            {/* +1 button with ripple overlay */}
-            <button
-              onClick={() => handleGive(k)}
-              style={{
-                position: "relative",
-                overflow: "hidden",
-                minWidth: 44,
-                height: 30,
-                padding: "0 9px",
-                borderRadius: 7,
-                background:
-                  recommended && count === 0
-                    ? isShock
-                      ? "var(--shock)"
-                      : "var(--accent)"
-                    : "#fff",
-                border: `1.5px solid ${isShock ? "var(--shock)" : "var(--accent)"}`,
-                color:
-                  recommended && count === 0
-                    ? "#fff"
-                    : isShock
-                      ? "var(--shock)"
-                      : "var(--accent)",
-                fontSize: 13,
-                fontWeight: 700,
-                cursor: "pointer",
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              +1
-              {rippleKeys[k] > 0 && (
-                <span
-                  key={rippleKeys[k]}
-                  style={{
-                    position: "absolute",
-                    inset: 0,
-                    margin: "auto",
-                    width: 20,
-                    height: 20,
-                    borderRadius: "50%",
-                    background: isShock ? "var(--shock)" : "var(--accent)",
-                    opacity: 0,
-                    pointerEvents: "none",
-                    animation: "crRipple 500ms ease-out forwards",
-                  }}
+            {isContinuous ? (
+              /* Play / Pause button for continuous actions */
+              <button
+                onClick={() => handleGive(k)}
+                style={{
+                  minWidth: 44,
+                  height: 30,
+                  padding: "0 9px",
+                  borderRadius: 7,
+                  background: isActive ? "var(--accent)" : "#fff",
+                  border: `1.5px solid var(--accent)`,
+                  color: isActive ? "#fff" : "var(--accent)",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <CRIcon
+                  name={isActive ? "pause" : "play"}
+                  size={13}
+                  color={isActive ? "#fff" : "var(--accent)"}
                 />
-              )}
-            </button>
+              </button>
+            ) : (
+              /* +1 button with ripple overlay */
+              <button
+                onClick={() => handleGive(k)}
+                style={{
+                  position: "relative",
+                  overflow: "hidden",
+                  minWidth: 44,
+                  height: 30,
+                  padding: "0 9px",
+                  borderRadius: 7,
+                  background:
+                    recommended && count === 0
+                      ? isShock
+                        ? "var(--shock)"
+                        : "var(--accent)"
+                      : "#fff",
+                  border: `1.5px solid ${isShock ? "var(--shock)" : "var(--accent)"}`,
+                  color:
+                    recommended && count === 0
+                      ? "#fff"
+                      : isShock
+                        ? "var(--shock)"
+                        : "var(--accent)",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                +1
+                {rippleKeys[k] > 0 && (
+                  <span
+                    key={rippleKeys[k]}
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      margin: "auto",
+                      width: 20,
+                      height: 20,
+                      borderRadius: "50%",
+                      background: isShock ? "var(--shock)" : "var(--accent)",
+                      opacity: 0,
+                      pointerEvents: "none",
+                      animation: "crRipple 500ms ease-out forwards",
+                    }}
+                  />
+                )}
+              </button>
+            )}
             <div
               style={{
                 flex: 1,
@@ -1224,25 +1273,42 @@ export function CRGaveList({
               >
                 {med?.name || k}
               </span>
-              {/* Count badge — animation triggered ONLY on active click (countKeys[k] > 0) */}
-              <span
-                key={countKeys[k]}
-                className={countKeys[k] ? "mono cr-count-wipe" : "mono"}
-                style={{
-                  display: "inline-block",
-                  fontSize: 12,
-                  fontWeight: 600,
-                  padding: "2px 6px",
-                  borderRadius: 5,
-                  background: "var(--surface-2)",
-                  color: "var(--ink-2)",
-                }}
-              >
-                {count}
-              </span>
+              {/* Count badge — only for non-continuous items */}
+              {!isContinuous && (
+                <span
+                  key={countKeys[k]}
+                  className={countKeys[k] ? "mono cr-count-wipe" : "mono"}
+                  style={{
+                    display: "inline-block",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    padding: "2px 6px",
+                    borderRadius: 5,
+                    background: "var(--surface-2)",
+                    color: "var(--ink-2)",
+                  }}
+                >
+                  {count}
+                </span>
+              )}
             </div>
-            {/* Time since last dose */}
-            {last ? (
+            {/* Right side: timer for continuous (when active), or time-since-last-dose for countable */}
+            {isContinuous ? (
+              isActive ? (
+                <span
+                  className="mono"
+                  style={{
+                    fontSize: 12,
+                    color: "var(--accent)",
+                    fontWeight: 600,
+                    whiteSpace: "nowrap",
+                    marginLeft: isPills ? "auto" : undefined,
+                  }}
+                >
+                  {crFmt(activeElapsed)}
+                </span>
+              ) : null
+            ) : last ? (
               <span
                 className="mono"
                 style={{

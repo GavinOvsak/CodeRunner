@@ -33,7 +33,12 @@ export const CR_MEDS: Med[] = [
   { key: "tranex", name: "TXA", cat: "Blood", short: "TXA" },
   // Pseudo-med: shock (tracked in Gave for counts)
   { key: "shock", name: "Shock", cat: "Action", short: "Shock" },
+  // Continuous actions (play/pause timer, not countable)
+  { key: "pace", name: "Transcutaneous Pacing", cat: "Action", short: "Pacing" },
 ];
+
+/** Keys that run continuously — show play/pause timer instead of +1 count. */
+export const CR_CONTINUOUS_KEYS = new Set(["dopamine", "norepi", "vaso", "procain", "pace"]);
 
 export const CR_MED_BY_KEY: Record<string, Med> = Object.fromEntries(
   CR_MEDS.map((m) => [m.key, m]),

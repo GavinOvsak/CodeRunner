@@ -1,5 +1,5 @@
 import type { Patient, AlertValue, BreathingValue, PulseValue, RateValue, SymptomaticValue, RhythmValue } from './types';
-import { CR_MEDS } from './data';
+import { CR_MEDS, CR_CONTINUOUS_KEYS } from './data';
 
 /**
  * # Reconstruct Patient State from Event Log
@@ -138,18 +138,24 @@ export function reconstructStateFromLog(p: Patient): Patient {
         };
       }
     } else if (type === 'med') {
-      if (text.startsWith('+1 ')) {
-        const medName = text.slice(3).trim();
+      const isStartStop = text.startsWith('Started ') || text.startsWith('Stopped ');
+      const isPlusDose = text.startsWith('+1 ');
+      if (isPlusDose || isStartStop) {
+        const medName = isPlusDose ? text.slice(3).trim() : text.slice(text.indexOf(' ') + 1).trim();
         const med = CR_MEDS.find(m => m.short.toLowerCase() === medName.toLowerCase() || m.name.toLowerCase() === medName.toLowerCase() || m.key.toLowerCase() === medName.toLowerCase());
         if (med) {
-          let doseRow = base.gave.find(g => g.key === med.key);
-          if (!doseRow) {
-            doseRow = { key: med.key, doses: [] };
-            base.gave.push(doseRow);
-          }
-          doseRow.doses.push(entry.at);
-          if (med.key === 'shock') {
-            base.rhythm = '?';
+          // Validate: continuous meds only accept started/stopped, discrete meds only accept +1
+          const isContinuous = CR_CONTINUOUS_KEYS.has(med.key);
+          if ((isContinuous && isStartStop) || (!isContinuous && isPlusDose)) {
+            let doseRow = base.gave.find(g => g.key === med.key);
+            if (!doseRow) {
+              doseRow = { key: med.key, doses: [] };
+              base.gave.push(doseRow);
+            }
+            doseRow.doses.push(entry.at);
+            if (med.key === 'shock') {
+              base.rhythm = '?';
+            }
           }
         }
       }
