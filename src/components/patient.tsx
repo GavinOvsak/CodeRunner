@@ -82,6 +82,7 @@ interface CRGaveListProps {
   onGive: (key: string) => void;
   /** Called whenever the layout mode switches between list rows and pill grid. */
   onLayoutChange?: (isPills: boolean) => void;
+  lastAction?: { key: string; time: number } | null;
 }
 
 interface CRGaveSearchProps {
@@ -124,6 +125,7 @@ export function CRPatientScreen({ patient, onChange, onBack, onOpenLog }: CRPati
   const [flashTarget, setFlashTarget] = useState<string | null>(null);
   /** True when the Gave section is wide enough to render chips instead of list rows. */
   const [isPillGave, setIsPillGave] = useState(false);
+  const [lastAction, setLastAction] = useState<{ key: string; time: number } | null>(null);
 
   const update = useCallback((mut: Patient | ((p: Patient) => Patient)) => {
     dispatch(prev => {
@@ -289,6 +291,7 @@ export function CRPatientScreen({ patient, onChange, onBack, onOpenLog }: CRPati
       return { ...p, gave };
     });
     log(`+1 ${med.short}`, 'med');
+    setLastAction({ key, time: now });
   }
 
   function addMedRow(key: string) {
@@ -418,7 +421,7 @@ export function CRPatientScreen({ patient, onChange, onBack, onOpenLog }: CRPati
 
             {/* List/Grid Container */}
             <div style={{ padding: isPillGave ? 0 : undefined }}>
-              <CRGaveList state={s} recKeys={recKeys} onGive={giveMed} onLayoutChange={setIsPillGave} />
+              <CRGaveList state={s} recKeys={recKeys} onGive={giveMed} onLayoutChange={setIsPillGave} lastAction={lastAction} />
             </div>
           </div>
         </div>
@@ -590,7 +593,7 @@ export function CRNextList({ tasks, fading, onCheck }: CRNextListProps) {
 /** Minimum container width (px) to switch to pill grid layout. */
 const PILL_BREAKPOINT = 480;
 
-export function CRGaveList({ state, recKeys, onGive, onLayoutChange }: CRGaveListProps) {
+export function CRGaveList({ state, recKeys, onGive, onLayoutChange, lastAction }: CRGaveListProps) {
   const givenKeys = state.gave.filter(g => g.doses.length > 0)
     .sort((a, b) => Math.min(...a.doses) - Math.min(...b.doses))
     .map(g => g.key);
@@ -602,15 +605,21 @@ export function CRGaveList({ state, recKeys, onGive, onLayoutChange }: CRGaveLis
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [isPills, setIsPills] = useState(false);
 
-  // Per-key animation counters — bumped on each +1 press to restart animations
+  // Per-key animation counters — bumped on each trigger to restart animations
   const [rippleKeys, setRippleKeys] = useState<Record<string, number>>({});
   const [countKeys,  setCountKeys]  = useState<Record<string, number>>({});
 
-  /** Wrap onGive to also fire button ripple + count-wipe animations. */
+  useEffect(() => {
+    if (lastAction) {
+      const { key } = lastAction;
+      setRippleKeys(prev => ({ ...prev, [key]: (prev[key] ?? 0) + 1 }));
+      setCountKeys( prev => ({ ...prev, [key]: (prev[key] ?? 0) + 1 }));
+    }
+  }, [lastAction]);
+
+  /** Wrap onGive to delegate giving the med. */
   function handleGive(k: string) {
     onGive(k);
-    setRippleKeys(prev => ({ ...prev, [k]: (prev[k] ?? 0) + 1 }));
-    setCountKeys( prev => ({ ...prev, [k]: (prev[k] ?? 0) + 1 }));
   }
 
   useEffect(() => {
@@ -698,6 +707,7 @@ export function CRGaveList({ state, recKeys, onGive, onLayoutChange }: CRGaveLis
               </span>
               {/* Count badge — animation triggered ONLY on active click (countKeys[k] > 0) */}
               <span
+                key={countKeys[k]}
                 className={countKeys[k] ? "mono cr-count-wipe" : "mono"}
                 style={{
                   display: 'inline-block',
