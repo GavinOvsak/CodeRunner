@@ -187,6 +187,88 @@ export function crNextTasks(s: Patient): NextTask[] {
       push({ id: "get-aed", label: "Get AED / Defibrillator" });
     }
 
+    const pushArrestDrugs = () => {
+      const epiDoses = s.gave.find((g) => g.key === "epi")?.doses ?? [];
+      const shockCount = given("shock");
+      const lastLog = s.log.at(-1);
+      const lastLogAt = lastLog ? lastLog.at : Date.now();
+      const isRecent = Date.now() - lastLogAt < 5 * 60 * 1000;
+      const refTime = isRecent || s.cpr.active ? Date.now() : lastLogAt;
+      const epiReady =
+        epiDoses.length === 0
+          ? !shockable || shockCount >= 1 // shockable: need 1 shock before first epi
+          : refTime - epiDoses[epiDoses.length - 1] >= 3 * 60 * 1000;
+
+      if (epiReady && !roscDone) {
+        if (isPeds) {
+          const dose =
+            s.weightKg != null
+              ? `${Math.min(s.weightKg * 0.01, 1).toFixed(2)}mg`
+              : "0.01mg/kg (max 1mg)";
+          push({
+            id: "epi",
+            label: `Give Epi ${dose} IV/IO (q 3-5 min)`,
+            kind: "med",
+            medKey: "epi",
+          });
+        } else {
+          push({
+            id: "epi",
+            label: "Give Epi 1mg IV/IO (q 3-5 min)",
+            kind: "med",
+            medKey: "epi",
+          });
+        }
+      }
+
+      if (shockable && shockCount >= 2) {
+        const amioGiven = given("amio");
+        if (isPeds) {
+          const maxAmt = amioGiven === 0 ? 300 : 150;
+          const dose =
+            s.weightKg != null
+              ? `${Math.min(s.weightKg * 5, maxAmt).toFixed(0)}mg`
+              : `5mg/kg (max ${maxAmt}mg)`;
+          push({
+            id: "amio",
+            label: `Give Amiodarone ${dose} IV/IO`,
+            kind: "med",
+            medKey: "amio",
+          });
+        } else {
+          const amioLabel =
+            amioGiven === 0
+              ? "Give Amiodarone 300mg"
+              : "Give Amiodarone 150mg";
+          push({ id: "amio", label: amioLabel, kind: "med", medKey: "amio" });
+        }
+
+        const lidoGiven = given("lido");
+        if (isPeds) {
+          const maxFirst = 100;
+          const doseFirst =
+            s.weightKg != null
+              ? `${Math.min(s.weightKg * 1, maxFirst).toFixed(1)}mg`
+              : `1mg/kg (max ${maxFirst}mg)`;
+          const doseRepeat =
+            s.weightKg != null
+              ? `${Math.min(s.weightKg * 0.5, maxFirst).toFixed(1)}mg`
+              : `0.5mg/kg`;
+          const lidoLabel =
+            lidoGiven === 0
+              ? `Give Lidocaine ${doseFirst} IV/IO`
+              : `Give Lidocaine ${doseRepeat} IV/IO`;
+          push({ id: "lido", label: lidoLabel, kind: "med", medKey: "lido" });
+        } else {
+          const lidoLabel =
+            lidoGiven === 0
+              ? "Give Lidocaine 1–1.5 mg/kg"
+              : "Give Lidocaine 0.5–0.75 mg/kg";
+          push({ id: "lido", label: lidoLabel, kind: "med", medKey: "lido" });
+        }
+      }
+    };
+
     if (!s.cpr.active) {
       // Pre-CPR: shock immediately if shockable and AED ready
       if (shockable && aedDone) {
@@ -220,63 +302,7 @@ export function crNextTasks(s: Patient): NextTask[] {
           push({ id: "shock", label: "Shock", kind: "shock", popup: "shock" });
         }
 
-        // Epi timing — for shockable rhythms require at least 1 shock first (ACLS/PALS)
-        const epiDoses = s.gave.find((g) => g.key === "epi")?.doses ?? [];
-        const shockCount = given("shock");
-        const lastLog = s.log.at(-1);
-        const lastLogAt = lastLog ? lastLog.at : Date.now();
-        const isRecent = Date.now() - lastLogAt < 5 * 60 * 1000;
-        const refTime = isRecent || s.cpr.active ? Date.now() : lastLogAt;
-        const epiReady =
-          epiDoses.length === 0
-            ? !shockable || shockCount >= 1 // shockable: need 1 shock before first epi
-            : refTime - epiDoses[epiDoses.length - 1] >= 3 * 60 * 1000;
-
-        if (epiReady && !roscDone) {
-          if (isPeds) {
-            const dose =
-              s.weightKg != null
-                ? `${Math.min(s.weightKg * 0.01, 1).toFixed(2)}mg`
-                : "0.01mg/kg (max 1mg)";
-            push({
-              id: "epi",
-              label: `Give Epi ${dose} IV/IO (q 3-5 min)`,
-              kind: "med",
-              medKey: "epi",
-            });
-          } else {
-            push({
-              id: "epi",
-              label: "Give Epi 1mg IV/IO (q 3-5 min)",
-              kind: "med",
-              medKey: "epi",
-            });
-          }
-        }
-
-        // Amiodarone after ≥2 shocks (shockable only)
-        if (shockable && shockCount >= 2) {
-          const amioGiven = given("amio");
-          if (isPeds) {
-            const maxAmt = amioGiven === 0 ? 300 : 150;
-            const dose =
-              s.weightKg != null
-                ? `${Math.min(s.weightKg * 5, maxAmt).toFixed(0)}mg`
-                : `5mg/kg (max ${maxAmt}mg)`;
-            push({
-              id: "amio",
-              label: `Give Amiodarone ${dose} IV/IO`,
-              kind: "med",
-              medKey: "amio",
-            });
-          } else {
-            const amioLabel =
-              amioGiven === 0
-                ? "Give Amiodarone 300mg"
-                : "Give Amiodarone 150mg";
-            push({ id: "amio", label: amioLabel, kind: "med", medKey: "amio" });
-          }
-        }
+        pushArrestDrugs();
 
         // H's & T's — always shown when pulseless, non-dismissable
         push({
@@ -324,6 +350,7 @@ export function crNextTasks(s: Patient): NextTask[] {
         push({ id: "airway", label: "Airway → advanced (ETT)" });
       if (!s.doneTasks["access"])
         push({ id: "access", label: "Obtain IV / IO Access" });
+      if (s.pulse === "No" && s.rhythm !== "?") pushArrestDrugs();
       push({
         id: "reversible",
         label: "Consider H's & T's",

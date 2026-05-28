@@ -26,7 +26,7 @@ export type TaskId =
   | "check-alert" | "check-breath" | "check-pulse" | "check-rate"
   | "get-aed" | "shock" | "start-cpr" | "pause-pulse-check" | "pause-to-shock"
   | "resume-cpr" | "rosc" | "pulse-rhythm-check"
-  | "epi" | "amio" | "reversible" | "airway" | "access"
+  | "epi" | "amio" | "lido" | "reversible" | "airway" | "access"
   | "opioid-reversal" | "rescue-breaths"
   | "ecg" | "adenosine" | "cardiovert"
   | "atropine" | "pace" | "dopamine"
