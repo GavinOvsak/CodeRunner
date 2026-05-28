@@ -26,7 +26,22 @@ const CR_OPTS_ALERT = [
 const CR_OPTS_BREATH = [
   { value: "Yes", label: "Yes" },
   { value: "No", label: "No" },
+  { value: "Choking", label: "Choking" },
   { value: "ETT", label: "ETT" },
+];
+const CR_OPTS_RESCUERS = [
+  { value: "One", label: "One" },
+  { value: "Two", label: "Two" },
+  { value: "Team", label: "Code Team" },
+];
+const CR_OPTS_GLUCOSE = [
+  { value: "Low", label: "Low" },
+  { value: "Normal", label: "Normal" },
+  { value: "High", label: "High" },
+];
+const CR_OPTS_STROKESX = [
+  { value: "Yes", label: "Yes" },
+  { value: "No", label: "No" },
 ];
 const CR_OPTS_RATE = [
   { value: "Fast", label: "Fast" },
@@ -81,12 +96,14 @@ interface CRCprPillProps {
   elapsed: number;
   onPause: () => void;
   onSync: () => void;
+  guidance: string;
 }
 
 interface CRNextListProps {
   tasks: NextTask[];
   fading: Record<string, boolean>;
   onCheck: (t: NextTask) => void;
+  patient: Patient;
 }
 
 interface CRGaveListProps {
@@ -153,9 +170,13 @@ export function CRPatientScreen({
   const s = patient;
   const dispatch = onChange;
   const [infoOpen, setInfoOpen] = useState(false);
+  const [popup, setPopup] = useState<
+    "shock" | "ht" | "strokeSx" | "strokeScale" | "rhythm" | null
+  >(null);
   const [fadingTasks, setFadingTasks] = useState<Record<string, boolean>>({});
   const [flashKey, setFlashKey] = useState(0);
-  const [flashTarget, setFlashTarget] = useState<string | null>(null);
+  const [flashTargets, setFlashTargets] = useState<Set<string>>(new Set());
+  const [weightInput, setWeightInput] = useState(s.weightKg?.toString() ?? "");
   /** True when the Gave section is wide enough to render chips instead of list rows. */
   const [isPillGave, setIsPillGave] = useState(false);
   const [lastAction, setLastAction] = useState<{
@@ -278,6 +299,28 @@ export function CRPatientScreen({
     update((p) => ({ ...p, symptomatic: v as Patient["symptomatic"] }));
     log(`Symptomatic: ${v}`, "status");
   }
+  function setRescuers(v: string) {
+    if (v === s.rescuers) return;
+    update((p) => ({ ...p, rescuers: v as Patient["rescuers"] }));
+    log(`Rescuers: ${v}`, "status");
+  }
+  function setGlucose(v: string) {
+    if (v === s.glucose) return;
+    update((p) => ({ ...p, glucose: v as Patient["glucose"] }));
+    log(`Glucose: ${v}`, "status");
+  }
+  function setStrokeSx(v: string) {
+    if (v === s.strokeSx) return;
+    update((p) => ({ ...p, strokeSx: v as Patient["strokeSx"] }));
+    log(`Stroke Sx: ${v}`, "status");
+  }
+  function setWeightKg(raw: string) {
+    const v = raw === "" ? null : parseFloat(raw);
+    const val = v == null || isNaN(v) ? null : v;
+    if (val === s.weightKg) return;
+    update((p) => ({ ...p, weightKg: val }));
+    if (val != null) log(`Weight: ${val}kg`, "status");
+  }
   function setRhythm(v: string) {
     if (v === s.rhythm) return;
     update((p) => {
@@ -294,10 +337,10 @@ export function CRPatientScreen({
   }
 
   // Task interactions
-  function flashField(field: string) {
-    setFlashTarget(field);
+  function flashField(...fields: string[]) {
+    setFlashTargets(new Set(fields));
     setFlashKey((k) => k + 1);
-    setTimeout(() => setFlashTarget(null), 1400);
+    setTimeout(() => setFlashTargets(new Set()), 1400);
   }
 
   function checkTask(t: NextTask) {
@@ -317,6 +360,14 @@ export function CRPatientScreen({
       flashField("rhythm");
       return;
     }
+    if (t.need === "glucose" && s.glucose === "?") {
+      flashField("glucose");
+      return;
+    }
+    if (t.need === "strokeSx" && s.strokeSx === "?") {
+      flashField("strokeSx");
+      return;
+    }
 
     if (t.id === "choking-cycles") {
       log("5 Back Blows & 5 Abdominal Thrusts delivered", "task");
@@ -325,6 +376,19 @@ export function CRPatientScreen({
     if (t.id === "reassess-responsiveness") {
       flashField("alert");
       log("Reassessed responsiveness", "task");
+      return;
+    }
+    if (t.id === "reversible") {
+      log("H's & T's reviewed", "task");
+      return; // recurring — stays visible
+    }
+    if (t.id === "rescue-breaths") {
+      log("Rescue breaths given", "task");
+      return; // recurring
+    }
+    if (t.id === "opioid-reversal") {
+      log("Considered opioid reversal", "task");
+      hideTask(t.id);
       return;
     }
 
@@ -381,8 +445,7 @@ export function CRPatientScreen({
       return;
     }
     if (t.id === "pulse-rhythm-check") {
-      flashField("pulse");
-      flashField("rhythm");
+      flashField("pulse", "rhythm");
       return;
     }
     if (t.id === "pace") {
@@ -464,7 +527,10 @@ export function CRPatientScreen({
     });
 
     if (isContinuous) {
-      log(isCurrentlyActive ? `Stopped ${med.short}` : `Started ${med.short}`, "med");
+      log(
+        isCurrentlyActive ? `Stopped ${med.short}` : `Started ${med.short}`,
+        "med",
+      );
     } else {
       log(`+1 ${med.short}`, "med");
     }
@@ -511,6 +577,19 @@ export function CRPatientScreen({
 
   const tasks = crNextTasks(s);
 
+  // CPR compression:breath guidance based on rescuers, ETT, and patient type
+  function getCprGuidance(): string {
+    const hasETT = s.breathing === "ETT";
+    if (hasETT) {
+      return s.type === "pediatric"
+        ? "Continuous · 1 breath/2-3s"
+        : "Continuous · 1 breath/6s";
+    }
+    if (s.rescuers === "Team") return "";
+    if (s.type === "pediatric" && s.rescuers === "Two") return "Ratio = 15:2";
+    return "Ratio = 30:2";
+  }
+
   return (
     <div
       style={{
@@ -544,6 +623,7 @@ export function CRPatientScreen({
             elapsed={cycleElapsed}
             onPause={toggleCprPause}
             onSync={syncMetronome}
+            guidance={getCprGuidance()}
           />
         )}
 
@@ -560,7 +640,7 @@ export function CRPatientScreen({
                 onChange={setAlert}
                 tone="auto"
                 disabled={s.breathing === "ETT"}
-                flashRedKey={flashTarget === "alert" ? flashKey : null}
+                flashRedKey={flashTargets.has("alert") ? flashKey : null}
                 buttonGroup
               />
             </CRStatusRow>
@@ -570,7 +650,7 @@ export function CRPatientScreen({
                 options={CR_OPTS_BREATH}
                 onChange={setBreathing}
                 tone="auto"
-                flashRedKey={flashTarget === "breathing" ? flashKey : null}
+                flashRedKey={flashTargets.has("breathing") ? flashKey : null}
                 buttonGroup
               />
             </CRStatusRow>
@@ -586,7 +666,7 @@ export function CRPatientScreen({
                   onChange={setPulse}
                   tone="auto"
                   disabled={cpr.active && !cpr.pausedAt}
-                  flashRedKey={flashTarget === "pulse" ? flashKey : null}
+                  flashRedKey={flashTargets.has("pulse") ? flashKey : null}
                   buttonGroup
                 />
               </CRStatusRow>
@@ -614,7 +694,7 @@ export function CRPatientScreen({
                     value={s.symptomatic}
                     options={CR_OPTS_YN}
                     onChange={setSymptomatic}
-                    tone="auto"
+                    tone="symptomatic"
                     buttonGroup
                   />
                 </CRStatusRow>
@@ -622,20 +702,28 @@ export function CRPatientScreen({
             {/* Rhythm row — exactly one variant renders at a time.
                   Pulse:Yes always wins (rate-gated); arrest set only when pulse is No/unknown. */}
             {s.pulse !== "Yes" && (s.pulse === "No" || cpr.active) ? (
-              <CRStatusRow label="Rhythm" uncertain={s.rhythm === "?"}>
+              <CRStatusRow
+                label="Rhythm"
+                uncertain={s.rhythm === "?"}
+                onInfo={() => setPopup("rhythm")}
+              >
                 <CRDropdown
                   value={s.rhythm}
                   options={CR_OPTS_RHYTHM_ARREST}
                   onChange={setRhythm}
                   tone="auto"
-                  flashRedKey={flashTarget === "rhythm" ? flashKey : null}
+                  flashRedKey={flashTargets.has("rhythm") ? flashKey : null}
                   buttonGroup
                 />
               </CRStatusRow>
             ) : (
               s.pulse === "Yes" &&
               s.rate !== "?" && (
-                <CRStatusRow label="Rhythm" uncertain={s.rhythm === "?"}>
+                <CRStatusRow
+                  label="Rhythm"
+                  uncertain={s.rhythm === "?"}
+                  onInfo={() => setPopup("rhythm")}
+                >
                   <CRDropdown
                     value={s.rhythm}
                     options={
@@ -647,11 +735,91 @@ export function CRPatientScreen({
                     }
                     onChange={setRhythm}
                     tone="auto"
-                    flashRedKey={flashTarget === "rhythm" ? flashKey : null}
+                    flashRedKey={flashTargets.has("rhythm") ? flashKey : null}
                     buttonGroup
                   />
                 </CRStatusRow>
               )
+            )}
+            {/* Rescuers — shown during cardiac arrest for CPR guidance; hidden when ETT (implies code team) */}
+            {(s.pulse === "No" || cpr.active) && s.breathing !== "ETT" && (
+              <CRStatusRow label="Rescuers" uncertain={s.rescuers === "?"}>
+                <CRDropdown
+                  value={s.rescuers}
+                  options={CR_OPTS_RESCUERS}
+                  onChange={setRescuers}
+                  tone="auto"
+                  buttonGroup
+                />
+              </CRStatusRow>
+            )}
+            {/* Weight — pediatric patients only */}
+            {s.type === "pediatric" && (
+              <CRStatusRow label="Weight" uncertain={s.weightKg == null}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={weightInput}
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      setWeightInput(raw);
+                      setWeightKg(raw);
+                    }}
+                    placeholder="—"
+                    style={{
+                      width: 64,
+                      height: 30,
+                      borderRadius: 8,
+                      border: `1px solid ${weightInput !== "" && (isNaN(parseFloat(weightInput)) || parseFloat(weightInput) <= 0) ? "var(--red)" : "var(--line-strong)"}`,
+                      padding: "0 8px",
+                      fontSize: 15,
+                      fontFamily: "inherit",
+                      textAlign: "right",
+                      outline: "none",
+                      background: "var(--surface)",
+                      color:
+                        weightInput !== "" &&
+                        (isNaN(parseFloat(weightInput)) ||
+                          parseFloat(weightInput) <= 0)
+                          ? "var(--red)"
+                          : "var(--ink)",
+                    }}
+                  />
+                  <span style={{ fontSize: 13, color: "var(--ink-3)" }}>
+                    kg
+                  </span>
+                </div>
+              </CRStatusRow>
+            )}
+            {/* Glucose + Stroke Sx — shown when alert is Altered */}
+            {s.alert === "Altered" && (
+              <>
+                <CRStatusRow label="Glucose" uncertain={s.glucose === "?"}>
+                  <CRDropdown
+                    value={s.glucose}
+                    options={CR_OPTS_GLUCOSE}
+                    onChange={setGlucose}
+                    tone="auto"
+                    buttonGroup
+                    flashRedKey={flashTargets.has("glucose") ? flashKey : null}
+                  />
+                </CRStatusRow>
+                <CRStatusRow
+                  label="Stroke Sx"
+                  uncertain={s.strokeSx === "?"}
+                  onInfo={() => setPopup("strokeSx")}
+                >
+                  <CRDropdown
+                    value={s.strokeSx}
+                    options={CR_OPTS_STROKESX}
+                    onChange={setStrokeSx}
+                    tone="auto"
+                    buttonGroup
+                    flashRedKey={flashTargets.has("strokeSx") ? flashKey : null}
+                  />
+                </CRStatusRow>
+              </>
             )}
           </CRSection>
 
@@ -660,6 +828,7 @@ export function CRPatientScreen({
               tasks={tasks}
               fading={fadingTasks}
               onCheck={checkTask}
+              patient={s}
             />
           </CRSection>
 
@@ -723,6 +892,9 @@ export function CRPatientScreen({
       </div>
 
       {infoOpen && <CRInfoModal onClose={() => setInfoOpen(false)} />}
+      {popup && (
+        <CRPopupModal type={popup} patient={s} onClose={() => setPopup(null)} />
+      )}
     </div>
   );
 }
@@ -813,7 +985,13 @@ export function CRPatientHeader({
 // ─────────────────────────────────────────────────────────────
 // CRCprPill
 // ─────────────────────────────────────────────────────────────
-export function CRCprPill({ cpr, elapsed, onPause, onSync }: CRCprPillProps) {
+export function CRCprPill({
+  cpr,
+  elapsed,
+  onPause,
+  onSync,
+  guidance,
+}: CRCprPillProps) {
   const paused = !!cpr.pausedAt;
   const past = !paused && elapsed >= 120000;
   const near = !paused && !past && elapsed >= 105000;
@@ -882,22 +1060,50 @@ export function CRCprPill({ cpr, elapsed, onPause, onSync }: CRCprPillProps) {
           fontWeight: 700,
           letterSpacing: "-0.02em",
           whiteSpace: "nowrap",
+          flexShrink: 0,
         }}
       >
         {crFmt(elapsed)}
+      </div>
+      {/* Secondary info — shrinks when narrow; guidance truncates first, then /2:00 */}
+      <div
+        style={{
+          flex: 1,
+          minWidth: 0,
+          overflow: "hidden",
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+        }}
+      >
         <span
           style={{
             fontSize: 14,
             fontWeight: 500,
             color: "var(--ink-3)",
             opacity: past ? 0.7 : 1,
+            whiteSpace: "nowrap",
+            flexShrink: 0,
           }}
         >
-          {" "}
           / 2:00
         </span>
+        {guidance && (
+          <span
+            style={{
+              fontSize: 11,
+              fontWeight: 600,
+              color: past ? "rgba(255,255,255,0.7)" : "var(--ink-3)",
+              letterSpacing: "0.02em",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            {guidance}
+          </span>
+        )}
       </div>
-      <div style={{ flex: 1 }} />
       {!paused && (
         <button
           onClick={onSync}
@@ -944,7 +1150,14 @@ export function CRCprPill({ cpr, elapsed, onPause, onSync }: CRCprPillProps) {
 // ─────────────────────────────────────────────────────────────
 // CRNextList
 // ─────────────────────────────────────────────────────────────
-export function CRNextList({ tasks, fading, onCheck }: CRNextListProps) {
+export function CRNextList({
+  tasks,
+  fading,
+  onCheck,
+  patient,
+}: CRNextListProps) {
+  const [activePopup, setActivePopup] = useState<string | null>(null);
+
   if (tasks.length === 0) {
     return (
       <div
@@ -967,8 +1180,8 @@ export function CRNextList({ tasks, fading, onCheck }: CRNextListProps) {
             style={{
               display: "flex",
               alignItems: "center",
-              gap: 12,
-              padding: "12px 14px",
+              gap: 10,
+              padding: "10px 10px 10px 14px",
               borderBottom:
                 i === tasks.length - 1 ? "none" : "1px solid var(--line)",
               background: critical
@@ -1005,17 +1218,35 @@ export function CRNextList({ tasks, fading, onCheck }: CRNextListProps) {
             <div
               style={{
                 flex: 1,
-                fontSize: 16,
+                fontSize: 15,
                 fontWeight: critical ? 700 : 500,
                 color: critical ? "var(--red)" : "var(--ink)",
                 letterSpacing: "-0.005em",
-                display: "flex",
-                alignItems: "center",
               }}
             >
-              <span>{t.label}</span>
+              {t.label}
             </div>
-            {critical && (
+            {t.popup && (
+              <button
+                onClick={() => setActivePopup(t.popup!)}
+                aria-label="more info"
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: 8,
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flex: "none",
+                }}
+              >
+                <CRIcon name="question" size={17} color="var(--ink-3)" />
+              </button>
+            )}
+            {critical && !t.popup && (
               <span
                 style={{
                   fontSize: 10,
@@ -1031,6 +1262,20 @@ export function CRNextList({ tasks, fading, onCheck }: CRNextListProps) {
           </div>
         );
       })}
+      {activePopup && (
+        <CRPopupModal
+          type={
+            activePopup as
+              | "shock"
+              | "ht"
+              | "strokeSx"
+              | "strokeScale"
+              | "rhythm"
+          }
+          patient={patient}
+          onClose={() => setActivePopup(null)}
+        />
+      )}
     </div>
   );
 }
@@ -1144,8 +1389,11 @@ export function CRGaveList({
         const isContinuous = CR_CONTINUOUS_KEYS.has(k);
         // For continuous items: odd dose count = active (alternating start/stop timestamps)
         const isActive = isContinuous && count % 2 === 1;
-        const activeStart = isActive && row ? row.doses[row.doses.length - 1] : null;
-        const activeElapsed = activeStart ? (currentTime ?? Date.now()) - activeStart : 0;
+        const activeStart =
+          isActive && row ? row.doses[row.doses.length - 1] : null;
+        const activeElapsed = activeStart
+          ? (currentTime ?? Date.now()) - activeStart
+          : 0;
 
         return (
           <div
@@ -1510,6 +1758,326 @@ export function CRGaveSearch({ onPick }: CRGaveSearchProps) {
       )}
     </div>
   );
+}
+
+// ─────────────────────────────────────────────────────────────
+// CRPopupModal — contextual info overlays for tasks and status rows
+// ─────────────────────────────────────────────────────────────
+function CRModalShell({
+  title,
+  onClose,
+  children,
+}: {
+  title: string;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 80,
+        background: "rgba(20,18,12,0.55)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 20,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: "var(--surface)",
+          borderRadius: 16,
+          padding: 18,
+          maxWidth: 360,
+          width: "100%",
+          boxShadow: "0 20px 50px rgba(0,0,0,0.28)",
+          maxHeight: "85vh",
+          overflowY: "auto",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: 12,
+          }}
+        >
+          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{title}</h3>
+          <button
+            onClick={onClose}
+            style={{
+              width: 30,
+              height: 30,
+              borderRadius: 8,
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "var(--ink-2)",
+            }}
+          >
+            <CRIcon name="close" size={18} />
+          </button>
+        </div>
+        <div
+          style={{ fontSize: 13.5, lineHeight: 1.55, color: "var(--ink-2)" }}
+        >
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function CRPopupModal({
+  type,
+  patient,
+  onClose,
+}: {
+  type: "shock" | "ht" | "strokeSx" | "strokeScale" | "rhythm";
+  patient: Patient;
+  onClose: () => void;
+}) {
+  const isPeds = patient.type === "pediatric";
+  const wt = patient.weightKg;
+
+  if (type === "shock") {
+    return (
+      <CRModalShell title="Shock Energy" onClose={onClose}>
+        {isPeds ? (
+          <>
+            <p style={{ marginTop: 0, fontWeight: 600 }}>
+              Pediatric Defibrillation
+            </p>
+            <ul style={{ margin: "0 0 10px", paddingLeft: 18 }}>
+              <li>
+                1st shock: <strong>2 J/kg</strong>
+                {wt ? ` = ${(wt * 2).toFixed(0)} J` : ""}
+              </li>
+              <li>
+                2nd shock: <strong>4 J/kg</strong>
+                {wt ? ` = ${(wt * 4).toFixed(0)} J` : ""}
+              </li>
+              <li>
+                Subsequent: <strong>≥4 J/kg</strong> (max 10 J/kg or adult dose)
+              </li>
+            </ul>
+            <p style={{ fontWeight: 600, marginBottom: 4 }}>
+              Synchronized Cardioversion (peds)
+            </p>
+            <ul style={{ margin: 0, paddingLeft: 18 }}>
+              <li>SVT: 0.5–1 J/kg → 2 J/kg</li>
+              <li>VT with pulse: 0.5–1 J/kg</li>
+            </ul>
+          </>
+        ) : (
+          <>
+            <p style={{ marginTop: 0, fontWeight: 600 }}>
+              Adult Defibrillation
+            </p>
+            <ul style={{ margin: "0 0 10px", paddingLeft: 18 }}>
+              <li>
+                <strong>Biphasic:</strong> Manufacturer rec. (120–200 J); if
+                unknown use max available
+              </li>
+              <li>
+                <strong>Monophasic:</strong> 360 J
+              </li>
+              <li>2nd+ doses: equivalent or higher</li>
+            </ul>
+            <p style={{ fontWeight: 600, marginBottom: 4 }}>
+              Synchronized Cardioversion
+            </p>
+            <ul style={{ margin: 0, paddingLeft: 18 }}>
+              <li>A-Fib: 120–200 J biphasic</li>
+              <li>A-Flutter / SVT: 50–100 J</li>
+              <li>VT (with pulse): 100 J</li>
+            </ul>
+          </>
+        )}
+      </CRModalShell>
+    );
+  }
+
+  if (type === "ht") {
+    return (
+      <CRModalShell title="Reversible Causes (H's & T's)" onClose={onClose}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: "0 16px",
+          }}
+        >
+          <div>
+            <p style={{ marginTop: 0, fontWeight: 600 }}>H's</p>
+            <ul style={{ margin: 0, paddingLeft: 16 }}>
+              <li>Hypovolemia</li>
+              <li>Hypoxia</li>
+              <li>Hydrogen ion (acidosis)</li>
+              <li>Hypo/hyperkalemia</li>
+              {isPeds && <li>Hypoglycemia</li>}
+              <li>Hypothermia</li>
+            </ul>
+          </div>
+          <div>
+            <p style={{ marginTop: 0, fontWeight: 600 }}>T's</p>
+            <ul style={{ margin: 0, paddingLeft: 16 }}>
+              <li>Tension pneumothorax</li>
+              <li>Tamponade, cardiac</li>
+              <li>Toxins</li>
+              <li>Thrombosis, pulmonary</li>
+              <li>Thrombosis, coronary</li>
+            </ul>
+          </div>
+        </div>
+      </CRModalShell>
+    );
+  }
+
+  if (type === "strokeSx") {
+    return (
+      <CRModalShell title="Stroke Symptoms" onClose={onClose}>
+        <p style={{ marginTop: 0, fontWeight: 600 }}>
+          Cincinnati Prehospital Stroke Scale
+        </p>
+        <ul style={{ margin: "0 0 10px", paddingLeft: 18 }}>
+          <li>
+            <strong>Facial droop</strong> — ask to smile; one side droops?
+          </li>
+          <li>
+            <strong>Arm drift</strong> — eyes closed, arms out 10s; one drifts?
+          </li>
+          <li>
+            <strong>Speech</strong> — slurred, wrong words, or unable to speak?
+          </li>
+        </ul>
+        <p style={{ fontWeight: 600, marginBottom: 4 }}>Other signs</p>
+        <ul style={{ margin: 0, paddingLeft: 18 }}>
+          <li>Sudden vision changes (one or both eyes)</li>
+          <li>Sudden severe headache ("worst of my life")</li>
+          <li>Sudden loss of balance or coordination</li>
+        </ul>
+        <p
+          style={{
+            marginTop: 10,
+            marginBottom: 0,
+            color: "var(--ink-3)",
+            fontSize: 12,
+          }}
+        >
+          Document <strong>Last Known Well</strong> time immediately.
+        </p>
+      </CRModalShell>
+    );
+  }
+
+  if (type === "strokeScale") {
+    return (
+      <CRModalShell title="NIHSS / FAST Stroke Scale" onClose={onClose}>
+        <p style={{ marginTop: 0, fontWeight: 600 }}>FAST</p>
+        <ul style={{ margin: "0 0 10px", paddingLeft: 18 }}>
+          <li>
+            <strong>F</strong>ace — facial droop
+          </li>
+          <li>
+            <strong>A</strong>rms — arm weakness / drift
+          </li>
+          <li>
+            <strong>S</strong>peech — slurred or absent
+          </li>
+          <li>
+            <strong>T</strong>ime — note onset, activate stroke team NOW
+          </li>
+        </ul>
+        <p style={{ fontWeight: 600, marginBottom: 4 }}>Key NIHSS domains</p>
+        <ul style={{ margin: "0 0 10px", paddingLeft: 18 }}>
+          <li>Level of consciousness (0–3)</li>
+          <li>Gaze (0–2), Visual (0–3)</li>
+          <li>Facial palsy (0–3)</li>
+          <li>Motor arm & leg (0–4 each)</li>
+          <li>Limb ataxia, sensory, language, dysarthria, extinction</li>
+        </ul>
+        <p style={{ marginBottom: 0, color: "var(--ink-3)", fontSize: 12 }}>
+          Mild ≤5 · Moderate 6–15 · Severe ≥16. Score &gt;25 may preclude
+          thrombolytics.
+        </p>
+      </CRModalShell>
+    );
+  }
+
+  if (type === "rhythm") {
+    return (
+      <CRModalShell title="Rhythm Guide" onClose={onClose}>
+        {[
+          {
+            name: "VF",
+            desc: "Chaotic irregular baseline — no QRS. Coarse or fine.",
+          },
+          {
+            name: "VT",
+            desc: "Wide QRS (>0.12s), fast (~150–250 bpm), regular. May be pulseless.",
+          },
+          {
+            name: "PEA",
+            desc: "Organized rhythm on monitor, but no detectable pulse.",
+          },
+          {
+            name: "Asystole",
+            desc: "Flat line or near-flat — confirm in 2 leads.",
+          },
+          {
+            name: "NSR",
+            desc: "Regular, 60–100 bpm, narrow QRS, P before each QRS.",
+          },
+          {
+            name: "SVT",
+            desc: "Narrow QRS, very fast (>150 bpm), regular, P waves may be hidden.",
+          },
+          {
+            name: "A-Fib",
+            desc: "Irregularly irregular, no distinct P waves, narrow QRS.",
+          },
+          {
+            name: "A-Flutter",
+            desc: "Sawtooth F waves at ~300 bpm, ventricular rate often ~150.",
+          },
+          {
+            name: "Wide VT",
+            desc: "Wide QRS tachycardia (>0.12s). Treat as VT until proven otherwise.",
+          },
+          {
+            name: "Sinus Brady",
+            desc: "Regular, <60 bpm, normal P-QRS relationship.",
+          },
+          { name: "1° AVB", desc: "PR >200ms, all P waves conduct normally." },
+          {
+            name: "2° AVB",
+            desc: "Type 1 (Wenckebach): PR lengthens then drops. Type 2: sudden drop.",
+          },
+          {
+            name: "3° AVB",
+            desc: "Complete block — P and QRS independent, escape rhythm present.",
+          },
+        ].map(({ name, desc }) => (
+          <div key={name} style={{ marginBottom: 8 }}>
+            <span style={{ fontWeight: 700, fontSize: 13 }}>{name}</span>
+            <span style={{ color: "var(--ink-3)", marginLeft: 6 }}>—</span>
+            <span style={{ marginLeft: 6 }}>{desc}</span>
+          </div>
+        ))}
+      </CRModalShell>
+    );
+  }
+
+  return null;
 }
 
 // ─────────────────────────────────────────────────────────────

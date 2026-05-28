@@ -1,4 +1,4 @@
-import type React from 'react';
+import type React from "react";
 
 export interface CPRState {
   active: boolean;
@@ -15,17 +15,34 @@ export interface DoseEntry {
 
 export interface LogEntry {
   at: number;
-  type: 'note' | 'status' | 'task' | 'med' | 'cpr';
+  type: "note" | "status" | "task" | "med" | "cpr";
   text: string;
 }
 
-export type AlertValue     = '?' | 'Yes' | 'No' | 'Altered' | 'Sedated';
-export type BreathingValue = '?' | 'Yes' | 'No' | 'ETT';
-export type PulseValue     = '?' | 'Yes' | 'No';
-export type RateValue      = '?' | 'Fast' | 'Normal' | 'Slow';
-export type SymptomaticValue = '?' | 'Yes' | 'No';
-export type RhythmValue    = '?' | 'VT' | 'VF' | 'PEA' | 'Asystole' | 'NSR' | 'SVT' | 'Afib' | 'Aflutter' | 'WideTach' | 'SinusBrady' | 'AVB1' | 'AVB2' | 'AVB3';
-export type PatientType    = 'adult' | 'pediatric';
+export type AlertValue = "?" | "Yes" | "No" | "Altered" | "Sedated";
+export type BreathingValue = "?" | "Yes" | "No" | "Choking" | "ETT";
+export type PulseValue = "?" | "Yes" | "No";
+export type RateValue = "?" | "Fast" | "Normal" | "Slow";
+export type SymptomaticValue = "?" | "Yes" | "No";
+export type RhythmValue =
+  | "?"
+  | "VT"
+  | "VF"
+  | "PEA"
+  | "Asystole"
+  | "NSR"
+  | "SVT"
+  | "Afib"
+  | "Aflutter"
+  | "WideTach"
+  | "SinusBrady"
+  | "AVB1"
+  | "AVB2"
+  | "AVB3";
+export type PatientType = "adult" | "pediatric";
+export type RescuersValue = "?" | "One" | "Two" | "Team";
+export type GlucoseValue = "?" | "Low" | "Normal" | "High";
+export type StrokeSxValue = "?" | "Yes" | "No";
 
 export interface Patient {
   id: string;
@@ -38,6 +55,10 @@ export interface Patient {
   rate: RateValue;
   symptomatic: SymptomaticValue;
   rhythm: RhythmValue;
+  rescuers: RescuersValue;
+  glucose: GlucoseValue;
+  strokeSx: StrokeSxValue;
+  weightKg: number | null;
   cpr: CPRState;
   gave: DoseEntry[];
   doneTasks: Record<string, boolean>;
@@ -51,16 +72,21 @@ export interface Med {
   short: string;
 }
 
-export type TaskKind = 'critical' | 'shock' | 'med';
+export type TaskKind = "critical" | "shock" | "med";
 
 export interface NextTask {
   id: string;
   label: string;
   kind?: TaskKind;
   medKey?: string;
-  need?: 'alert' | 'breathing' | 'pulse' | 'rhythm';
+  need?: "alert" | "breathing" | "pulse" | "rhythm" | "glucose" | "strokeSx";
   recurring?: boolean;
+  popup?: "shock" | "ht" | "strokeSx" | "strokeScale" | "rhythm";
 }
 
-export type DropdownOptionObj = { value: string; label: string; icon?: React.ReactNode };
-export type DropdownOption    = string | DropdownOptionObj;
+export type DropdownOptionObj = {
+  value: string;
+  label: string;
+  icon?: React.ReactNode;
+};
+export type DropdownOption = string | DropdownOptionObj;
