@@ -534,8 +534,13 @@ export function CRPatientScreen({
     } else {
       log(`+1 ${med.short}`, "med");
     }
-    if (key === "shock" || key == "adenosine") {
+    if (key === "shock") {
       setTimeout(() => log("Rhythm: ?", "status"), 0);
+    } else if (key === "adenosine" || key === "atropine") {
+      setTimeout(() => {
+        log("Rate: ?", "status");
+        log("Rhythm: ?", "status");
+      }, 0);
     }
     setLastAction({ key, time: now });
   }

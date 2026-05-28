@@ -113,7 +113,7 @@ export function reconstructStateFromLog(p: Patient): Patient {
         }
       }
 
-      const rateMatch = /^Rate:\s*(Fast|Normal|Slow)/i.exec(text);
+      const rateMatch = /^Rate:\s*(Fast|Normal|Slow|\?)/i.exec(text);
       if (rateMatch) {
         base.rate = rateMatch[1] as RateValue;
         base.rhythm = "?";
