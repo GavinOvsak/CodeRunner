@@ -187,6 +187,7 @@ export function CRPatientScreen({
   const s = patient;
   const dispatch = onChange;
   const [infoOpen, setInfoOpen] = useState(false);
+  const [roscPopup, setRoscPopup] = useState(false);
   const [popup, setPopup] = useState<
     "shock" | "ht" | "strokeSx" | "strokeScale" | "rhythm" | null
   >(null);
@@ -379,6 +380,7 @@ export function CRPatientScreen({
     if (t.id === "rosc") {
       log({ type: "cpr", event: "rosc" });
       hideTask(t.id);
+      setRoscPopup(true);
       return;
     }
     if (t.id === "pause-pulse-check" || t.id === "pause-to-shock") {
@@ -809,6 +811,7 @@ export function CRPatientScreen({
       </div>
 
       {infoOpen && <CRInfoModal onClose={() => setInfoOpen(false)} />}
+      {roscPopup && <CRRoscModal onClose={() => setRoscPopup(false)} />}
       {popup && (
         <CRPopupModal type={popup} patient={s} onClose={() => setPopup(null)} />
       )}
@@ -1996,6 +1999,94 @@ export function CRPopupModal({
   }
 
   return null;
+}
+
+// ─────────────────────────────────────────────────────────────
+// CRRoscModal — shown when ROSC is obtained
+// ─────────────────────────────────────────────────────────────
+function CRRoscModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 80,
+        background: "rgba(20,18,12,0.55)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 20,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: "var(--surface)",
+          borderRadius: 16,
+          padding: 18,
+          maxWidth: 500,
+          width: "100%",
+          boxShadow: "0 20px 50px rgba(0,0,0,0.28)",
+          maxHeight: "90vh",
+          overflowY: "auto",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: 10,
+          }}
+        >
+          <h3
+            style={{
+              margin: 0,
+              fontSize: 18,
+              fontWeight: 700,
+              color: "var(--green)",
+            }}
+          >
+            ROSC Obtained!
+          </h3>
+          <button
+            onClick={onClose}
+            style={{
+              width: 30,
+              height: 30,
+              borderRadius: 8,
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "var(--ink-2)",
+            }}
+          >
+            <CRIcon name="close" size={18} />
+          </button>
+        </div>
+        <p
+          style={{
+            margin: "0 0 14px",
+            fontSize: 14,
+            color: "var(--ink-2)",
+            lineHeight: 1.5,
+          }}
+        >
+          Great work. Transition to post-cardiac arrest care per the ACLS
+          algorithm below.
+        </p>
+        <img
+          src={`${import.meta.env.BASE_URL}guidelines/pcac-Figure-1-Adult-PCAC-Algorithm.jpg`}
+          alt="Adult Post-Cardiac Arrest Care Algorithm"
+          style={{ width: "100%", borderRadius: 10, display: "block" }}
+        />
+      </div>
+    </div>
+  );
 }
 
 // ─────────────────────────────────────────────────────────────
