@@ -1963,8 +1963,12 @@ export function CRPopupModal({
       <CRModalShell title="Rhythm Guide" onClose={onClose}>
         {[
           {
-            name: "VF / pVT",
-            desc: "Shockable rhythms. VF: chaotic baseline, no QRS. pVT (Pulseless VT): wide QRS (~150–250 bpm), regular — no pulse despite organized waveform.",
+            name: "VF",
+            desc: "Ventricular Fibrillation — chaotic irregular baseline, no QRS. Coarse or fine.",
+          },
+          {
+            name: "pVT",
+            desc: "Pulseless VT — wide QRS (>0.12s), fast (~150–250 bpm), regular, but no detectable pulse.",
           },
           {
             name: "PEA",
