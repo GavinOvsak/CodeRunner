@@ -227,7 +227,12 @@ export function crNextTasks(s: Patient): NextTask[] {
         push({ id: "airway", label: "Airway → advanced (ETT)" });
       if (!s.doneTasks["access"])
         push({ id: "access", label: "Obtain IV / IO Access" });
-      push({ id: "reversible", label: "Consider H's & T's", recurring: true, popup: "ht" });
+      push({
+        id: "reversible",
+        label: "Consider H's & T's",
+        recurring: true,
+        popup: "ht",
+      });
     }
   }
 
@@ -338,7 +343,7 @@ export function crNextTasks(s: Patient): NextTask[] {
   );
 
   // Shock and Start CPR always at top
-  const topIds = ["shock", "start-cpr", "resume-cpr", "cardiovert"];
+  const topIds = ["get-aed", "shock", "start-cpr", "resume-cpr", "cardiovert"];
   const topTasks = filtered.filter((t) => topIds.includes(t.id));
   const otherTasks = filtered.filter((t) => !topIds.includes(t.id));
   return [...topTasks, ...otherTasks];

@@ -718,7 +718,8 @@ export function CRPatientScreen({
               </CRStatusRow>
             ) : (
               s.pulse === "Yes" &&
-              s.rate !== "?" && (
+              s.rate !== "?" &&
+              s.rate !== "Normal" && (
                 <CRStatusRow
                   label="Rhythm"
                   uncertain={s.rhythm === "?"}
