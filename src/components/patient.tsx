@@ -2001,10 +2001,12 @@ export function CRPopupModal({
   }
 
   if (type === "symptomatic") {
+    const isBrady = patient.rate === "Slow";
+    const arrhythmiaLabel = isBrady ? "bradycardia" : "tachyarrhythmia";
     return (
       <CRModalShell title="Symptomatic Arrhythmia?" onClose={onClose}>
         <p style={{ marginTop: 0, fontWeight: 600, marginBottom: 8 }}>
-          Persistent tachyarrhythmia causing any of:
+          Persistent {arrhythmiaLabel} causing any of:
         </p>
         <ul style={{ margin: "0 0 10px", paddingLeft: 18 }}>
           <li>Hypotension</li>
@@ -2014,7 +2016,9 @@ export function CRPopupModal({
           <li>Acute heart failure</li>
         </ul>
         <p style={{ margin: 0, fontSize: 12, color: "var(--ink-3)" }}>
-          If any are present, consider urgent synchronized cardioversion.
+          {isBrady
+            ? "If any are present, consider atropine, pacing, or dopamine/epinephrine infusion."
+            : "If any are present, consider urgent synchronized cardioversion."}
         </p>
       </CRModalShell>
     );
