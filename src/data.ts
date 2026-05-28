@@ -88,7 +88,19 @@ export function crNextTasks(s: Patient): NextTask[] {
   if (s.pulse === "?" && !s.cpr.active && s.alert !== "Yes")
     push({ id: "check-pulse", label: "Check for Pulse", need: "pulse" });
   if (s.pulse === "Yes" && s.rate === "?")
-    push({ id: "check-rate", label: "Check Heart Rate", recurring: true });
+    push({ id: "check-rate", label: "Check Heart Rate", need: "rate" });
+  if (s.pulse === "Yes" && (s.rate === "Fast" || s.rate === "Slow") && s.rhythm === "?")
+    push({ id: "check-rhythm", label: "Check Rhythm", need: "rhythm" });
+  if (
+    s.pulse === "Yes" &&
+    (s.rate === "Fast" || s.rate === "Slow") &&
+    s.alert !== "No" &&
+    s.alert !== "Altered" &&
+    s.symptomatic === "?"
+  )
+    push({ id: "check-symptomatic", label: "Assess Symptoms", need: "symptomatic" });
+  if (s.type === "pediatric" && s.weightKg == null)
+    push({ id: "check-weight", label: "Enter Patient Weight", need: "weightKg" });
 
   // ===== Cardiac arrest pathway =====
   if (s.pulse === "No" || s.cpr.active) {
@@ -243,6 +255,8 @@ export function crNextTasks(s: Patient): NextTask[] {
         popup: "ht",
       });
     }
+    if (s.rescuers === "?" && s.breathing !== "ETT" && crGiven(s, "epi") === 0)
+      push({ id: "check-rescuers", label: "Confirm Rescuers", need: "rescuers" });
   }
 
   // ===== Respiratory arrest: not breathing but has (or unknown) pulse =====

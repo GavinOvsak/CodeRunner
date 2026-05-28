@@ -6,6 +6,7 @@ import {
   CR_CONTINUOUS_KEYS,
   crNextTasks,
   crRecommendedMedKeys,
+  crGiven,
 } from "../data";
 import { crFmt, crSince } from "../utils";
 import { CRIcon, CRDropdown, CRSection, CRStatusRow } from "./ui";
@@ -356,6 +357,22 @@ export function CRPatientScreen({
       flashField("pulse");
       return;
     }
+    if (t.need === "rate" && s.rate === "?") {
+      flashField("rate");
+      return;
+    }
+    if (t.need === "symptomatic" && s.symptomatic === "?") {
+      flashField("symptomatic");
+      return;
+    }
+    if (t.need === "rescuers" && s.rescuers === "?") {
+      flashField("rescuers");
+      return;
+    }
+    if (t.need === "weightKg" && s.weightKg == null) {
+      flashField("weightKg");
+      return;
+    }
     if (t.need === "rhythm" && s.rhythm === "?") {
       flashField("rhythm");
       return;
@@ -651,14 +668,26 @@ export function CRPatientScreen({
               />
             </CRStatusRow>
             <CRStatusRow label="Breathing" uncertain={s.breathing === "?"} flashKey={flashTargets.has("breathing") ? flashKey : null}>
-              <CRDropdown
-                value={s.breathing}
-                options={CR_OPTS_BREATH}
-                onChange={setBreathing}
-                tone="auto"
-                flashRedKey={flashTargets.has("breathing") ? flashKey : null}
-                buttonGroup
-              />
+              {s.breathing === "ETT" ? (
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ background: "var(--green-soft)", color: "var(--green)", padding: "3px 10px", borderRadius: 8, fontSize: 14, fontWeight: 600 }}>ETT</span>
+                  <button
+                    onClick={() => setBreathing("?")}
+                    style={{ background: "none", border: "none", cursor: "pointer", color: "var(--ink-3)", padding: 4, display: "flex", alignItems: "center" }}
+                  >
+                    <CRIcon name="close" size={16} />
+                  </button>
+                </div>
+              ) : (
+                <CRDropdown
+                  value={s.breathing}
+                  options={CR_OPTS_BREATH}
+                  onChange={setBreathing}
+                  tone="auto"
+                  flashRedKey={flashTargets.has("breathing") ? flashKey : null}
+                  buttonGroup
+                />
+              )}
             </CRStatusRow>
             {s.alert !== "Yes" && (
               <CRStatusRow
@@ -679,7 +708,7 @@ export function CRPatientScreen({
               </CRStatusRow>
             )}
             {s.pulse === "Yes" && (
-              <CRStatusRow label="Heart Rate" uncertain={s.rate === "?"}>
+              <CRStatusRow label="Heart Rate" uncertain={s.rate === "?"} flashKey={flashTargets.has("rate") ? flashKey : null}>
                 <CRDropdown
                   value={s.rate}
                   options={CR_OPTS_RATE}
@@ -696,6 +725,7 @@ export function CRPatientScreen({
                 <CRStatusRow
                   label="Symptomatic"
                   uncertain={s.symptomatic === "?"}
+                  flashKey={flashTargets.has("symptomatic") ? flashKey : null}
                 >
                   <CRDropdown
                     value={s.symptomatic}
@@ -751,9 +781,9 @@ export function CRPatientScreen({
                 </CRStatusRow>
               )
             )}
-            {/* Rescuers — shown during cardiac arrest for CPR guidance; hidden when ETT (implies code team) */}
-            {(s.pulse === "No" || cpr.active) && s.breathing !== "ETT" && (
-              <CRStatusRow label="Rescuers" uncertain={s.rescuers === "?"}>
+            {/* Rescuers — shown during cardiac arrest for CPR guidance; hidden when code team implied */}
+            {(s.pulse === "No" || cpr.active) && s.breathing !== "ETT" && s.rescuers !== "Team" && crGiven(s, "epi") === 0 && (
+              <CRStatusRow label="Rescuers" uncertain={s.rescuers === "?"} flashKey={flashTargets.has("rescuers") ? flashKey : null}>
                 <CRDropdown
                   value={s.rescuers}
                   options={CR_OPTS_RESCUERS}
@@ -765,7 +795,7 @@ export function CRPatientScreen({
             )}
             {/* Weight — pediatric patients only */}
             {s.type === "pediatric" && (
-              <CRStatusRow label="Weight" uncertain={s.weightKg == null}>
+              <CRStatusRow label="Weight" uncertain={s.weightKg == null} flashKey={flashTargets.has("weightKg") ? flashKey : null}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <input
                     type="text"
