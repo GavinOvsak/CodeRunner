@@ -440,7 +440,7 @@ export function CRPatientScreen({
       );
       return;
     }
-    if (t.id === "pause-pulse-check") {
+    if (t.id === "pause-pulse-check" || t.id === "pause-to-shock") {
       toggleCprPause();
       return;
     }

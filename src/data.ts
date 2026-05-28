@@ -225,6 +225,13 @@ export function crNextTasks(s: Patient): NextTask[] {
           kind: "critical",
         });
       }
+      if (shockable && aedDone && crGiven(s, "shock") === 0) {
+        push({
+          id: "pause-to-shock",
+          label: "Pause CPR to Shock",
+          kind: "critical",
+        });
+      }
       if (s.breathing !== "ETT")
         push({ id: "airway", label: "Airway → advanced (ETT)" });
       if (!s.doneTasks["access"])
@@ -345,7 +352,7 @@ export function crNextTasks(s: Patient): NextTask[] {
   );
 
   // Shock and Start CPR always at top
-  const topIds = ["get-aed", "shock", "start-cpr", "resume-cpr", "cardiovert"];
+  const topIds = ["get-aed", "shock", "pause-to-shock", "start-cpr", "resume-cpr", "cardiovert"];
   const topTasks = filtered.filter((t) => topIds.includes(t.id));
   const otherTasks = filtered.filter((t) => !topIds.includes(t.id));
   return [...topTasks, ...otherTasks];
