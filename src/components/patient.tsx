@@ -504,6 +504,18 @@ export function CRPatientScreen({
         onInfo={() => setInfoOpen(true)}
       />
 
+      {cpr.active && (
+        <div style={{ padding: "8px 12px 0" }}>
+          <CRCprPill
+            cpr={cpr}
+            elapsed={cycleElapsed}
+            onPause={toggleCprPause}
+            onSync={syncMetronome}
+            guidance={getCprGuidance()}
+          />
+        </div>
+      )}
+
       <div
         className="cr-scroll"
         style={{
@@ -515,16 +527,6 @@ export function CRPatientScreen({
           gap: 10,
         }}
       >
-        {cpr.active && (
-          <CRCprPill
-            cpr={cpr}
-            elapsed={cycleElapsed}
-            onPause={toggleCprPause}
-            onSync={syncMetronome}
-            guidance={getCprGuidance()}
-          />
-        )}
-
         <div className="cr-patient-grid">
           <CRSection className="cr-s-status" title="Status">
             <CRStatusRow
