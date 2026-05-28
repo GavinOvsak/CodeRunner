@@ -599,6 +599,7 @@ interface CRStatusRowProps {
   disabled?: boolean;
   uncertain?: boolean;
   onInfo?: () => void;
+  flashKey?: number | null;
 }
 
 export function CRStatusRow({
@@ -607,9 +608,21 @@ export function CRStatusRow({
   disabled,
   uncertain,
   onInfo,
+  flashKey,
 }: CRStatusRowProps) {
+  const rowRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (flashKey == null) return;
+    const el = rowRef.current;
+    if (!el) return;
+    el.classList.remove("cr-flash-row");
+    void el.offsetWidth;
+    el.classList.add("cr-flash-row");
+  }, [flashKey]);
+
   return (
     <div
+      ref={rowRef}
       style={{
         display: "flex",
         alignItems: "center",

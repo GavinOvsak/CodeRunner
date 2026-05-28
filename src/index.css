@@ -30,6 +30,10 @@
   0%, 100% { box-shadow: 0 0 0 0 transparent; border-color: var(--line); }
   50% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--red) 30%, transparent); border-color: var(--red); }
 }
+@keyframes crFlashRow {
+  0%, 100% { background: transparent; }
+  50% { background: color-mix(in srgb, var(--red) 10%, white); }
+}
 @keyframes crPulseAmber {
   0%, 100% { background: var(--amber-soft); }
   50% { background: color-mix(in srgb, var(--amber) 40%, white); }
@@ -53,6 +57,7 @@
 }
 .cr-fade { animation: crFade 600ms forwards ease; pointer-events: none; }
 .cr-flash-red { animation: crFlashRed 700ms 2; }
+.cr-flash-row { animation: crFlashRow 700ms 2; }
 .cr-near-2min { animation: crPulseAmber 800ms infinite; }
 .cr-past-2min { animation: crPulseRed 600ms infinite; }
 .cr-count-wipe { animation: crCountWipe 220ms cubic-bezier(0.22,1,0.36,1) both; }
