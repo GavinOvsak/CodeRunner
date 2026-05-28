@@ -360,6 +360,18 @@ export function CRPatientScreen({
       flashField("rate");
       return;
     }
+    if (t.need === "symptomatic" && s.symptomatic === "?") {
+      flashField("symptomatic");
+      return;
+    }
+    if (t.need === "rescuers" && s.rescuers === "?") {
+      flashField("rescuers");
+      return;
+    }
+    if (t.need === "weightKg" && s.weightKg == null) {
+      flashField("weightKg");
+      return;
+    }
     if (t.need === "rhythm" && s.rhythm === "?") {
       flashField("rhythm");
       return;
@@ -700,6 +712,7 @@ export function CRPatientScreen({
                 <CRStatusRow
                   label="Symptomatic"
                   uncertain={s.symptomatic === "?"}
+                  flashKey={flashTargets.has("symptomatic") ? flashKey : null}
                 >
                   <CRDropdown
                     value={s.symptomatic}
@@ -757,7 +770,7 @@ export function CRPatientScreen({
             )}
             {/* Rescuers — shown during cardiac arrest for CPR guidance; hidden when ETT (implies code team) */}
             {(s.pulse === "No" || cpr.active) && s.breathing !== "ETT" && (
-              <CRStatusRow label="Rescuers" uncertain={s.rescuers === "?"}>
+              <CRStatusRow label="Rescuers" uncertain={s.rescuers === "?"} flashKey={flashTargets.has("rescuers") ? flashKey : null}>
                 <CRDropdown
                   value={s.rescuers}
                   options={CR_OPTS_RESCUERS}
@@ -769,7 +782,7 @@ export function CRPatientScreen({
             )}
             {/* Weight — pediatric patients only */}
             {s.type === "pediatric" && (
-              <CRStatusRow label="Weight" uncertain={s.weightKg == null}>
+              <CRStatusRow label="Weight" uncertain={s.weightKg == null} flashKey={flashTargets.has("weightKg") ? flashKey : null}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <input
                     type="text"
