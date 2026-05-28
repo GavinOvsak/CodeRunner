@@ -48,7 +48,7 @@ export type PulseValue = "?" | "Yes" | "No";
 export type RateValue = "?" | "Fast" | "Normal" | "Slow";
 export type SymptomaticValue = "?" | "Yes" | "No";
 export type RhythmValue =
-  | "?" | "VT" | "VF" | "PEA" | "Asystole"
+  | "?" | "VT" | "VF" | "VF_pVT" | "PEA" | "Asystole"
   | "NSR" | "SVT" | "AF" | "WideTach"
   | "SinusBrady" | "AVB1" | "AVB2" | "AVB3";
 export type PatientType = "adult" | "pediatric";

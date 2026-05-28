@@ -327,7 +327,7 @@ export function CRDropdown({
     if (v === "Slow") return "altered";
     if (v === "Normal") return "yes";
     if (v === "NSR") return "yes";
-    if (["VF", "VT"].includes(v)) return "no";
+    if (["VF", "VT", "VF_pVT"].includes(v)) return "no";
     if (["PEA", "Asystole"].includes(v)) return "altered";
     if (["SVT", "AF", "WideTach", "SinusBrady"].includes(v))
       return "accent";
