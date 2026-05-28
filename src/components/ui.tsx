@@ -564,7 +564,7 @@ export function CRSection({
           justifyContent: "space-between",
           padding: "8px 10px 8px 14px",
           borderBottom: "1px solid var(--line)",
-          background: accent ? "var(--surface-2)" : "transparent",
+          background: "var(--accent-soft)",
           borderTopLeftRadius: 14,
           borderTopRightRadius: 14,
         }}
@@ -576,7 +576,7 @@ export function CRSection({
             fontWeight: 700,
             letterSpacing: "0.08em",
             textTransform: "uppercase",
-            color: "var(--ink-3)",
+            color: "var(--accent)",
           }}
         >
           {title}

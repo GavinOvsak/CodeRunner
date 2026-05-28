@@ -743,7 +743,7 @@ export function CRPatientScreen({
             )}
           </CRSection>
 
-          <CRSection className="cr-s-next" title="Next">
+          <CRSection className="cr-s-next" title="Your Next Steps">
             <CRNextList
               tasks={tasks}
               fading={fadingTasks}
@@ -1076,6 +1076,21 @@ export function CRNextList({
 }: CRNextListProps) {
   const [activePopup, setActivePopup] = useState<string | null>(null);
 
+  const isFirstRender = useRef(true);
+  const prevTaskIds = useRef<Set<string>>(new Set());
+  const newTaskIds = useMemo(() => {
+    if (isFirstRender.current) return new Set<string>();
+    const ids = new Set<string>();
+    for (const t of tasks) {
+      if (!prevTaskIds.current.has(t.id)) ids.add(t.id);
+    }
+    return ids;
+  }, [tasks]);
+  useEffect(() => {
+    isFirstRender.current = false;
+    prevTaskIds.current = new Set(tasks.map((t) => t.id));
+  }, [tasks]);
+
   if (tasks.length === 0) {
     return (
       <div
@@ -1091,10 +1106,11 @@ export function CRNextList({
         const critical = t.kind === "critical";
         const shock = t.kind === "shock";
         const isFading = fading[t.id];
+        const isNew = newTaskIds.has(t.id);
         return (
           <div
             key={t.id}
-            className={isFading ? "cr-fade" : ""}
+            className={isFading ? "cr-fade" : isNew ? "cr-task-new" : ""}
             onClick={t.popup ? () => setActivePopup(t.popup!) : undefined}
             style={{
               display: "flex",
