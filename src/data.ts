@@ -70,8 +70,7 @@ export const RHYTHM_LABELS: Record<RhythmValue, string> = {
   "Asystole":  "Asystole",
   "NSR":       "NSR",
   "SVT":       "SVT",
-  "Afib":      "A-Fib",
-  "Aflutter":  "A-Flutter",
+  "AF":        "AF",
   "WideTach":  "Wide VT",
   "SinusBrady":"Sinus Brady",
   "AVB1":      "1° AVB",
@@ -369,7 +368,7 @@ export function crNextTasks(s: Patient): NextTask[] {
           : "Amiodarone 150mg (repeat)";
       push({ id: "amio", label: amioLabel, kind: "med", medKey: "amio" });
     }
-    if (s.rhythm === "Afib" || s.rhythm === "Aflutter")
+    if (s.rhythm === "AF")
       push({
         id: "cardiovert",
         label: "Synchronized Cardioversion",

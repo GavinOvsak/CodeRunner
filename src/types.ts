@@ -49,7 +49,7 @@ export type RateValue = "?" | "Fast" | "Normal" | "Slow";
 export type SymptomaticValue = "?" | "Yes" | "No";
 export type RhythmValue =
   | "?" | "VT" | "VF" | "PEA" | "Asystole"
-  | "NSR" | "SVT" | "Afib" | "Aflutter" | "WideTach"
+  | "NSR" | "SVT" | "AF" | "WideTach"
   | "SinusBrady" | "AVB1" | "AVB2" | "AVB3";
 export type PatientType = "adult" | "pediatric";
 export type RescuersValue = "?" | "One" | "Two" | "Team";

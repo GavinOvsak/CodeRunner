@@ -77,8 +77,7 @@ const CR_OPTS_RHYTHM_ARREST = [
 ];
 const CR_OPTS_RHYTHM_TACH = [
   { value: "SVT", label: "SVT" },
-  { value: "Afib", label: "A-Fib" },
-  { value: "Aflutter", label: "A-Flutter" },
+  { value: "AF", label: "AF" },
   { value: "WideTach", label: "Wide VT" },
 ];
 const CR_OPTS_RHYTHM_BRADY = [
@@ -89,8 +88,7 @@ const CR_OPTS_RHYTHM_BRADY = [
 ];
 const CR_OPTS_RHYTHM_NORMAL = [
   { value: "NSR", label: "NSR" },
-  { value: "Afib", label: "A-Fib" },
-  { value: "Aflutter", label: "A-Flutter" },
+  { value: "AF", label: "AF" },
 ];
 
 // ─────────────────────────────────────────────────────────────
@@ -504,6 +502,18 @@ export function CRPatientScreen({
         onInfo={() => setInfoOpen(true)}
       />
 
+      {cpr.active && (
+        <div style={{ padding: "8px 12px 0" }}>
+          <CRCprPill
+            cpr={cpr}
+            elapsed={cycleElapsed}
+            onPause={toggleCprPause}
+            onSync={syncMetronome}
+            guidance={getCprGuidance()}
+          />
+        </div>
+      )}
+
       <div
         className="cr-scroll"
         style={{
@@ -515,16 +525,6 @@ export function CRPatientScreen({
           gap: 10,
         }}
       >
-        {cpr.active && (
-          <CRCprPill
-            cpr={cpr}
-            elapsed={cycleElapsed}
-            onPause={toggleCprPause}
-            onSync={syncMetronome}
-            guidance={getCprGuidance()}
-          />
-        )}
-
         <div className="cr-patient-grid">
           <CRSection className="cr-s-status" title="Status">
             <CRStatusRow
@@ -1819,8 +1819,7 @@ export function CRPopupModal({
               Synchronized Cardioversion
             </p>
             <ul style={{ margin: 0, paddingLeft: 18 }}>
-              <li>A-Fib: 120–200 J biphasic</li>
-              <li>A-Flutter / SVT: 50–100 J</li>
+              <li>AF / SVT: 50–200 J biphasic</li>
               <li>VT (with pulse): 100 J</li>
             </ul>
           </>
@@ -1965,12 +1964,8 @@ export function CRPopupModal({
             desc: "Narrow QRS, very fast (>150 bpm), regular, P waves may be hidden.",
           },
           {
-            name: "A-Fib",
-            desc: "Irregularly irregular, no distinct P waves, narrow QRS.",
-          },
-          {
-            name: "A-Flutter",
-            desc: "Sawtooth F waves at ~300 bpm, ventricular rate often ~150.",
+            name: "AF",
+            desc: "A-Fib: irregularly irregular, no P waves. A-Flutter: sawtooth F waves ~300 bpm, ventricular rate often ~150.",
           },
           {
             name: "Wide VT",
