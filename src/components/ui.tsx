@@ -329,7 +329,7 @@ export function CRDropdown({
     if (v === "NSR") return "yes";
     if (["VF", "VT"].includes(v)) return "no";
     if (["PEA", "Asystole"].includes(v)) return "altered";
-    if (["SVT", "Afib", "Aflutter", "WideTach", "SinusBrady"].includes(v))
+    if (["SVT", "AF", "WideTach", "SinusBrady"].includes(v))
       return "accent";
     return "neutral";
   };
