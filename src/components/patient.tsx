@@ -528,7 +528,7 @@ export function CRPatientScreen({
         }}
       >
         <div className="cr-patient-grid">
-          <CRSection className="cr-s-status" title="Status">
+          <CRSection className="cr-s-status" title="Patient Status">
             <CRStatusRow
               label="Alert"
               disabled={s.breathing === "ETT"}
@@ -779,6 +779,9 @@ export function CRPatientScreen({
                 justifyContent: "space-between",
                 padding: isPillGave ? "4px 2px 8px" : "8px 10px 8px 14px",
                 borderBottom: isPillGave ? "none" : "1px solid var(--line)",
+                background: isPillGave ? undefined : "var(--accent-soft)",
+                borderTopLeftRadius: isPillGave ? undefined : 14,
+                borderTopRightRadius: isPillGave ? undefined : 14,
               }}
             >
               <h2
@@ -788,10 +791,10 @@ export function CRPatientScreen({
                   fontWeight: 700,
                   letterSpacing: "0.08em",
                   textTransform: "uppercase",
-                  color: "var(--ink-3)",
+                  color: isPillGave ? "var(--ink-3)" : "var(--accent)",
                 }}
               >
-                Gave
+                Interventions
               </h2>
               <CRGaveSearch onPick={(k) => giveMed(k)} />
             </div>
