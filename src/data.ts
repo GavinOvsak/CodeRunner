@@ -87,6 +87,8 @@ export function crNextTasks(s: Patient): NextTask[] {
     push({ id: "check-breath", label: "Check Breathing", need: "breathing" });
   if (s.pulse === "?" && !s.cpr.active && s.alert !== "Yes")
     push({ id: "check-pulse", label: "Check for Pulse", need: "pulse" });
+  if (s.pulse === "Yes" && s.rate === "?")
+    push({ id: "check-rate", label: "Check Heart Rate", recurring: true });
 
   // ===== Cardiac arrest pathway =====
   if (s.pulse === "No" || s.cpr.active) {
