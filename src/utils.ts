@@ -70,6 +70,9 @@ export function reconstructStateFromLog(p: Patient): Patient {
               base.rhythm = "?";
             } else {
               base.rate = "?";
+              if (entry.value === "No") {
+                base.rhythm = "?";
+              }
             }
             break;
           case "rate":
