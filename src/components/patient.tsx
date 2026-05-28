@@ -1183,6 +1183,7 @@ export function CRNextList({
           <div
             key={t.id}
             className={isFading ? "cr-fade" : ""}
+            onClick={t.popup ? () => setActivePopup(t.popup!) : undefined}
             style={{
               display: "flex",
               alignItems: "center",
@@ -1193,10 +1194,11 @@ export function CRNextList({
               background: critical
                 ? "color-mix(in srgb, var(--red) 6%, white)"
                 : "transparent",
+              cursor: t.popup ? "pointer" : undefined,
             }}
           >
             <button
-              onClick={() => onCheck(t)}
+              onClick={(e) => { e.stopPropagation(); onCheck(t); }}
               aria-label={t.recurring ? "cycle" : "check"}
               style={{
                 width: 26,
