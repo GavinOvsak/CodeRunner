@@ -278,6 +278,33 @@ export function crNextTasks(s: Patient): NextTask[] {
           }
         }
 
+        // Lidocaine after ≥2 shocks (shockable only) — alternative to amiodarone
+        if (shockable && shockCount >= 2) {
+          const lidoGiven = given("lido");
+          if (isPeds) {
+            const maxFirst = 100;
+            const doseFirst =
+              s.weightKg != null
+                ? `${Math.min(s.weightKg * 1, maxFirst).toFixed(1)}mg`
+                : `1mg/kg (max ${maxFirst}mg)`;
+            const doseRepeat =
+              s.weightKg != null
+                ? `${Math.min(s.weightKg * 0.5, maxFirst).toFixed(1)}mg`
+                : `0.5mg/kg`;
+            const lidoLabel =
+              lidoGiven === 0
+                ? `Give Lidocaine ${doseFirst} IV/IO`
+                : `Give Lidocaine ${doseRepeat} IV/IO`;
+            push({ id: "lido", label: lidoLabel, kind: "med", medKey: "lido" });
+          } else {
+            const lidoLabel =
+              lidoGiven === 0
+                ? "Give Lidocaine 1–1.5 mg/kg"
+                : "Give Lidocaine 0.5–0.75 mg/kg";
+            push({ id: "lido", label: lidoLabel, kind: "med", medKey: "lido" });
+          }
+        }
+
         // H's & T's — always shown when pulseless, non-dismissable
         push({
           id: "reversible",
