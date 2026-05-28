@@ -189,7 +189,7 @@ export function CRPatientScreen({
   const [infoOpen, setInfoOpen] = useState(false);
   const [roscPopup, setRoscPopup] = useState(false);
   const [popup, setPopup] = useState<
-    "shock" | "ht" | "strokeSx" | "strokeScale" | "rhythm" | null
+    "shock" | "ht" | "strokeSx" | "strokeScale" | "rhythm" | "symptomatic" | null
   >(null);
   const [fadingTasks, setFadingTasks] = useState<Record<string, boolean>>({});
   const [flashKey, setFlashKey] = useState(0);
@@ -603,6 +603,7 @@ export function CRPatientScreen({
                 <CRStatusRow
                   label="Symptomatic"
                   uncertain={s.symptomatic === "?"}
+                  onInfo={() => setPopup("symptomatic")}
                   flashKey={flashTargets.has("symptomatic") ? flashKey : null}
                 >
                   <CRDropdown
@@ -1197,6 +1198,7 @@ export function CRNextList({
               | "strokeSx"
               | "strokeScale"
               | "rhythm"
+              | "symptomatic"
           }
           patient={patient}
           onClose={() => setActivePopup(null)}
@@ -1767,7 +1769,7 @@ export function CRPopupModal({
   patient,
   onClose,
 }: {
-  type: "shock" | "ht" | "strokeSx" | "strokeScale" | "rhythm";
+  type: "shock" | "ht" | "strokeSx" | "strokeScale" | "rhythm" | "symptomatic";
   patient: Patient;
   onClose: () => void;
 }) {
@@ -1994,6 +1996,26 @@ export function CRPopupModal({
             <span style={{ marginLeft: 6 }}>{desc}</span>
           </div>
         ))}
+      </CRModalShell>
+    );
+  }
+
+  if (type === "symptomatic") {
+    return (
+      <CRModalShell title="Symptomatic Arrhythmia?" onClose={onClose}>
+        <p style={{ marginTop: 0, fontWeight: 600, marginBottom: 8 }}>
+          Persistent tachyarrhythmia causing any of:
+        </p>
+        <ul style={{ margin: "0 0 10px", paddingLeft: 18 }}>
+          <li>Hypotension</li>
+          <li>Acutely altered mental status</li>
+          <li>Signs of shock</li>
+          <li>Ischemic chest discomfort</li>
+          <li>Acute heart failure</li>
+        </ul>
+        <p style={{ margin: 0, fontSize: 12, color: "var(--ink-3)" }}>
+          If any are present, consider urgent synchronized cardioversion.
+        </p>
       </CRModalShell>
     );
   }
