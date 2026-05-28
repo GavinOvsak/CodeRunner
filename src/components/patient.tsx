@@ -6,6 +6,7 @@ import {
   CR_CONTINUOUS_KEYS,
   crNextTasks,
   crRecommendedMedKeys,
+  crGiven,
 } from "../data";
 import { crFmt, crSince } from "../utils";
 import { CRIcon, CRDropdown, CRSection, CRStatusRow } from "./ui";
@@ -667,14 +668,26 @@ export function CRPatientScreen({
               />
             </CRStatusRow>
             <CRStatusRow label="Breathing" uncertain={s.breathing === "?"} flashKey={flashTargets.has("breathing") ? flashKey : null}>
-              <CRDropdown
-                value={s.breathing}
-                options={CR_OPTS_BREATH}
-                onChange={setBreathing}
-                tone="auto"
-                flashRedKey={flashTargets.has("breathing") ? flashKey : null}
-                buttonGroup
-              />
+              {s.breathing === "ETT" ? (
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ background: "var(--green-soft)", color: "var(--green)", padding: "3px 10px", borderRadius: 8, fontSize: 14, fontWeight: 600 }}>ETT</span>
+                  <button
+                    onClick={() => setBreathing("?")}
+                    style={{ background: "none", border: "none", cursor: "pointer", color: "var(--ink-3)", padding: 4, display: "flex", alignItems: "center" }}
+                  >
+                    <CRIcon name="close" size={16} />
+                  </button>
+                </div>
+              ) : (
+                <CRDropdown
+                  value={s.breathing}
+                  options={CR_OPTS_BREATH}
+                  onChange={setBreathing}
+                  tone="auto"
+                  flashRedKey={flashTargets.has("breathing") ? flashKey : null}
+                  buttonGroup
+                />
+              )}
             </CRStatusRow>
             {s.alert !== "Yes" && (
               <CRStatusRow
@@ -768,8 +781,8 @@ export function CRPatientScreen({
                 </CRStatusRow>
               )
             )}
-            {/* Rescuers — shown during cardiac arrest for CPR guidance; hidden when ETT (implies code team) */}
-            {(s.pulse === "No" || cpr.active) && s.breathing !== "ETT" && (
+            {/* Rescuers — shown during cardiac arrest for CPR guidance; hidden when code team implied */}
+            {(s.pulse === "No" || cpr.active) && s.breathing !== "ETT" && s.rescuers !== "Team" && crGiven(s, "epi") === 0 && (
               <CRStatusRow label="Rescuers" uncertain={s.rescuers === "?"} flashKey={flashTargets.has("rescuers") ? flashKey : null}>
                 <CRDropdown
                   value={s.rescuers}

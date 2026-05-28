@@ -255,7 +255,7 @@ export function crNextTasks(s: Patient): NextTask[] {
         popup: "ht",
       });
     }
-    if (s.rescuers === "?" && s.breathing !== "ETT")
+    if (s.rescuers === "?" && s.breathing !== "ETT" && crGiven(s, "epi") === 0)
       push({ id: "check-rescuers", label: "Confirm Rescuers", need: "rescuers" });
   }
 
