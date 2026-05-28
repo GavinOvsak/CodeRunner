@@ -66,6 +66,7 @@ export const RHYTHM_LABELS: Record<RhythmValue, string> = {
   "?":         "Unknown",
   "VF":        "VF",
   "VT":        "VT",
+  "VF_pVT":    "VF / pVT",
   "PEA":       "PEA",
   "Asystole":  "Asystole",
   "NSR":       "NSR",
@@ -153,7 +154,7 @@ export function crNextTasks(s: Patient): NextTask[] {
   const isPeds = s.type === "pediatric";
   const aedDone = s.doneTasks["get-aed__hidden"] === true;
   const roscDone = s.doneTasks["rosc__hidden"] === true;
-  const shockable = s.rhythm === "VF" || s.rhythm === "VT";
+  const shockable = s.rhythm === "VF" || s.rhythm === "VT" || s.rhythm === "VF_pVT";
 
   // Precompute given counts once for O(1) lookups throughout
   const givenMap = new Map(s.gave.map((g) => [g.key, g.doses.length]));

@@ -84,6 +84,7 @@ export function reconstructStateFromLog(p: Patient): Patient {
             if (
               entry.value === "VT" ||
               entry.value === "VF" ||
+              entry.value === "VF_pVT" ||
               entry.value === "PEA" ||
               entry.value === "Asystole"
             ) {

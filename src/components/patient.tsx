@@ -69,8 +69,7 @@ const CR_OPTS_RATE = [
 ];
 const boltIcon = <CRIcon name="bolt" size={14} color="var(--shock)" />;
 const CR_OPTS_RHYTHM_ARREST = [
-  { value: "VT", label: "VT", icon: boltIcon },
-  { value: "VF", label: "VF", icon: boltIcon },
+  { value: "VF_pVT", label: "VF/pVT", icon: boltIcon },
   { value: "PEA", label: "PEA" },
   { value: "Asystole", label: "Asys" },
   { value: "NSR", label: "NSR" },
@@ -1965,11 +1964,11 @@ export function CRPopupModal({
         {[
           {
             name: "VF",
-            desc: "Chaotic irregular baseline — no QRS. Coarse or fine.",
+            desc: "Ventricular Fibrillation — chaotic irregular baseline, no QRS. Coarse or fine.",
           },
           {
-            name: "VT",
-            desc: "Wide QRS (>0.12s), fast (~150–250 bpm), regular. May be pulseless.",
+            name: "pVT",
+            desc: "Pulseless VT — wide QRS (>0.12s), fast (~150–250 bpm), regular, but no detectable pulse.",
           },
           {
             name: "PEA",
