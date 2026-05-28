@@ -356,6 +356,10 @@ export function CRPatientScreen({
       flashField("pulse");
       return;
     }
+    if (t.need === "rate" && s.rate === "?") {
+      flashField("rate");
+      return;
+    }
     if (t.need === "rhythm" && s.rhythm === "?") {
       flashField("rhythm");
       return;
@@ -679,7 +683,7 @@ export function CRPatientScreen({
               </CRStatusRow>
             )}
             {s.pulse === "Yes" && (
-              <CRStatusRow label="Heart Rate" uncertain={s.rate === "?"}>
+              <CRStatusRow label="Heart Rate" uncertain={s.rate === "?"} flashKey={flashTargets.has("rate") ? flashKey : null}>
                 <CRDropdown
                   value={s.rate}
                   options={CR_OPTS_RATE}

@@ -79,7 +79,7 @@ export interface NextTask {
   label: string;
   kind?: TaskKind;
   medKey?: string;
-  need?: "alert" | "breathing" | "pulse" | "rhythm" | "glucose" | "strokeSx";
+  need?: "alert" | "breathing" | "pulse" | "rate" | "rhythm" | "glucose" | "strokeSx";
   recurring?: boolean;
   popup?: "shock" | "ht" | "strokeSx" | "strokeScale" | "rhythm";
 }
