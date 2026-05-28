@@ -189,7 +189,7 @@ function CRDropdownLabel({
   );
   if (!opt || typeof opt === "string") return <span>{value}</span>;
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 2 }}>
       {opt.icon}
       <span>{opt.label}</span>
     </span>
