@@ -66,7 +66,7 @@ export const RHYTHM_LABELS: Record<RhythmValue, string> = {
   "?":         "Unknown",
   "VF":        "VF",
   "VT":        "VT",
-  "VF_pVT":    "VF / pVT",
+  "VF_pVT":    "VF / VT",
   "PEA":       "PEA",
   "Asystole":  "Asystole",
   "NSR":       "NSR",
