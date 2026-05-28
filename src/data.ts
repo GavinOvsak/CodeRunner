@@ -186,7 +186,12 @@ export function crNextTasks(s: Patient): NextTask[] {
   if (s.pulse === "No" || s.cpr.active) {
     // Always request AED when shockable or unknown — gate Shock behind it
     if (!aedDone) {
-      push({ id: "get-aed", label: "Get AED / Defibrillator" });
+      push({
+        id: "get-aed",
+        label: s.rescuers === "Two"
+          ? "Get AED + Call for Help (Rescuer 2)"
+          : "Get AED / Defibrillator",
+      });
     }
 
     const pushArrestDrugs = () => {
@@ -276,7 +281,11 @@ export function crNextTasks(s: Patient): NextTask[] {
       if (shockable && aedDone) {
         push({ id: "shock", label: "Shock", kind: "shock", popup: "shock" });
       }
-      push({ id: "start-cpr", label: "Start CPR", kind: "critical" });
+      push({
+        id: "start-cpr",
+        label: s.rescuers === "Two" && !aedDone ? "Start CPR (Rescuer 1)" : "Start CPR",
+        kind: "critical",
+      });
     } else if (s.cpr.pausedAt) {
       // PAUSED between cycles — assess, treat, then resume
       if (s.pulse === "Yes") {

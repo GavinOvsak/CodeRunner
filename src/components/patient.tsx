@@ -659,8 +659,8 @@ export function CRPatientScreen({
                 </CRStatusRow>
               )
             )}
-            {/* Rescuers — shown during cardiac arrest for CPR guidance; hidden when code team implied */}
-            {(s.pulse === "No" || cpr.active) && s.breathing !== "ETT" && s.rescuers !== "Team" && (s.gave.find(g => g.key === "epi")?.doses.length ?? 0) === 0 && (
+            {/* Rescuers — shown during cardiac arrest for CPR guidance */}
+            {(s.pulse === "No" || cpr.active) && s.breathing !== "ETT" && (s.gave.find(g => g.key === "epi")?.doses.length ?? 0) === 0 && (
               <CRStatusRow label="Rescuers" uncertain={s.rescuers === "?"} flashKey={flashTargets.has("rescuers") ? flashKey : null}>
                 <CRDropdown
                   value={s.rescuers}
