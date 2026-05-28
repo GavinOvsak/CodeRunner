@@ -72,7 +72,7 @@ const CR_OPTS_RHYTHM_ARREST = [
   { value: "VT", label: "VT", icon: boltIcon },
   { value: "VF", label: "VF", icon: boltIcon },
   { value: "PEA", label: "PEA" },
-  { value: "Asystole", label: "Asystole" },
+  { value: "Asystole", label: "Asys" },
   { value: "NSR", label: "NSR" },
 ];
 const CR_OPTS_RHYTHM_TACH = [

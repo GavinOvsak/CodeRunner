@@ -340,13 +340,6 @@ export function crNextTasks(s: Patient): NextTask[] {
           kind: "critical",
         });
       }
-      if (shockable && aedDone && given("shock") === 0) {
-        push({
-          id: "pause-to-shock",
-          label: "Pause CPR to Shock",
-          kind: "critical",
-        });
-      }
       if (s.breathing !== "ETT")
         push({ id: "airway", label: "Airway → advanced (ETT)" });
       if (!s.doneTasks["access"])
