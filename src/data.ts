@@ -106,6 +106,7 @@ export const TASK_LABELS: Record<TaskId, string> = {
   "pulse-rhythm-check":     "Pulse + Rhythm Check",
   "epi":                    "Give Epi",
   "amio":                   "Give Amiodarone",
+  "lido":                   "Give Lidocaine",
   "reversible":             "Consider H's & T's",
   "airway":                 "Airway → advanced (ETT)",
   "access":                 "Obtain IV / IO Access",

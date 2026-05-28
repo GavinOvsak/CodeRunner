@@ -544,7 +544,7 @@ export function CRSection({
   title,
   right,
   children,
-  accent,
+  accent: _accent,
   className,
 }: CRSectionProps) {
   return (

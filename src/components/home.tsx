@@ -94,7 +94,6 @@ export function CRHomeScreen({
   onRename,
   onDelete,
 }: CRHomeScreenProps) {
-  const [menuFor, setMenuFor] = useState<string | null>(null);
   const [installPrompt, setInstallPrompt] = useState<Event & { prompt: () => Promise<void> } | null>(null);
 
   useEffect(() => {
@@ -318,56 +317,35 @@ export function CRHomeScreen({
                     </div>
                   </div>
                 </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setMenuFor(menuFor === p.id ? null : p.id);
-                  }}
+                <div
                   style={{
                     position: "absolute",
                     right: 6,
                     top: 6,
-                    ...crIconBtn(),
+                    display: "flex",
+                    gap: 2,
                   }}
                 >
-                  <CRIcon name="kebab" size={18} />
-                </button>
-                {menuFor === p.id && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      right: 8,
-                      top: 40,
-                      zIndex: 30,
-                      background: "#fff",
-                      border: "1px solid var(--line-strong)",
-                      borderRadius: 10,
-                      padding: 4,
-                      boxShadow: "0 12px 32px rgba(0,0,0,0.12)",
-                      minWidth: 140,
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const n = prompt("Rename patient", p.name);
+                      if (n) onRename(p.id, n);
                     }}
+                    style={crIconBtn()}
                   >
-                    <button
-                      onClick={() => {
-                        setMenuFor(null);
-                        const n = prompt("Rename patient", p.name);
-                        if (n) onRename(p.id, n);
-                      }}
-                      style={crMenuItem()}
-                    >
-                      <CRIcon name="edit" size={14} /> Rename
-                    </button>
-                    <button
-                      onClick={() => {
-                        setMenuFor(null);
-                        if (confirm("Delete this code?")) onDelete(p.id);
-                      }}
-                      style={{ ...crMenuItem(), color: "var(--red)" }}
-                    >
-                      <CRIcon name="trash" size={14} /> Delete
-                    </button>
-                  </div>
-                )}
+                    <CRIcon name="edit" size={16} />
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (confirm("Delete this code?")) onDelete(p.id);
+                    }}
+                    style={{ ...crIconBtn(), color: "var(--red)" }}
+                  >
+                    <CRIcon name="close" size={16} />
+                  </button>
+                </div>
               </div>
             );
           })}
