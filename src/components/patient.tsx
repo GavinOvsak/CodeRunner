@@ -638,6 +638,7 @@ export function CRPatientScreen({
               label="Alert"
               disabled={s.breathing === "ETT"}
               uncertain={s.alert === "?"}
+              flashKey={flashTargets.has("alert") ? flashKey : null}
             >
               <CRDropdown
                 value={s.alert}
@@ -649,7 +650,7 @@ export function CRPatientScreen({
                 buttonGroup
               />
             </CRStatusRow>
-            <CRStatusRow label="Breathing" uncertain={s.breathing === "?"}>
+            <CRStatusRow label="Breathing" uncertain={s.breathing === "?"} flashKey={flashTargets.has("breathing") ? flashKey : null}>
               <CRDropdown
                 value={s.breathing}
                 options={CR_OPTS_BREATH}
@@ -664,6 +665,7 @@ export function CRPatientScreen({
                 label="Pulse"
                 disabled={cpr.active && !cpr.pausedAt}
                 uncertain={s.pulse === "?"}
+                flashKey={flashTargets.has("pulse") ? flashKey : null}
               >
                 <CRDropdown
                   value={s.pulse}
@@ -711,6 +713,7 @@ export function CRPatientScreen({
                 label="Rhythm"
                 uncertain={s.rhythm === "?"}
                 onInfo={() => setPopup("rhythm")}
+                flashKey={flashTargets.has("rhythm") ? flashKey : null}
               >
                 <CRDropdown
                   value={s.rhythm}
@@ -729,6 +732,7 @@ export function CRPatientScreen({
                   label="Rhythm"
                   uncertain={s.rhythm === "?"}
                   onInfo={() => setPopup("rhythm")}
+                  flashKey={flashTargets.has("rhythm") ? flashKey : null}
                 >
                   <CRDropdown
                     value={s.rhythm}
@@ -801,7 +805,7 @@ export function CRPatientScreen({
             {/* Glucose + Stroke Sx — shown when alert is Altered */}
             {s.alert === "Altered" && (
               <>
-                <CRStatusRow label="Glucose" uncertain={s.glucose === "?"}>
+                <CRStatusRow label="Glucose" uncertain={s.glucose === "?"} flashKey={flashTargets.has("glucose") ? flashKey : null}>
                   <CRDropdown
                     value={s.glucose}
                     options={CR_OPTS_GLUCOSE}
@@ -815,6 +819,7 @@ export function CRPatientScreen({
                   label="Stroke Sx"
                   uncertain={s.strokeSx === "?"}
                   onInfo={() => setPopup("strokeSx")}
+                  flashKey={flashTargets.has("strokeSx") ? flashKey : null}
                 >
                   <CRDropdown
                     value={s.strokeSx}
