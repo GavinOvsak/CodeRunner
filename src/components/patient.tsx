@@ -666,7 +666,7 @@ export function CRPatientScreen({
                   value={s.rescuers}
                   options={CR_OPTS_RESCUERS}
                   onChange={setRescuers}
-                  tone="auto"
+                  tone="accent"
                   buttonGroup
                 />
               </CRStatusRow>
