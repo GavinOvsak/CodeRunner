@@ -1,12 +1,30 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
-import type { Patient, CPRState, NextTask } from "../types";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import type {
+  Patient,
+  CPRState,
+  NextTask,
+  LogEntry,
+  LogPayload,
+  AlertValue,
+  BreathingValue,
+  PulseValue,
+  RateValue,
+  SymptomaticValue,
+  RhythmValue,
+  RescuersValue,
+  GlucoseValue,
+  StrokeSxValue,
+  MedKey,
+  DiscreteMedKey,
+  ContinuousMedKey,
+  TaskId,
+} from "../types";
 import {
   CR_MEDS,
   CR_MED_BY_KEY,
   CR_CONTINUOUS_KEYS,
   crNextTasks,
   crRecommendedMedKeys,
-  crGiven,
 } from "../data";
 import { crFmt, crSince } from "../utils";
 import { CRIcon, CRDropdown, CRSection, CRStatusRow } from "./ui";
@@ -109,16 +127,16 @@ interface CRNextListProps {
 
 interface CRGaveListProps {
   state: Patient;
-  recKeys: Set<string>;
-  onGive: (key: string) => void;
+  recKeys: Set<MedKey>;
+  onGive: (key: MedKey) => void;
   /** Called whenever the layout mode switches between list rows and pill grid. */
   onLayoutChange?: (isPills: boolean) => void;
-  lastAction?: { key: string; time: number } | null;
+  lastAction?: { key: MedKey; time: number } | null;
   currentTime?: number;
 }
 
 interface CRGaveSearchProps {
-  onPick: (key: string) => void;
+  onPick: (key: MedKey) => void;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -181,7 +199,7 @@ export function CRPatientScreen({
   /** True when the Gave section is wide enough to render chips instead of list rows. */
   const [isPillGave, setIsPillGave] = useState(false);
   const [lastAction, setLastAction] = useState<{
-    key: string;
+    key: MedKey;
     time: number;
   } | null>(null);
 
@@ -197,19 +215,16 @@ export function CRPatientScreen({
   );
 
   const log = useCallback(
-    (
-      text: string,
-      type: "note" | "status" | "task" | "med" | "cpr" = "note",
-    ) => {
+    (entry: LogPayload) => {
       update((p) => ({
         ...p,
-        log: [...p.log, { at: Date.now(), type, text }],
+        log: [...p.log, { ...entry, at: Date.now() } as LogEntry],
       }));
     },
     [update],
   );
 
-  // tick (1Hz) to drive timers
+  // tick (4Hz) to drive timers
   const [, setTick] = useState(0);
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), 250);
@@ -217,8 +232,7 @@ export function CRPatientScreen({
   }, []);
 
   // derived
-  const lastLog =
-    s.log.length > 0 ? [...s.log].sort((a, b) => b.at - a.at)[0] : null;
+  const lastLog = s.log.at(-1) ?? null;
   const lastLogAt = lastLog ? lastLog.at : Date.now();
   const isRecent = Date.now() - lastLogAt < 5 * 60 * 1000;
   const currentTime = isRecent || s.cpr.active ? Date.now() : lastLogAt;
@@ -231,110 +245,57 @@ export function CRPatientScreen({
         ? cpr.pausedAt - cpr.cycleStartAt
         : 0;
 
-  const recKeys = crRecommendedMedKeys(s);
+  // Memoized: only recomputes when patient state changes, not on every 250ms tick
+  const tasks = useMemo(() => crNextTasks(s), [s]);
+  const recKeys = useMemo(() => crRecommendedMedKeys(tasks), [tasks]);
 
-  // Status field setters
+  // Status field setters — log entries drive all state via reconstructStateFromLog
   function setAlert(v: string) {
     if (v === s.alert) return;
     const now = Date.now();
-    update((p) => {
-      const next = { ...p, alert: v as Patient["alert"] };
-      if ((v === "No" || v === "Altered") && s.alert === "Yes") {
-        next.pulse = "?";
-      }
-      if (v === "Yes") {
-        next.pulse = "Yes";
-        // If CPR is active and running, automatically pause it
-        if (p.cpr.active && !p.cpr.pausedAt) {
-          next.cpr = { ...p.cpr, pausedAt: now };
-        }
-      }
-      return next;
-    });
-    log(`Alert: ${v}`, "status");
-    if ((v === "No" || v === "Altered") && s.alert === "Yes") {
-      setTimeout(() => log("Pulse: ?", "status"), 0);
-    }
-    if (v === "Yes" && s.pulse !== "Yes") {
-      setTimeout(() => log("Pulse: Yes", "status"), 0);
-    }
+    log({ type: "status", field: "alert", value: v as AlertValue });
     if (v === "Yes" && cpr.active && !cpr.pausedAt) {
       const elapsed = now - cpr.cycleStartAt;
-      const text = `CPR cycle ${cpr.cycleNumber} ended (pause) — ${crFmt(elapsed)}`;
-      setTimeout(() => log(text, "cpr"), 0);
+      setTimeout(() => log({ type: "cpr", event: "pause", cycleNumber: cpr.cycleNumber, elapsed }), 0);
     }
   }
   function setBreathing(v: string) {
     if (v === s.breathing) return;
-    update((p) => {
-      const next = { ...p, breathing: v as Patient["breathing"] };
-      if (v === "ETT" && p.alert !== "Sedated") next.alert = "Sedated";
-      return next;
-    });
-    log(`Breathing: ${v}`, "status");
-    if (v === "ETT" && s.alert !== "Sedated") {
-      setTimeout(() => log("Alert: Sedated (auto, ETT)", "status"), 0);
-    }
+    log({ type: "status", field: "breathing", value: v as BreathingValue });
   }
   function setPulse(v: string) {
     if (v === s.pulse) return;
-    update((p) => {
-      const next = { ...p, pulse: v as Patient["pulse"] };
-      if (v === "Yes") {
-        next.rhythm = "?";
-      }
-      if (v !== "Yes") {
-        next.rate = "?";
-      }
-      return next;
-    });
-    log(`Pulse: ${v}`, "status");
+    log({ type: "status", field: "pulse", value: v as PulseValue });
   }
   function setRate(v: string) {
     if (v === s.rate) return;
-    update((p) => ({ ...p, rate: v as Patient["rate"], rhythm: "?" }));
-    log(`Rate: ${v}`, "status");
+    log({ type: "status", field: "rate", value: v as RateValue });
   }
   function setSymptomatic(v: string) {
     if (v === s.symptomatic) return;
-    update((p) => ({ ...p, symptomatic: v as Patient["symptomatic"] }));
-    log(`Symptomatic: ${v}`, "status");
+    log({ type: "status", field: "symptomatic", value: v as SymptomaticValue });
   }
   function setRescuers(v: string) {
     if (v === s.rescuers) return;
-    update((p) => ({ ...p, rescuers: v as Patient["rescuers"] }));
-    log(`Rescuers: ${v}`, "status");
+    log({ type: "status", field: "rescuers", value: v as RescuersValue });
   }
   function setGlucose(v: string) {
     if (v === s.glucose) return;
-    update((p) => ({ ...p, glucose: v as Patient["glucose"] }));
-    log(`Glucose: ${v}`, "status");
+    log({ type: "status", field: "glucose", value: v as GlucoseValue });
   }
   function setStrokeSx(v: string) {
     if (v === s.strokeSx) return;
-    update((p) => ({ ...p, strokeSx: v as Patient["strokeSx"] }));
-    log(`Stroke Sx: ${v}`, "status");
+    log({ type: "status", field: "strokeSx", value: v as StrokeSxValue });
   }
   function setWeightKg(raw: string) {
     const v = raw === "" ? null : parseFloat(raw);
     const val = v == null || isNaN(v) ? null : v;
     if (val === s.weightKg) return;
-    update((p) => ({ ...p, weightKg: val }));
-    if (val != null) log(`Weight: ${val}kg`, "status");
+    if (val != null) log({ type: "status", field: "weight", value: val });
   }
   function setRhythm(v: string) {
     if (v === s.rhythm) return;
-    update((p) => {
-      const next = { ...p, rhythm: v as Patient["rhythm"] };
-      if (["VT", "VF", "PEA", "Asystole"].includes(v)) {
-        next.pulse = "No";
-      }
-      return next;
-    });
-    log(`Rhythm: ${v}`, "status");
-    if (["VT", "VF", "PEA", "Asystole"].includes(v) && s.pulse !== "No") {
-      setTimeout(() => log("Pulse: No", "status"), 0);
-    }
+    log({ type: "status", field: "rhythm", value: v as RhythmValue });
   }
 
   // Task interactions
@@ -387,74 +348,39 @@ export function CRPatientScreen({
     }
 
     if (t.id === "choking-cycles") {
-      log("5 Back Blows & 5 Abdominal Thrusts delivered", "task");
+      log({ type: "task", taskId: "choking-cycles" });
       return;
     }
     if (t.id === "reassess-responsiveness") {
       flashField("alert");
-      log("Reassessed responsiveness", "task");
+      log({ type: "task", taskId: "reassess-responsiveness" });
       return;
     }
     if (t.id === "reversible") {
-      log("H's & T's reviewed", "task");
+      log({ type: "task", taskId: "reversible" });
       return; // recurring — stays visible
     }
     if (t.id === "rescue-breaths") {
-      log("Rescue breaths given", "task");
+      log({ type: "task", taskId: "rescue-breaths" });
       return; // recurring
     }
     if (t.id === "opioid-reversal") {
-      log("Considered opioid reversal", "task");
+      log({ type: "task", taskId: "opioid-reversal" });
       hideTask(t.id);
       return;
     }
 
     if (t.id === "start-cpr") {
-      const now = Date.now();
-      update((p) => ({
-        ...p,
-        cpr: {
-          active: true,
-          cycleNumber: 1,
-          cycleStartAt: now,
-          pausedAt: null,
-          metronomeAnchor: now,
-        },
-        pulse: "?",
-        rhythm: "?",
-      }));
-      log("CPR started — cycle 1", "cpr");
+      log({ type: "cpr", event: "start", cycleNumber: 1 });
       return;
     }
     if (t.id === "resume-cpr") {
-      const now = Date.now();
-      update((p) => ({
-        ...p,
-        cpr: {
-          ...p.cpr,
-          cycleNumber: p.cpr.cycleNumber + 1,
-          cycleStartAt: now,
-          pausedAt: null,
-          metronomeAnchor: now,
-        },
-        pulse: "?",
-        rhythm: "?",
-      }));
-      log(`CPR resumed — cycle ${s.cpr.cycleNumber + 1}`, "cpr");
+      log({ type: "cpr", event: "resume", cycleNumber: s.cpr.cycleNumber + 1 });
       return;
     }
     if (t.id === "rosc") {
-      const elapsed = s.cpr.pausedAt
-        ? s.cpr.pausedAt - s.cpr.cycleStartAt
-        : Date.now() - s.cpr.cycleStartAt;
-      update((p) => ({
-        ...p,
-        cpr: { ...p.cpr, active: false, pausedAt: null },
-      }));
-      log(
-        `ROSC — code ended (CPR cycle ${s.cpr.cycleNumber} stopped — ${crFmt(elapsed)})`,
-        "cpr",
-      );
+      log({ type: "cpr", event: "rosc" });
+      hideTask(t.id);
       return;
     }
     if (t.id === "pause-pulse-check" || t.id === "pause-to-shock") {
@@ -470,25 +396,18 @@ export function CRPatientScreen({
       return;
     }
     if (t.id === "get-aed") {
-      log("AED requested", "task");
+      log({ type: "task", taskId: "get-aed" });
       hideTask(t.id);
       return;
     }
     if (t.id === "airway") {
-      update((p) => ({
-        ...p,
-        breathing: "ETT",
-        ...(p.alert !== "Sedated" && { alert: "Sedated" }),
-      }));
-      log("Airway secured (ETT)", "task");
-      if (s.alert !== "Sedated") log("Alert: Sedated (auto, ETT)", "status");
+      log({ type: "task", taskId: "airway" });
       hideTask(t.id);
       return;
     }
     if (t.id === "access") {
-      log("IV/IO access obtained", "task");
+      log({ type: "task", taskId: "access" });
       hideTask(t.id);
-      markDone("access");
       return;
     }
     if (t.id === "shock") {
@@ -504,24 +423,16 @@ export function CRPatientScreen({
       return;
     }
 
-    log(`✓ ${t.label}`, "task");
+    log({ type: "task", taskId: t.id });
     hideTask(t.id);
   }
 
-  function hideTask(id: string) {
+  function hideTask(id: TaskId) {
+    // Animate the fade — doneTasks hidden state is driven by the task log entry via reconstruction
     setFadingTasks((prev) => ({ ...prev, [id]: true }));
-    setTimeout(() => {
-      update((p) => ({
-        ...p,
-        doneTasks: { ...p.doneTasks, [id + "__hidden"]: true },
-      }));
-    }, 620);
-  }
-  function markDone(id: string) {
-    update((p) => ({ ...p, doneTasks: { ...p.doneTasks, [id]: true } }));
   }
 
-  function giveMed(key: string) {
+  function giveMed(key: MedKey) {
     const med = CR_MED_BY_KEY[key];
     if (!med) return;
     const now = Date.now();
@@ -530,34 +441,21 @@ export function CRPatientScreen({
     const currentDoseCount = currentRow ? currentRow.doses.length : 0;
     const isCurrentlyActive = isContinuous && currentDoseCount % 2 === 1;
 
-    update((p) => {
-      const existing = p.gave.find((g) => g.key === key);
-      let gave;
-      if (existing) {
-        gave = p.gave.map((g) =>
-          g.key === key ? { ...g, doses: [...g.doses, now] } : g,
-        );
-      } else {
-        gave = [...p.gave, { key, doses: [now] }];
-      }
-      return { ...p, gave };
-    });
-
     if (isContinuous) {
-      log(
-        isCurrentlyActive ? `Stopped ${med.short}` : `Started ${med.short}`,
-        "med",
-      );
+      log({
+        type: "med",
+        action: isCurrentlyActive ? "stop" : "start",
+        key: key as ContinuousMedKey,
+      });
     } else {
-      log(`+1 ${med.short}`, "med");
-    }
-    if (key === "shock") {
-      setTimeout(() => log("Rhythm: ?", "status"), 0);
-    } else if (key === "adenosine" || key === "atropine") {
-      setTimeout(() => {
-        log("Rate: ?", "status");
-        log("Rhythm: ?", "status");
-      }, 0);
+      // Adenosine/atropine reset rate+rhythm to prompt reassessment
+      if (key === "adenosine" || key === "atropine") {
+        setTimeout(() => {
+          log({ type: "status", field: "rate",   value: "?" });
+          log({ type: "status", field: "rhythm", value: "?" });
+        }, 0);
+      }
+      log({ type: "med", action: "give", key: key as DiscreteMedKey });
     }
     setLastAction({ key, time: now });
   }
@@ -565,39 +463,17 @@ export function CRPatientScreen({
   // CPR controls
   function toggleCprPause() {
     const now = Date.now();
-    update((p) => {
-      const c = p.cpr;
-      if (c.pausedAt) {
-        const text = `CPR resumed — cycle ${c.cycleNumber + 1}`;
-        return {
-          ...p,
-          cpr: {
-            ...c,
-            cycleNumber: c.cycleNumber + 1,
-            cycleStartAt: now,
-            pausedAt: null,
-            metronomeAnchor: now,
-          },
-          pulse: "?",
-          rhythm: "?",
-          log: [...p.log, { at: now, type: "cpr", text }],
-        };
-      } else {
-        const elapsed = now - c.cycleStartAt;
-        const text = `CPR cycle ${c.cycleNumber} ended (pause) — ${crFmt(elapsed)}`;
-        return {
-          ...p,
-          cpr: { ...c, pausedAt: now },
-          log: [...p.log, { at: now, type: "cpr", text }],
-        };
-      }
-    });
+    const c = cpr;
+    if (c.pausedAt) {
+      log({ type: "cpr", event: "resume", cycleNumber: c.cycleNumber + 1 });
+    } else {
+      const elapsed = now - c.cycleStartAt;
+      log({ type: "cpr", event: "pause", cycleNumber: c.cycleNumber, elapsed });
+    }
   }
   function syncMetronome() {
-    update((p) => ({ ...p, cpr: { ...p.cpr, metronomeAnchor: Date.now() } }));
+    log({ type: "cpr", event: "sync", anchor: Date.now() });
   }
-
-  const tasks = crNextTasks(s);
 
   // CPR compression:breath guidance based on rescuers, ETT, and patient type
   function getCprGuidance(): string {
@@ -782,7 +658,7 @@ export function CRPatientScreen({
               )
             )}
             {/* Rescuers — shown during cardiac arrest for CPR guidance; hidden when code team implied */}
-            {(s.pulse === "No" || cpr.active) && s.breathing !== "ETT" && s.rescuers !== "Team" && crGiven(s, "epi") === 0 && (
+            {(s.pulse === "No" || cpr.active) && s.breathing !== "ETT" && s.rescuers !== "Team" && (s.gave.find(g => g.key === "epi")?.doses.length ?? 0) === 0 && (
               <CRStatusRow label="Rescuers" uncertain={s.rescuers === "?"} flashKey={flashTargets.has("rescuers") ? flashKey : null}>
                 <CRDropdown
                   value={s.rescuers}
@@ -949,10 +825,7 @@ export function CRPatientHeader({
   onOpenLog,
   onInfo,
 }: CRPatientHeaderProps) {
-  const lastLog =
-    patient.log.length > 0
-      ? [...patient.log].sort((a, b) => b.at - a.at)[0]
-      : null;
+  const lastLog = patient.log.at(-1) ?? null;
   const lastLogAt = lastLog ? lastLog.at : Date.now();
   const isRecent = Date.now() - lastLogAt < 5 * 60 * 1000;
   const currentTime = isRecent || patient.cpr.active ? Date.now() : lastLogAt;
@@ -1376,8 +1249,8 @@ export function CRGaveList({
     }
   }, [lastAction]);
 
-  /** Wrap onGive to delegate giving the med. */
-  function handleGive(k: string) {
+  /** Delegates med give to parent handler. */
+  function handleGive(k: MedKey) {
     onGive(k);
   }
 

@@ -6,44 +6,47 @@
  * based on the patient's current reconstructed state.
  */
 
-import type { Med, NextTask, Patient } from "./types";
+import type {
+  Med,
+  MedKey,
+  ContinuousMedKey,
+  TaskId,
+  StatusField,
+  RhythmValue,
+  NextTask,
+  Patient,
+} from "./types";
 
 export const CR_MEDS: Med[] = [
   // Code drugs (most-used first)
-  { key: "epi", name: "Epinephrine 1mg", cat: "Code", short: "Epi" },
-  { key: "amio", name: "Amiodarone", cat: "Code", short: "Amio" },
-  { key: "lido", name: "Lidocaine", cat: "Code", short: "Lido" },
-  { key: "atropine", name: "Atropine 1mg", cat: "Code", short: "Atropine" },
-  { key: "adenosine", name: "Adenosine 6mg", cat: "Code", short: "Adenosine" },
-  { key: "bicarb", name: "Sodium Bicarb", cat: "Code", short: "Bicarb" },
-  { key: "calcium", name: "Calcium", cat: "Code", short: "Calcium" },
-  { key: "magnesium", name: "Magnesium 2g", cat: "Code", short: "Mag" },
-  { key: "naloxone", name: "Naloxone", cat: "Code", short: "Naloxone" },
-  { key: "dopamine", name: "Dopamine gtt", cat: "Drip", short: "Dopa" },
-  { key: "norepi", name: "Norepinephrine", cat: "Drip", short: "Norepi" },
-  { key: "vaso", name: "Vasopressin", cat: "Drip", short: "Vaso" },
-  { key: "procain", name: "Procainamide", cat: "Drip", short: "Procainamide" },
-  { key: "d50", name: "D50", cat: "Code", short: "D50" },
+  { key: "epi",       name: "Epinephrine 1mg",      cat: "Code",   short: "Epi" },
+  { key: "amio",      name: "Amiodarone",             cat: "Code",   short: "Amio" },
+  { key: "lido",      name: "Lidocaine",              cat: "Code",   short: "Lido" },
+  { key: "atropine",  name: "Atropine 1mg",           cat: "Code",   short: "Atropine" },
+  { key: "adenosine", name: "Adenosine 6mg",          cat: "Code",   short: "Adenosine" },
+  { key: "bicarb",    name: "Sodium Bicarb",          cat: "Code",   short: "Bicarb" },
+  { key: "calcium",   name: "Calcium",                cat: "Code",   short: "Calcium" },
+  { key: "magnesium", name: "Magnesium 2g",           cat: "Code",   short: "Mag" },
+  { key: "naloxone",  name: "Naloxone",               cat: "Code",   short: "Naloxone" },
+  { key: "dopamine",  name: "Dopamine gtt",           cat: "Drip",   short: "Dopa" },
+  { key: "norepi",    name: "Norepinephrine",         cat: "Drip",   short: "Norepi" },
+  { key: "vaso",      name: "Vasopressin",            cat: "Drip",   short: "Vaso" },
+  { key: "procain",   name: "Procainamide",           cat: "Drip",   short: "Procainamide" },
+  { key: "d50",       name: "D50",                    cat: "Code",   short: "D50" },
   // Blood products
-  { key: "prbc", name: "pRBC", cat: "Blood", short: "pRBC" },
-  { key: "ffp", name: "FFP", cat: "Blood", short: "FFP" },
-  { key: "plt", name: "Platelets", cat: "Blood", short: "PLT" },
-  { key: "cryo", name: "Cryoprecipitate", cat: "Blood", short: "Cryo" },
-  { key: "albumin", name: "Albumin", cat: "Blood", short: "Albumin" },
-  { key: "tranex", name: "TXA", cat: "Blood", short: "TXA" },
-  // Pseudo-med: shock (tracked in Gave for counts)
-  { key: "shock", name: "Shock", cat: "Action", short: "Shock" },
-  // Continuous actions (play/pause timer, not countable)
-  {
-    key: "pace",
-    name: "Transcutaneous Pacing",
-    cat: "Action",
-    short: "Pacing",
-  },
+  { key: "prbc",      name: "pRBC",                   cat: "Blood",  short: "pRBC" },
+  { key: "ffp",       name: "FFP",                    cat: "Blood",  short: "FFP" },
+  { key: "plt",       name: "Platelets",              cat: "Blood",  short: "PLT" },
+  { key: "cryo",      name: "Cryoprecipitate",        cat: "Blood",  short: "Cryo" },
+  { key: "albumin",   name: "Albumin",                cat: "Blood",  short: "Albumin" },
+  { key: "tranex",    name: "TXA",                    cat: "Blood",  short: "TXA" },
+  // Actions
+  { key: "shock",     name: "Shock",                  cat: "Action", short: "Shock" },
+  { key: "pace",      name: "Transcutaneous Pacing",  cat: "Action", short: "Pacing" },
 ];
 
 /** Keys that run continuously — show play/pause timer instead of +1 count. */
-export const CR_CONTINUOUS_KEYS = new Set([
+export const CR_CONTINUOUS_KEYS: ReadonlySet<MedKey> = new Set<ContinuousMedKey>([
   "dopamine",
   "norepi",
   "vaso",
@@ -51,15 +54,87 @@ export const CR_CONTINUOUS_KEYS = new Set([
   "pace",
 ]);
 
-export const CR_MED_BY_KEY: Record<string, Med> = Object.fromEntries(
+export const CR_MED_BY_KEY: Record<MedKey, Med> = Object.fromEntries(
   CR_MEDS.map((m) => [m.key, m]),
-);
+) as Record<MedKey, Med>;
 
-// Count doses already given for a med key
-export function crGiven(s: Patient, key: string): number {
-  const row = s.gave.find((g) => g.key === key);
-  return row ? row.doses.length : 0;
-}
+// ─────────────────────────────────────────────────────────────
+// Display label maps (single source of truth for UI text)
+// ─────────────────────────────────────────────────────────────
+
+export const RHYTHM_LABELS: Record<RhythmValue, string> = {
+  "?":         "Unknown",
+  "VF":        "VF",
+  "VT":        "VT",
+  "PEA":       "PEA",
+  "Asystole":  "Asystole",
+  "NSR":       "NSR",
+  "SVT":       "SVT",
+  "Afib":      "A-Fib",
+  "Aflutter":  "A-Flutter",
+  "WideTach":  "Wide VT",
+  "SinusBrady":"Sinus Brady",
+  "AVB1":      "1° AVB",
+  "AVB2":      "2° AVB",
+  "AVB3":      "3° AVB",
+};
+
+export const STATUS_FIELD_LABELS: Record<StatusField, string> = {
+  alert:       "Alert",
+  breathing:   "Breathing",
+  pulse:       "Pulse",
+  rate:        "Rate",
+  rhythm:      "Rhythm",
+  rescuers:    "Rescuers",
+  glucose:     "Glucose",
+  strokeSx:    "Stroke Sx",
+  symptomatic: "Symptomatic",
+  weight:      "Weight",
+};
+
+export const TASK_LABELS: Record<TaskId, string> = {
+  "check-alert":            "Check Responsiveness",
+  "check-breath":           "Check Breathing",
+  "check-pulse":            "Check for Pulse",
+  "check-rate":             "Check Heart Rate",
+  "get-aed":                "Get AED / Defibrillator",
+  "shock":                  "Shock",
+  "start-cpr":              "Start CPR",
+  "pause-pulse-check":      "Pause CPR",
+  "pause-to-shock":         "Pause CPR to Shock",
+  "resume-cpr":             "Resume CPR",
+  "rosc":                   "ROSC — End Code",
+  "pulse-rhythm-check":     "Pulse + Rhythm Check",
+  "epi":                    "Give Epi",
+  "amio":                   "Give Amiodarone",
+  "reversible":             "Consider H's & T's",
+  "airway":                 "Airway → advanced (ETT)",
+  "access":                 "Obtain IV / IO Access",
+  "opioid-reversal":        "Consider Opioid Reversal (Naloxone)",
+  "rescue-breaths":         "Give Rescue Breaths",
+  "ecg":                    "12-Lead ECG",
+  "adenosine":              "Adenosine 6mg rapid push",
+  "cardiovert":             "Synchronized Cardioversion",
+  "atropine":               "Atropine 1mg",
+  "pace":                   "Transcutaneous Pacing",
+  "dopamine":               "Dopamine gtt",
+  "glucose":                "Check Glucose",
+  "d50":                    "Give D50 IV",
+  "lkw":                    "Last Known Well",
+  "check-stroke-sx":        "Check Stroke Symptoms",
+  "fast":                   "FAST / NIH Stroke Scale",
+  "ct":                     "Activate Stroke / CT",
+  "choking-cycles":         "5 back blows then 5 abdominal thrusts",
+  "reassess-responsiveness":"Reassess Responsiveness",
+  "check-rhythm":           "Check Rhythm",
+  "check-symptomatic":      "Assess Symptoms",
+  "check-weight":           "Enter Patient Weight",
+  "check-rescuers":         "Confirm Rescuers",
+};
+
+// ─────────────────────────────────────────────────────────────
+// Rules engine
+// ─────────────────────────────────────────────────────────────
 
 /**
  * # Generate Next Clinical Tasks
@@ -79,6 +154,10 @@ export function crNextTasks(s: Patient): NextTask[] {
   const aedDone = s.doneTasks["get-aed__hidden"] === true;
   const roscDone = s.doneTasks["rosc__hidden"] === true;
   const shockable = s.rhythm === "VF" || s.rhythm === "VT";
+
+  // Precompute given counts once for O(1) lookups throughout
+  const givenMap = new Map(s.gave.map((g) => [g.key, g.doses.length]));
+  const given = (key: MedKey) => givenMap.get(key) ?? 0;
 
   // ===== Initial assessment (always relevant when unknown) =====
   if (s.alert === "?")
@@ -143,11 +222,9 @@ export function crNextTasks(s: Patient): NextTask[] {
         }
 
         // Epi timing — for shockable rhythms require at least 1 shock first (ACLS/PALS)
-        const epiDoses = (s.gave.find((g) => g.key === "epi") ?? { doses: [] })
-          .doses;
-        const shockCount = crGiven(s, "shock");
-        const lastLog =
-          s.log.length > 0 ? [...s.log].sort((a, b) => b.at - a.at)[0] : null;
+        const epiDoses = s.gave.find((g) => g.key === "epi")?.doses ?? [];
+        const shockCount = given("shock");
+        const lastLog = s.log.at(-1);
         const lastLogAt = lastLog ? lastLog.at : Date.now();
         const isRecent = Date.now() - lastLogAt < 5 * 60 * 1000;
         const refTime = isRecent || s.cpr.active ? Date.now() : lastLogAt;
@@ -180,7 +257,7 @@ export function crNextTasks(s: Patient): NextTask[] {
 
         // Amiodarone after ≥2 shocks (shockable only)
         if (shockable && shockCount >= 2) {
-          const amioGiven = crGiven(s, "amio");
+          const amioGiven = given("amio");
           if (isPeds) {
             const maxAmt = amioGiven === 0 ? 300 : 150;
             const dose =
@@ -237,7 +314,7 @@ export function crNextTasks(s: Patient): NextTask[] {
           kind: "critical",
         });
       }
-      if (shockable && aedDone && crGiven(s, "shock") === 0) {
+      if (shockable && aedDone && given("shock") === 0) {
         push({
           id: "pause-to-shock",
           label: "Pause CPR to Shock",
@@ -255,7 +332,7 @@ export function crNextTasks(s: Patient): NextTask[] {
         popup: "ht",
       });
     }
-    if (s.rescuers === "?" && s.breathing !== "ETT" && crGiven(s, "epi") === 0)
+    if (s.rescuers === "?" && s.breathing !== "ETT" && given("epi") === 0)
       push({ id: "check-rescuers", label: "Confirm Rescuers", need: "rescuers" });
   }
 
@@ -285,7 +362,7 @@ export function crNextTasks(s: Patient): NextTask[] {
         medKey: "adenosine",
       });
     if (s.rhythm === "WideTach") {
-      const amioGiven = crGiven(s, "amio");
+      const amioGiven = given("amio");
       const amioLabel =
         amioGiven === 0
           ? "Amiodarone 150mg over 10 min"
@@ -310,9 +387,9 @@ export function crNextTasks(s: Patient): NextTask[] {
       kind: "med",
       medKey: "atropine",
     });
-    if (crGiven(s, "pace") === 0)
+    if (given("pace") === 0)
       push({ id: "pace", label: "Transcutaneous Pacing" });
-    if (crGiven(s, "dopamine") === 0)
+    if (given("dopamine") === 0)
       push({
         id: "dopamine",
         label: "Dopamine gtt",
@@ -328,7 +405,6 @@ export function crNextTasks(s: Patient): NextTask[] {
     if (s.glucose === "Low") {
       push({ id: "d50", label: "Give D50 IV", kind: "med", medKey: "d50" });
     }
-    // push({ id: "lkw", label: "Last Known Well" });
     if (s.strokeSx === "?")
       push({
         id: "check-stroke-sx",
@@ -366,16 +442,15 @@ export function crNextTasks(s: Patient): NextTask[] {
   );
 
   // Shock and Start CPR always at top
-  const topIds = ["get-aed", "shock", "pause-to-shock", "start-cpr", "resume-cpr", "cardiovert"];
+  const topIds: TaskId[] = ["get-aed", "shock", "pause-to-shock", "start-cpr", "resume-cpr", "cardiovert"];
   const topTasks = filtered.filter((t) => topIds.includes(t.id));
   const otherTasks = filtered.filter((t) => !topIds.includes(t.id));
   return [...topTasks, ...otherTasks];
 }
 
 // Recommended med keys (so Gave can surface them as "+1" rows even when not yet given)
-export function crRecommendedMedKeys(s: Patient): Set<string> {
-  const tasks = crNextTasks(s);
-  const keys = new Set<string>();
+export function crRecommendedMedKeys(tasks: NextTask[]): Set<MedKey> {
+  const keys = new Set<MedKey>();
   tasks.forEach((t) => {
     if (t.medKey) keys.add(t.medKey);
     if (t.kind === "shock") keys.add("shock");
