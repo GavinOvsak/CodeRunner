@@ -299,9 +299,9 @@ export function crNextTasks(s: Patient): NextTask[] {
           });
         }
       } else {
-        // Pulse = No, rhythm known — suggest defib + drugs before resuming
+        // Pulse = No, rhythm known — CPR already paused, ready to shock
         if (shockable && aedDone) {
-          push({ id: "pause-to-shock", label: "Pause CPR to Shock", kind: "critical" });
+          push({ id: "shock", label: "Shock", kind: "shock", popup: "shock" });
         }
 
         pushArrestDrugs();
