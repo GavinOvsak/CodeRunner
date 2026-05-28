@@ -300,7 +300,7 @@ export function crNextTasks(s: Patient): NextTask[] {
       } else {
         // Pulse = No, rhythm known — suggest defib + drugs before resuming
         if (shockable && aedDone) {
-          push({ id: "shock", label: "Shock", kind: "shock", popup: "shock" });
+          push({ id: "pause-to-shock", label: "Pause CPR to Shock", kind: "critical" });
         }
 
         pushArrestDrugs();
@@ -326,6 +326,9 @@ export function crNextTasks(s: Patient): NextTask[] {
       }
     } else {
       // RUNNING — compressions in progress; show setup tasks
+      if (shockable && aedDone) {
+        push({ id: "pause-to-shock", label: "Pause CPR to Shock", kind: "critical" });
+      }
       if (s.pulse === "Yes") {
         const label =
           s.alert === "Yes"
