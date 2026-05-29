@@ -366,6 +366,12 @@ export function CRHomeScreen({
 
       {/* Collapsible Fixed-Bottom Medical Disclaimer */}
       <div
+        onClick={(e) => {
+          if ((e.target as HTMLElement).tagName === "A") return;
+          const nextVal = !isDisclaimerCollapsed;
+          localStorage.setItem("cr_disclaimer_collapsed", String(nextVal));
+          setIsDisclaimerCollapsed(nextVal);
+        }}
         style={{
           background: "var(--amber-soft)",
           borderTop: "1px solid color-mix(in srgb, var(--amber) 30%, transparent)",
@@ -377,6 +383,7 @@ export function CRHomeScreen({
           flexShrink: 0,
           position: "relative",
           transition: "padding 200ms ease",
+          cursor: "pointer",
         }}
       >
         <div
@@ -398,16 +405,8 @@ export function CRHomeScreen({
           >
             Medical Disclaimer
           </div>
-          <button
-            onClick={() => {
-              const nextVal = !isDisclaimerCollapsed;
-              localStorage.setItem("cr_disclaimer_collapsed", String(nextVal));
-              setIsDisclaimerCollapsed(nextVal);
-            }}
+          <div
             style={{
-              background: "none",
-              border: "none",
-              cursor: "pointer",
               padding: 4,
               color: "var(--ink-2)",
               display: "inline-flex",
@@ -417,7 +416,7 @@ export function CRHomeScreen({
             aria-label={isDisclaimerCollapsed ? "Expand disclaimer" : "Collapse disclaimer"}
           >
             <CRIcon name={isDisclaimerCollapsed ? "plus" : "minus"} size={16} color="var(--ink-2)" />
-          </button>
+          </div>
         </div>
 
         {!isDisclaimerCollapsed && (
