@@ -659,7 +659,7 @@ export function crNextTasks(s: Patient, now: number = Date.now()): NextTask[] {
   }
 
   // ===== Altered alertness pathway =====
-  if (s.alert === "Altered" && s.pulse !== "No") {
+  if (s.alert === "Altered") {
     if (s.glucose === "?")
       push({ id: "glucose", label: "Check Glucose", need: "glucose" });
     if (s.glucose === "Low") {
