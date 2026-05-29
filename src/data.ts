@@ -701,7 +701,7 @@ export function crNextTasks(s: Patient, now: number = Date.now()): NextTask[] {
     (t) => t.recurring || !s.doneTasks[t.id],
   );
 
-  // Shock and Start CPR always at top
+  // Critical actions sorted by clinical priority
   const topIds: TaskId[] = [
     "start-cpr",
     "get-aed",
@@ -709,6 +709,8 @@ export function crNextTasks(s: Patient, now: number = Date.now()): NextTask[] {
     "cardiovert",
     "pause-to-shock",
     "resume-cpr",
+    "rescue-breaths",
+    "opioid-reversal",
   ];
   const topTasks = filtered.filter((t) => topIds.includes(t.id));
   const otherTasks = filtered.filter((t) => !topIds.includes(t.id));
