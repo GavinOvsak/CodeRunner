@@ -117,8 +117,10 @@ interface CRCprPillProps {
   cpr: CPRState;
   elapsed: number;
   onPause: () => void;
-  onSync: () => void;
   guidance: string;
+  rescuers: RescuersValue;
+  patientType: "adult" | "pediatric";
+  onRescuers: (v: RescuersValue) => void;
 }
 
 interface CRNextListProps {
@@ -491,9 +493,6 @@ export function CRPatientScreen({
       log({ type: "cpr", event: "pause", cycleNumber: c.cycleNumber, elapsed });
     }
   }
-  function syncMetronome() {
-    log({ type: "cpr", event: "sync", anchor: Date.now() });
-  }
 
   // CPR compression:breath guidance based on rescuers, ETT, and patient type
   function getCprGuidance(): string {
@@ -530,8 +529,10 @@ export function CRPatientScreen({
             cpr={cpr}
             elapsed={cycleElapsed}
             onPause={toggleCprPause}
-            onSync={syncMetronome}
             guidance={getCprGuidance()}
+            rescuers={s.rescuers}
+            patientType={s.type}
+            onRescuers={(v) => setRescuers(v)}
           />
         </div>
       )}
@@ -967,19 +968,34 @@ export function CRPatientHeader({
 
 // ─────────────────────────────────────────────────────────────
 // CRCprPill
+//
+// Collapsed: status pill showing the CPR timer, cycle badge, and
+// pause/resume button. Tapping anywhere except the pause button
+// opens a full-screen animated overlay with CPR guidance.
+//
+// Expanded overlay:
+//   - Header row mirrors the collapsed pill
+//   - Rescuers button group updates patient state via onRescuers
+//   - Pediatric patients get an Infant / Child sub-toggle
+//   - Guidance section per rescuer count (ratio, technique, depth)
+//   - Compression rate tapper (BPM between last two taps)
+//   - Auto-collapses + plays a beep when elapsed ≥ 2:00
 // ─────────────────────────────────────────────────────────────
 export function CRCprPill({
   cpr,
   elapsed,
   onPause,
-  onSync,
-  guidance,
+  guidance: _guidance,
+  rescuers,
+  patientType,
+  onRescuers,
 }: CRCprPillProps) {
   const paused = !!cpr.pausedAt;
   const past = !paused && elapsed >= 120000;
   const near = !paused && !past && elapsed >= 105000;
   const cls = past ? "cr-past-2min" : near ? "cr-near-2min" : "";
 
+  // ── resize observer for pause/resume label ────────────────
   const pillRef = useRef<HTMLDivElement>(null);
   const [showLabel, setShowLabel] = useState(true);
   useEffect(() => {
@@ -993,10 +1009,82 @@ export function CRCprPill({
     return () => ro.disconnect();
   }, []);
 
-  const period = 500;
-  const since = Date.now() - cpr.metronomeAnchor;
-  const beatIndex = Math.floor(since / period);
+  // ── overlay open/close with CSS transition animation ──────
+  const [overlayMounted, setOverlayMounted] = useState(false);
+  const [overlayVisible, setOverlayVisible] = useState(false);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Captured pill position so the overlay snaps to exactly where the pill is
+  const pillTopRef = useRef<number>(0);
 
+  /** Opens the expanded guidance overlay, anchored to the pill's screen position. */
+  function openOverlay() {
+    if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+    if (pillRef.current) {
+      pillTopRef.current = pillRef.current.getBoundingClientRect().top;
+    }
+    setOverlayMounted(true);
+    // Double rAF ensures the CSS transition fires after the element mounts
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => setOverlayVisible(true))
+    );
+  }
+
+  /** Closes the overlay after the CSS transition completes. */
+  function closeOverlay() {
+    setOverlayVisible(false);
+    closeTimerRef.current = setTimeout(() => setOverlayMounted(false), 300);
+  }
+
+  // ── pediatric sub-toggle ──────────────────────────────────
+  const [pedAge, setPedAge] = useState<"infant" | "child">("child");
+
+  // ── compression rate tapper ───────────────────────────────
+  const [lastTap, setLastTap] = useState<number | null>(null);
+  const [comprRate, setComprRate] = useState<number | null>(null);
+
+  /** Records a tap; computes BPM between last two taps. Resets if >10 s idle. */
+  function handleComprTap() {
+    const now = Date.now();
+    if (lastTap !== null && now - lastTap < 10000) {
+      setComprRate(Math.round((60000 / (now - lastTap)) * 10) / 10);
+    } else {
+      setComprRate(null);
+    }
+    setLastTap(now);
+  }
+
+  // ── auto-collapse + 2-minute beep ────────────────────────
+  const hasFiredRef = useRef(false);
+  useEffect(() => {
+    if (past && !hasFiredRef.current) {
+      hasFiredRef.current = true;
+      closeOverlay();
+      try {
+        const Ctx = window.AudioContext ?? (window as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+        if (Ctx) {
+          const ctx = new Ctx();
+          // Two-tone alert: high then low
+          ([880, 660] as const).forEach((freq, i) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.type = "sine";
+            osc.frequency.value = freq;
+            const t = ctx.currentTime + i * 0.35;
+            gain.gain.setValueAtTime(0.5, t);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+            osc.start(t);
+            osc.stop(t + 0.3);
+          });
+          setTimeout(() => ctx.close(), 1000);
+        }
+      } catch { /* AudioContext unavailable in this environment */ }
+    }
+    if (!past) hasFiredRef.current = false;
+  }, [past]);
+
+  // ── computed colors ───────────────────────────────────────
   const bg = paused
     ? "var(--surface-2)"
     : past
@@ -1011,140 +1099,474 @@ export function CRCprPill({
       : near
         ? "var(--amber)"
         : "color-mix(in srgb, var(--red) 25%, transparent)";
-  const ink = past ? "white" : "var(--ink)";
+  // past bg is light pink (~18% red) so use red ink for contrast, not white
+  const ink = past ? "var(--red)" : "var(--ink)";
   const badgeBg = paused
     ? "var(--ink-3)"
     : past
-      ? "rgba(255,255,255,0.18)"
+      ? "var(--red)"
       : "color-mix(in srgb, var(--red) 80%, white)";
   const badgeLabel = paused
     ? `PAUSED · #${cpr.cycleNumber}`
     : `CPR #${cpr.cycleNumber}`;
 
-  return (
-    <div
-      ref={pillRef}
-      className={cls}
+  // ── metronome ─────────────────────────────────────────────
+  const period = 500;
+  const since = Date.now() - cpr.metronomeAnchor;
+  const beatIndex = Math.floor(since / period);
+
+  // ── guidance helpers ──────────────────────────────────────
+  const isPeds = patientType === "pediatric";
+  const isInfant = isPeds && pedAge === "infant";
+
+  function depthLabel(): string {
+    return isInfant ? "~1.5 in (4 cm)" : "~2 in (5 cm)";
+  }
+
+  function ratioLabel(): string {
+    if (rescuers === "Team") return "Continuous";
+    if (isPeds && rescuers === "Two") return "15 : 2";
+    return "30 : 2";
+  }
+
+  function techniqueLabel(): string {
+    if (rescuers === "Team") {
+      return isPeds
+        ? "Continuous compressions · 1 breath every 2–3 s"
+        : "Continuous compressions · 1 breath every 6 s";
+    }
+    if (isInfant) {
+      return rescuers === "Two"
+        ? "Two-thumb encircling — fingers wrap around back"
+        : "Two fingers · center of chest, just below nipple line";
+    }
+    if (isPeds) return "One or two hands · lower half of sternum";
+    return "Heel of dominant hand · center of chest · other hand on top";
+  }
+
+  function breathLabel(): string {
+    if (rescuers === "Team") return "Continuous — see above";
+    if (isPeds && rescuers === "Two") return "15 compressions → 2 breaths · switch every 2 min";
+    return "30 compressions → 2 breaths";
+  }
+
+  const rateColor =
+    comprRate === null
+      ? "var(--ink-3)"
+      : comprRate >= 100 && comprRate <= 120
+        ? "var(--green)"
+        : "var(--red)";
+
+  // ── shared pill / header bar JSX ──────────────────────────
+  const pauseBtn = (
+    <button
+      onClick={(e) => { e.stopPropagation(); onPause(); }}
+      aria-label={paused ? "resume" : "pause"}
       style={{
+        ...crCprBtn(past),
+        width: "auto",
+        minWidth: 34,
+        padding: "0 10px",
+        fontSize: 12,
+        fontWeight: 700,
+        gap: 5,
         display: "flex",
-        alignItems: "center",
-        gap: 10,
-        padding: "8px 10px 8px 12px",
-        borderRadius: 14,
-        background: bg,
-        border: `1px solid ${border}`,
-        color: ink,
+        flexDirection: "row",
+        overflow: "hidden",
+        flexShrink: 0,
       }}
     >
+      <CRIcon name={paused ? "play" : "pause"} size={14} color={past ? "var(--red)" : "var(--ink)"} />
+      {showLabel && <span style={{ whiteSpace: "nowrap" }}>{paused ? "Resume" : "Pause"}</span>}
+    </button>
+  );
+
+  const metronomeDot = !paused ? (
+    <span
+      key={beatIndex}
+      style={{
+        flexShrink: 0,
+        display: "inline-block",
+        width: 12,
+        height: 12,
+        borderRadius: "50%",
+        background: "var(--red)",
+        animation: "crMetronome 500ms linear",
+      }}
+    />
+  ) : null;
+
+  const badgeEl = (
+    <div style={{
+      fontSize: 11, fontWeight: 800, letterSpacing: "0.08em",
+      padding: "3px 7px", borderRadius: 6,
+      background: badgeBg, color: "white",
+      whiteSpace: "nowrap", flexShrink: 0,
+    }}>
+      {badgeLabel}
+    </div>
+  );
+
+  return (
+    <>
+      {/* ── Collapsed pill ── */}
       <div
+        ref={pillRef}
+        className={cls}
         style={{
-          fontSize: 11,
-          fontWeight: 800,
-          letterSpacing: "0.08em",
-          padding: "3px 7px",
-          borderRadius: 6,
-          background: badgeBg,
-          color: "white",
-          whiteSpace: "nowrap",
-        }}
-      >
-        {badgeLabel}
-      </div>
-      <div
-        className="mono"
-        style={{
-          fontSize: 22,
-          fontWeight: 700,
-          letterSpacing: "-0.02em",
-          whiteSpace: "nowrap",
-          flexShrink: 0,
-        }}
-      >
-        {crFmt(elapsed)}
-      </div>
-      {/* Secondary info — shrinks when narrow; guidance truncates first, then /2:00 */}
-      <div
-        style={{
-          flex: 1,
-          minWidth: 0,
-          overflow: "hidden",
           display: "flex",
           alignItems: "center",
-          gap: 6,
+          gap: 10,
+          padding: "8px 10px 8px 10px",
+          borderRadius: 14,
+          background: bg,
+          border: `1px solid ${border}`,
+          color: ink,
+          cursor: "pointer",
         }}
+        onClick={openOverlay}
       >
-        <span
-          style={{
-            fontSize: 14,
-            fontWeight: 500,
-            color: "var(--ink-3)",
+        {/* Chevron toggle */}
+        <CRIcon name="chevron-right" size={15} color={ink} />
+
+        {badgeEl}
+
+        {/* Timer */}
+        <div className="mono" style={{
+          fontSize: 22, fontWeight: 700,
+          letterSpacing: "-0.02em", whiteSpace: "nowrap", flexShrink: 0,
+        }}>
+          {crFmt(elapsed)}
+        </div>
+
+        {/* / 2:00 + "Tap to expand" hint */}
+        <div style={{
+          flex: 1, minWidth: 0, overflow: "hidden",
+          display: "flex", alignItems: "center", gap: 6,
+        }}>
+          <span style={{
+            fontSize: 14, fontWeight: 500,
+            color: past ? "rgba(255,255,255,0.7)" : "var(--ink-3)",
             opacity: past ? 0.7 : 1,
-            whiteSpace: "nowrap",
-            flexShrink: 0,
+            whiteSpace: "nowrap", flexShrink: 0,
+          }}>
+            / 2:00
+          </span>
+          <span style={{
+            fontSize: 11, fontWeight: 600,
+            color: past ? "rgba(255,255,255,0.7)" : "var(--ink-3)",
+            letterSpacing: "0.02em",
+            whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+          }}>
+            Tap to expand
+          </span>
+        </div>
+
+        {metronomeDot}
+        {pauseBtn}
+      </div>
+
+      {/* ── Expanded overlay ── */}
+      {overlayMounted && (
+        <div
+          style={{
+            position: "fixed",
+            top: pillTopRef.current,
+            left: 12,
+            right: 12,
+            bottom: 0,
+            zIndex: 100,
+            background: "var(--bg)",
+            border: `1px solid ${border}`,
+            borderRadius: 14,
+            color: "var(--ink)",
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+            opacity: overlayVisible ? 1 : 0,
+            transform: overlayVisible
+              ? "translateY(0) scale(1)"
+              : "translateY(12px) scale(0.98)",
+            transition: "opacity 260ms cubic-bezier(0.4,0,0.2,1), transform 260ms cubic-bezier(0.4,0,0.2,1)",
+            paddingBottom: "env(safe-area-inset-bottom, 0px)",
           }}
         >
-          / 2:00
-        </span>
-        {guidance && (
-          <span
+          {/* ── Header — flashes red when past 2 min ── */}
+          <div
+            className={cls}
             style={{
-              fontSize: 11,
-              fontWeight: 600,
-              color: past ? "rgba(255,255,255,0.7)" : "var(--ink-3)",
-              letterSpacing: "0.02em",
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-            }}
-          >
-            {guidance}
-          </span>
-        )}
-      </div>
-      {!paused && (
-        <button
-          onClick={onSync}
-          aria-label="sync metronome"
-          style={crCprBtn(past)}
-          title="Tap to sync to compressions"
-        >
-          <span
-            key={beatIndex}
-            style={{
-              display: "inline-block",
-              width: 14,
-              height: 14,
-              borderRadius: "50%",
-              background: past ? "white" : "var(--red)",
-              animation: "crMetronome 500ms linear",
-            }}
-          />
-        </button>
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            padding: "10px 10px 10px 12px",
+            borderBottom: `1px solid ${border}`,
+            background: bg,
+            color: ink,
+            flexShrink: 0,
+          }}>
+            {/* Collapse chevron */}
+            <button
+              onClick={closeOverlay}
+              aria-label="collapse"
+              style={{
+                ...crCprBtn(past),
+                width: 32,
+                height: 32,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              <CRIcon name="chevron-down" size={16} color={past ? "var(--red)" : "var(--ink)"} />
+            </button>
+
+            {badgeEl}
+
+            {/* Timer (larger in overlay) */}
+            <div className="mono" style={{
+              fontSize: 30, fontWeight: 700,
+              letterSpacing: "-0.02em", whiteSpace: "nowrap", flexShrink: 0,
+            }}>
+              {crFmt(elapsed)}
+            </div>
+
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <span style={{
+                fontSize: 14, fontWeight: 500,
+                color: "var(--ink-3)",
+                opacity: 0.8,
+              }}>
+                / 2:00
+              </span>
+            </div>
+
+            {metronomeDot}
+            {pauseBtn}
+          </div>
+
+          {/* ── Scrollable body ── */}
+          <div style={{ flex: 1, overflowY: "auto" }}>
+
+            {/* Rescuers + peds age selectors */}
+            <div style={{
+              padding: "12px 14px",
+              borderBottom: `1px solid var(--line)`,
+              background: "var(--surface-2)",
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
+            }}>
+              <p style={{
+                margin: 0, fontSize: 11, fontWeight: 700,
+                letterSpacing: "0.08em", textTransform: "uppercase",
+                color: "var(--ink-3)",
+              }}>
+                Rescuers
+              </p>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {(["One", "Two", "Team"] as RescuersValue[]).map((v) => {
+                  const labels: Record<string, string> = { One: "1 Rescuer", Two: "2 Rescuers", Team: "Code Team" };
+                  const active = rescuers === v;
+                  return (
+                    <button
+                      key={v}
+                      onClick={() => onRescuers(v)}
+                      style={{
+                        padding: "7px 16px",
+                        borderRadius: 22,
+                        border: `1.5px solid ${active ? "var(--red)" : "var(--line-strong)"}`,
+                        background: active ? "color-mix(in srgb, var(--red) 10%, white)" : "var(--surface)",
+                        color: active ? "var(--red)" : "var(--ink-2)",
+                        fontSize: 13,
+                        fontWeight: active ? 700 : 500,
+                        cursor: "pointer",
+                        transition: "all 160ms ease",
+                      }}
+                    >
+                      {labels[v]}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Pediatric infant / child sub-toggle */}
+              {isPeds && (
+                <>
+                  <p style={{
+                    margin: "4px 0 0", fontSize: 11, fontWeight: 700,
+                    letterSpacing: "0.08em", textTransform: "uppercase",
+                    color: "var(--ink-3)",
+                  }}>
+                    Age Group
+                  </p>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    {(["child", "infant"] as const).map((age) => {
+                      const active = pedAge === age;
+                      return (
+                        <button
+                          key={age}
+                          onClick={() => setPedAge(age)}
+                          style={{
+                            padding: "7px 16px",
+                            borderRadius: 22,
+                            border: `1.5px solid ${active ? "var(--accent)" : "rgba(0,0,0,0.15)"}`,
+                            background: active ? "var(--accent-soft)" : "rgba(255,255,255,0.55)",
+                            color: active ? "var(--accent)" : "var(--ink-2)",
+                            fontSize: 13,
+                            fontWeight: active ? 700 : 500,
+                            cursor: "pointer",
+                            transition: "all 160ms ease",
+                            textTransform: "capitalize",
+                          }}
+                        >
+                          {age}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Guidance content */}
+            <div style={{
+              padding: "16px 14px",
+              display: "flex",
+              flexDirection: "column",
+              gap: 20,
+              background: "rgba(255,255,255,0.55)",
+              margin: 12,
+              borderRadius: 14,
+              border: "1px solid rgba(0,0,0,0.06)",
+            }}>
+
+              {/* Good compressions checklist */}
+              <div>
+                <p style={{
+                  margin: "0 0 10px",
+                  fontSize: 11, fontWeight: 700,
+                  letterSpacing: "0.08em", textTransform: "uppercase",
+                  color: "var(--ink-3)",
+                }}>
+                  Good Compressions
+                </p>
+                {[
+                  "Rate: 100–120 / min",
+                  `Depth: ${depthLabel()}`,
+                  "Full chest recoil between compressions",
+                  "Minimize interruptions ( <10 s )",
+                  "Firm surface under patient",
+                ].map((item) => (
+                  <div key={item} style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: 7 }}>
+                    <span style={{ color: "var(--green)", fontWeight: 800, fontSize: 13, flexShrink: 0, marginTop: 1 }}>✓</span>
+                    <span style={{ fontSize: 14, color: "var(--ink-2)", lineHeight: 1.45 }}>{item}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Per-rescuer protocol */}
+              <div>
+                <p style={{
+                  margin: "0 0 10px",
+                  fontSize: 11, fontWeight: 700,
+                  letterSpacing: "0.08em", textTransform: "uppercase",
+                  color: "var(--ink-3)",
+                }}>
+                  {rescuers === "?"
+                    ? "Select Rescuers Above"
+                    : rescuers === "Team"
+                      ? "Code Team Protocol"
+                      : `${rescuers}-Rescuer Protocol${isInfant ? " · Infant" : isPeds ? " · Child" : ""}`}
+                </p>
+                {rescuers !== "?" && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {[
+                      { label: "Ratio", value: ratioLabel() },
+                      { label: "Technique", value: techniqueLabel() },
+                      { label: "Breaths", value: breathLabel() },
+                    ].map(({ label, value }) => (
+                      <div key={label} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                        <span style={{
+                          width: 72, fontSize: 11, fontWeight: 700,
+                          color: "var(--ink-3)", flexShrink: 0,
+                          textTransform: "uppercase", letterSpacing: "0.05em",
+                          paddingTop: 2,
+                        }}>
+                          {label}
+                        </span>
+                        <span style={{ fontSize: 14, color: "var(--ink)", lineHeight: 1.45, fontWeight: label === "Ratio" ? 700 : 400 }}>
+                          {value}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Compression rate tapper */}
+              <div>
+                <p style={{
+                  margin: "0 0 10px",
+                  fontSize: 11, fontWeight: 700,
+                  letterSpacing: "0.08em", textTransform: "uppercase",
+                  color: "var(--ink-3)",
+                }}>
+                  Compression Rate
+                </p>
+                <button
+                  onClick={handleComprTap}
+                  style={{
+                    width: "100%",
+                    padding: "18px 16px",
+                    borderRadius: 12,
+                    border: `1.5px solid ${comprRate !== null ? rateColor : "var(--line-strong)"}`,
+                    background: comprRate !== null
+                      ? `color-mix(in srgb, ${rateColor} 8%, white)`
+                      : "white",
+                    cursor: "pointer",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: 5,
+                    transition: "all 120ms ease",
+                  }}
+                >
+                  {comprRate !== null ? (
+                    <>
+                      <span style={{
+                        fontSize: 40, fontWeight: 800,
+                        color: rateColor, letterSpacing: "-0.03em",
+                        fontFamily: "monospace",
+                        lineHeight: 1,
+                      }}>
+                        {comprRate.toFixed(1)}
+                      </span>
+                      <span style={{ fontSize: 12, color: "var(--ink-3)", fontWeight: 600 }}>
+                        / min ·{" "}
+                        {comprRate >= 100 && comprRate <= 120
+                          ? "✓ Good rate"
+                          : comprRate < 100
+                            ? "↑ Too slow"
+                            : "↓ Too fast"}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span style={{ fontSize: 24 }}>👆</span>
+                      <span style={{ fontSize: 14, fontWeight: 600, color: "var(--ink-2)" }}>
+                        {lastTap !== null ? "Tap again to count" : "Tap to Count Rate"}
+                      </span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+            </div>
+          </div>
+        </div>
       )}
-      <button
-        onClick={onPause}
-        aria-label={paused ? "resume" : "pause"}
-        style={{
-          ...crCprBtn(past),
-          width: "auto",
-          minWidth: 34,
-          padding: "0 10px",
-          fontSize: 12,
-          fontWeight: 700,
-          gap: 5,
-          display: "flex",
-          flexDirection: "row",
-          overflow: "hidden",
-        }}
-      >
-        <CRIcon
-          name={paused ? "play" : "pause"}
-          size={14}
-          color={past ? "white" : "var(--ink)"}
-        />
-        {showLabel && <span style={{ whiteSpace: "nowrap" }}>{paused ? "Resume" : "Pause"}</span>}
-      </button>
-    </div>
+    </>
   );
 }
 
