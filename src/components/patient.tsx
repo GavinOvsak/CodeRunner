@@ -472,6 +472,7 @@ export function CRPatientScreen({
       if (key === "pace" && (isCurrentlyActive || s.rate !== "Fast")) {
         setTimeout(() => {
           log({ type: "status", field: "rate", value: "?" });
+          if (isCurrentlyActive) log({ type: "status", field: "rhythm", value: "?" });
         }, 0);
       }
     } else {
