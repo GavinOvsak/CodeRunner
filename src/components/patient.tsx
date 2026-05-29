@@ -686,7 +686,7 @@ export function CRPatientScreen({
                   Pulse:Yes always wins (rate-gated); arrest set only when pulse is No/unknown. */}
             {s.pulse !== "Yes" &&
             (s.pulse === "No" || cpr.active) &&
-            (s.doneTasks["get-aed"] === true || s.rescuers === "Team") ? (
+            (s.doneTasks["get-aed"] === true || cpr.active) ? (
               <CRStatusRow
                 label="Rhythm"
                 uncertain={s.rhythm === "?"}
