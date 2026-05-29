@@ -2047,7 +2047,7 @@ export function CRGaveList({
                     color: "var(--ink-2)",
                   }}
                 >
-                  {count}
+                  x {count}
                 </span>
               )}
               {/* Info button — shown for meds with clinical detail */}
