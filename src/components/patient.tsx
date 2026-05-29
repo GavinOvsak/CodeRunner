@@ -670,7 +670,7 @@ export function CRPatientScreen({
               )}
             {/* Rhythm row — exactly one variant renders at a time.
                   Pulse:Yes always wins (rate-gated); arrest set only when pulse is No/unknown. */}
-            {s.pulse !== "Yes" && (s.pulse === "No" || cpr.active) ? (
+            {s.pulse !== "Yes" && (s.pulse === "No" || cpr.active) && (s.doneTasks["get-aed"] === true || s.rescuers === "Team") ? (
               <CRStatusRow
                 label="Rhythm"
                 uncertain={s.rhythm === "?"}
@@ -775,8 +775,8 @@ export function CRPatientScreen({
                 </div>
               </CRStatusRow>
             )}
-            {/* Glucose + Stroke Sx — shown when alert is Altered */}
-            {s.alert === "Altered" && (
+            {/* Glucose + Stroke Sx — shown when alert is Altered and patient has a pulse */}
+            {s.alert === "Altered" && s.pulse !== "No" && (
               <>
                 <CRStatusRow
                   label="Glucose"
