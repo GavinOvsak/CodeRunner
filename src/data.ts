@@ -309,6 +309,7 @@ export const TASK_LABELS: Record<TaskId, string> = {
   "check-symptomatic": "Assess Symptoms",
   "check-weight": "Enter Patient Weight",
   "check-rescuers": "Confirm Rescuers",
+  "wean-pacing": "Wean Transcutaneous Pacing",
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -594,8 +595,13 @@ export function crNextTasks(s: Patient, now: number = Date.now()): NextTask[] {
         id: "rescue-breaths",
         label: "Give Rescue Breaths",
         recurring: true,
+        popup: "rescueBreaths",
       });
   }
+
+  // ===== Wean pacing if rate has recovered to fast =====
+  if (s.rate === "Fast" && given("pace") % 2 === 1)
+    push({ id: "wean-pacing", label: "Wean Transcutaneous Pacing", recurring: true });
 
   // ===== Tachycardia with a pulse =====
   if (s.pulse === "Yes" && s.rate === "Fast" && s.symptomatic === "Yes") {

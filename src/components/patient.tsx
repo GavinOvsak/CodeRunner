@@ -380,6 +380,10 @@ export function CRPatientScreen({
       log({ type: "task", taskId: "rescue-breaths" });
       return; // recurring
     }
+    if (t.id === "wean-pacing") {
+      log({ type: "task", taskId: "wean-pacing" });
+      return; // recurring — stays until pacing is stopped
+    }
     if (t.id === "opioid-reversal") {
       log({ type: "task", taskId: "opioid-reversal" });
       hideTask(t.id);
@@ -2457,7 +2461,7 @@ export function CRPopupModal({
   onTrigger,
   triggerLabel,
 }: {
-  type: "shock" | "ht" | "strokeSx" | "strokeScale" | "rhythm" | "symptomatic";
+  type: "shock" | "ht" | "strokeSx" | "strokeScale" | "rhythm" | "symptomatic" | "rescueBreaths";
   patient: Patient;
   onClose: () => void;
   onTrigger?: () => void;
@@ -2706,6 +2710,52 @@ export function CRPopupModal({
             <span style={{ marginLeft: 6 }}>{desc}</span>
           </div>
         ))}
+      </CRModalShell>
+    );
+  }
+
+  if (type === "rescueBreaths") {
+    return (
+      <CRModalShell title="Rescue Breath Technique" onClose={onClose}>
+        <p style={{ marginTop: 0, fontWeight: 600 }}>
+          {isPeds ? "Pediatric" : "Adult"} Rate
+        </p>
+        <p style={{ margin: "0 0 10px" }}>
+          {isPeds
+            ? "1 breath every 3–5 seconds (12–20 breaths/min)"
+            : "1 breath every 5–6 seconds (10–12 breaths/min)"}
+        </p>
+        <p style={{ fontWeight: 600, marginBottom: 4 }}>Technique</p>
+        <ul style={{ margin: "0 0 10px", paddingLeft: 18 }}>
+          <li>
+            Open airway — <strong>head-tilt chin-lift</strong> (jaw thrust if
+            trauma suspected)
+          </li>
+          <li>
+            Create a seal over{" "}
+            {isPeds ? "mouth and nose" : "mouth (pinch nose)"}
+          </li>
+          <li>
+            Deliver over <strong>1 second</strong> — enough to see{" "}
+            <strong>visible chest rise</strong>
+          </li>
+          <li>Allow full passive exhalation before next breath</li>
+          {isPeds && (
+            <li>
+              Use gentle puffs for infants — do not over-inflate
+            </li>
+          )}
+        </ul>
+        <p style={{ fontWeight: 600, marginBottom: 4 }}>
+          With Advanced Airway (ETT / SGA)
+        </p>
+        <ul style={{ margin: "0 0 10px", paddingLeft: 18 }}>
+          <li>1 breath every 6 seconds (10 breaths/min)</li>
+          <li>Do not pause compressions (if ongoing CPR)</li>
+        </ul>
+        <p style={{ margin: 0, fontSize: 12, color: "var(--ink-3)" }}>
+          Reassess pulse every 2 minutes. If pulse is lost, begin CPR.
+        </p>
       </CRModalShell>
     );
   }
