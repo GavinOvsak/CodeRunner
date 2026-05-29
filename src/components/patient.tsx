@@ -1035,14 +1035,16 @@ export function CRPatientHeader({
           </div>
         </div>
         <div style={{ display: "flex", gap: 2 }}>
-          <button
-            onClick={onStopCode}
-            className="cr-btn-stop"
-            style={{ ...crIconBtn(), color: "var(--red)" }}
-            aria-label="Stop Resuscitation"
-          >
-            <CRIcon name="stop-sign" size={20} color="var(--red)" />
-          </button>
+          {!isCodeEnded && (
+            <button
+              onClick={onStopCode}
+              className="cr-btn-stop"
+              style={{ ...crIconBtn(), color: "var(--red)" }}
+              aria-label="Stop Resuscitation"
+            >
+              <CRIcon name="stop-sign" size={20} color="var(--red)" />
+            </button>
+          )}
           <button onClick={onOpenLog} style={crIconBtn()}>
             <CRIcon name="list" size={20} />
           </button>
