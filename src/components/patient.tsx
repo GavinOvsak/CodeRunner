@@ -251,7 +251,10 @@ export function CRPatientScreen({
   const isRecent = Date.now() - lastLogAt < 5 * 60 * 1000;
   // taskNow only changes every 10 s (via taskTick) or when patient state changes
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const taskNow = useMemo(() => (isRecent || cpr.active ? Date.now() : lastLogAt), [s, taskTick]);
+  const taskNow = useMemo(
+    () => (isRecent || cpr.active ? Date.now() : lastLogAt),
+    [s, taskTick],
+  );
 
   const tasks = crNextTasks(s, taskNow);
   const recKeys = crRecommendedMedKeys(tasks);
@@ -286,7 +289,11 @@ export function CRPatientScreen({
       if (s.alert !== "No" && s.alert !== "Sedated")
         log({ type: "status", field: "alert", value: "No" });
       if (s.breathing !== "ETT")
-        log({ type: "status", field: "breathing", value: "No" as BreathingValue });
+        log({
+          type: "status",
+          field: "breathing",
+          value: "No" as BreathingValue,
+        });
     }
   }
   function setRate(v: string) {
@@ -478,7 +485,8 @@ export function CRPatientScreen({
       if (key === "pace" && (isCurrentlyActive || s.rate !== "Fast")) {
         setTimeout(() => {
           log({ type: "status", field: "rate", value: "?" });
-          if (isCurrentlyActive) log({ type: "status", field: "rhythm", value: "?" });
+          if (isCurrentlyActive)
+            log({ type: "status", field: "rhythm", value: "?" });
         }, 0);
       }
     } else {
@@ -676,7 +684,9 @@ export function CRPatientScreen({
               )}
             {/* Rhythm row — exactly one variant renders at a time.
                   Pulse:Yes always wins (rate-gated); arrest set only when pulse is No/unknown. */}
-            {s.pulse !== "Yes" && (s.pulse === "No" || cpr.active) && (s.doneTasks["get-aed"] === true || s.rescuers === "Team") ? (
+            {s.pulse !== "Yes" &&
+            (s.pulse === "No" || cpr.active) &&
+            (s.doneTasks["get-aed"] === true || s.rescuers === "Team") ? (
               <CRStatusRow
                 label="Rhythm"
                 uncertain={s.rhythm === "?"}
@@ -1016,11 +1026,12 @@ export function CRCprPill({
     return () => clearInterval(id);
   }, [paused]);
 
-  const elapsed = cpr.active && !cpr.pausedAt
-    ? Date.now() - cpr.cycleStartAt
-    : cpr.pausedAt
-      ? cpr.pausedAt - cpr.cycleStartAt
-      : 0;
+  const elapsed =
+    cpr.active && !cpr.pausedAt
+      ? Date.now() - cpr.cycleStartAt
+      : cpr.pausedAt
+        ? cpr.pausedAt - cpr.cycleStartAt
+        : 0;
   const past = !paused && elapsed >= 120000;
   const near = !paused && !past && elapsed >= 105000;
   const cls = near ? "cr-near-2min" : "";
@@ -1055,7 +1066,7 @@ export function CRCprPill({
     setOverlayMounted(true);
     // Double rAF ensures the CSS transition fires after the element mounts
     requestAnimationFrame(() =>
-      requestAnimationFrame(() => setOverlayVisible(true))
+      requestAnimationFrame(() => setOverlayVisible(true)),
     );
   }
 
@@ -1091,7 +1102,10 @@ export function CRCprPill({
       hasFiredRef.current = true;
       closeOverlay();
       try {
-        const Ctx = window.AudioContext ?? (window as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+        const Ctx =
+          window.AudioContext ??
+          (window as { webkitAudioContext?: typeof AudioContext })
+            .webkitAudioContext;
         if (Ctx) {
           const ctx = new Ctx();
           // Two-tone alert: high then low
@@ -1110,7 +1124,9 @@ export function CRCprPill({
           });
           setTimeout(() => ctx.close(), 1000);
         }
-      } catch { /* AudioContext unavailable in this environment */ }
+      } catch {
+        /* AudioContext unavailable in this environment */
+      }
     }
     if (!past) hasFiredRef.current = false;
   }, [past]);
@@ -1176,7 +1192,8 @@ export function CRCprPill({
 
   function breathLabel(): string {
     if (rescuers === "Team") return "Continuous — see above";
-    if (isPeds && rescuers === "Two") return "15 compressions → 2 breaths · switch every 2 min";
+    if (isPeds && rescuers === "Two")
+      return "15 compressions → 2 breaths · switch every 2 min";
     return "30 compressions → 2 breaths";
   }
 
@@ -1190,7 +1207,11 @@ export function CRCprPill({
   // ── shared pill / header bar JSX ──────────────────────────
   const pauseBtn = (
     <button
-      onClick={(e) => { e.stopPropagation(); onPause(); if (!paused) closeOverlay(); }}
+      onClick={(e) => {
+        e.stopPropagation();
+        onPause();
+        if (!paused) closeOverlay();
+      }}
       aria-label={paused ? "resume" : "pause"}
       style={{
         ...crCprBtn(past),
@@ -1206,8 +1227,16 @@ export function CRCprPill({
         flexShrink: 0,
       }}
     >
-      <CRIcon name={paused ? "play" : "pause"} size={14} color={past ? "white" : "var(--ink)"} />
-      {showLabel && <span style={{ whiteSpace: "nowrap" }}>{paused ? "Resume" : "Pause"}</span>}
+      <CRIcon
+        name={paused ? "play" : "pause"}
+        size={14}
+        color={past ? "white" : "var(--ink)"}
+      />
+      {showLabel && (
+        <span style={{ whiteSpace: "nowrap" }}>
+          {paused ? "Resume" : "Pause"}
+        </span>
+      )}
     </button>
   );
 
@@ -1227,12 +1256,19 @@ export function CRCprPill({
   ) : null;
 
   const badgeEl = (
-    <div style={{
-      fontSize: 11, fontWeight: 800, letterSpacing: "0.08em",
-      padding: "3px 7px", borderRadius: 6,
-      background: badgeBg, color: past ? "var(--red)" : "white",
-      whiteSpace: "nowrap", flexShrink: 0,
-    }}>
+    <div
+      style={{
+        fontSize: 11,
+        fontWeight: 800,
+        letterSpacing: "0.08em",
+        padding: "3px 7px",
+        borderRadius: 6,
+        background: badgeBg,
+        color: past ? "var(--red)" : "white",
+        whiteSpace: "nowrap",
+        flexShrink: 0,
+      }}
+    >
       {badgeLabel}
     </div>
   );
@@ -1262,32 +1298,53 @@ export function CRCprPill({
         {badgeEl}
 
         {/* Timer */}
-        <div className="mono" style={{
-          fontSize: 22, fontWeight: 700,
-          letterSpacing: "-0.02em", whiteSpace: "nowrap", flexShrink: 0,
-        }}>
+        <div
+          className="mono"
+          style={{
+            fontSize: 22,
+            fontWeight: 700,
+            letterSpacing: "-0.02em",
+            whiteSpace: "nowrap",
+            flexShrink: 0,
+          }}
+        >
           {crFmt(elapsed)}
         </div>
 
         {/* / 2:00 + "Tap to expand" hint */}
-        <div style={{
-          flex: 1, minWidth: 0, overflow: "hidden",
-          display: "flex", alignItems: "center", gap: 6,
-        }}>
-          <span style={{
-            fontSize: 14, fontWeight: 500,
-            color: past ? "rgba(255,255,255,0.7)" : "var(--ink-3)",
-            opacity: past ? 0.7 : 1,
-            whiteSpace: "nowrap", flexShrink: 0,
-          }}>
+        <div
+          style={{
+            flex: 1,
+            minWidth: 0,
+            overflow: "hidden",
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+          }}
+        >
+          <span
+            style={{
+              fontSize: 14,
+              fontWeight: 500,
+              color: past ? "rgba(255,255,255,0.7)" : "var(--ink-3)",
+              opacity: past ? 0.7 : 1,
+              whiteSpace: "nowrap",
+              flexShrink: 0,
+            }}
+          >
             / 2:00
           </span>
-          <span style={{
-            fontSize: 11, fontWeight: 600,
-            color: past ? "rgba(255,255,255,0.7)" : "var(--ink-3)",
-            letterSpacing: "0.02em",
-            whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-          }}>
+          <span
+            style={{
+              fontSize: 11,
+              fontWeight: 600,
+              color: past ? "rgba(255,255,255,0.7)" : "var(--ink-3)",
+              letterSpacing: "0.02em",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
             Tap to expand
           </span>
         </div>
@@ -1317,7 +1374,8 @@ export function CRCprPill({
             transform: overlayVisible
               ? "translateY(0) scale(1)"
               : "translateY(12px) scale(0.98)",
-            transition: "opacity 260ms cubic-bezier(0.4,0,0.2,1), transform 260ms cubic-bezier(0.4,0,0.2,1)",
+            transition:
+              "opacity 260ms cubic-bezier(0.4,0,0.2,1), transform 260ms cubic-bezier(0.4,0,0.2,1)",
             paddingBottom: "env(safe-area-inset-bottom, 0px)",
           }}
         >
@@ -1326,16 +1384,17 @@ export function CRCprPill({
             className={cls}
             onClick={closeOverlay}
             style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            padding: "10px 10px 10px 12px",
-            borderBottom: `1px solid ${border}`,
-            background: bg,
-            color: ink,
-            flexShrink: 0,
-            cursor: "pointer",
-          }}>
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              padding: "10px 10px 10px 12px",
+              borderBottom: `1px solid ${border}`,
+              background: bg,
+              color: ink,
+              flexShrink: 0,
+              cursor: "pointer",
+            }}
+          >
             {/* Collapse chevron — decorative only, whole bar is clickable */}
             <span
               aria-hidden="true"
@@ -1348,25 +1407,38 @@ export function CRCprPill({
                 flexShrink: 0,
               }}
             >
-              <CRIcon name="chevron-down" size={16} color={past ? "white" : "var(--ink)"} />
+              <CRIcon
+                name="chevron-down"
+                size={16}
+                color={past ? "white" : "var(--ink)"}
+              />
             </span>
 
             {badgeEl}
 
             {/* Timer (larger in overlay) */}
-            <div className="mono" style={{
-              fontSize: 30, fontWeight: 700,
-              letterSpacing: "-0.02em", whiteSpace: "nowrap", flexShrink: 0,
-            }}>
+            <div
+              className="mono"
+              style={{
+                fontSize: 30,
+                fontWeight: 700,
+                letterSpacing: "-0.02em",
+                whiteSpace: "nowrap",
+                flexShrink: 0,
+              }}
+            >
               {crFmt(elapsed)}
             </div>
 
             <div style={{ flex: 1, minWidth: 0 }}>
-              <span style={{
-                fontSize: 14, fontWeight: 500,
-                color: past ? "rgba(255,255,255,0.7)" : "var(--ink-3)",
-                opacity: 0.8,
-              }}>
+              <span
+                style={{
+                  fontSize: 14,
+                  fontWeight: 500,
+                  color: past ? "rgba(255,255,255,0.7)" : "var(--ink-3)",
+                  opacity: 0.8,
+                }}
+              >
                 / 2:00
               </span>
             </div>
@@ -1377,26 +1449,36 @@ export function CRCprPill({
 
           {/* ── Scrollable body ── */}
           <div style={{ flex: 1, overflowY: "auto" }}>
-
             {/* Rescuers + peds age selectors */}
-            <div style={{
-              padding: "12px 14px",
-              borderBottom: `1px solid var(--line)`,
-              background: "var(--surface-2)",
-              display: "flex",
-              flexDirection: "column",
-              gap: 8,
-            }}>
-              <p style={{
-                margin: 0, fontSize: 11, fontWeight: 700,
-                letterSpacing: "0.08em", textTransform: "uppercase",
-                color: "var(--ink-3)",
-              }}>
+            <div
+              style={{
+                padding: "12px 14px",
+                borderBottom: `1px solid var(--line)`,
+                background: "var(--surface-2)",
+                display: "flex",
+                flexDirection: "column",
+                gap: 8,
+              }}
+            >
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: 11,
+                  fontWeight: 700,
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  color: "var(--ink-3)",
+                }}
+              >
                 Rescuers
               </p>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {(["One", "Two", "Team"] as RescuersValue[]).map((v) => {
-                  const labels: Record<string, string> = { One: "1 Rescuer", Two: "2 Rescuers", Team: "Code Team" };
+                  const labels: Record<string, string> = {
+                    One: "1 Rescuer",
+                    Two: "2 Rescuers",
+                    Team: "Code Team",
+                  };
                   const active = rescuers === v;
                   return (
                     <button
@@ -1406,7 +1488,9 @@ export function CRCprPill({
                         padding: "7px 16px",
                         borderRadius: 22,
                         border: `1.5px solid ${active ? "var(--accent)" : "var(--line-strong)"}`,
-                        background: active ? "var(--accent-soft)" : "var(--surface)",
+                        background: active
+                          ? "var(--accent-soft)"
+                          : "var(--surface)",
                         color: active ? "var(--accent)" : "var(--ink-2)",
                         fontSize: 13,
                         fontWeight: active ? 700 : 500,
@@ -1423,11 +1507,16 @@ export function CRCprPill({
               {/* Pediatric infant / child sub-toggle */}
               {isPeds && (
                 <>
-                  <p style={{
-                    margin: "4px 0 0", fontSize: 11, fontWeight: 700,
-                    letterSpacing: "0.08em", textTransform: "uppercase",
-                    color: "var(--ink-3)",
-                  }}>
+                  <p
+                    style={{
+                      margin: "4px 0 0",
+                      fontSize: 11,
+                      fontWeight: 700,
+                      letterSpacing: "0.08em",
+                      textTransform: "uppercase",
+                      color: "var(--ink-3)",
+                    }}
+                  >
                     Age Group
                   </p>
                   <div style={{ display: "flex", gap: 8 }}>
@@ -1441,7 +1530,9 @@ export function CRCprPill({
                             padding: "7px 16px",
                             borderRadius: 22,
                             border: `1.5px solid ${active ? "var(--accent)" : "rgba(0,0,0,0.15)"}`,
-                            background: active ? "var(--accent-soft)" : "rgba(255,255,255,0.55)",
+                            background: active
+                              ? "var(--accent-soft)"
+                              : "rgba(255,255,255,0.55)",
                             color: active ? "var(--accent)" : "var(--ink-2)",
                             fontSize: 13,
                             fontWeight: active ? 700 : 500,
@@ -1460,25 +1551,30 @@ export function CRCprPill({
             </div>
 
             {/* Guidance content */}
-            <div style={{
-              padding: "16px 14px",
-              display: "flex",
-              flexDirection: "column",
-              gap: 20,
-              background: "rgba(255,255,255,0.55)",
-              margin: 12,
-              borderRadius: 14,
-              border: "1px solid rgba(0,0,0,0.06)",
-            }}>
-
+            <div
+              style={{
+                padding: "16px 14px",
+                display: "flex",
+                flexDirection: "column",
+                gap: 20,
+                background: "rgba(255,255,255,0.55)",
+                margin: 12,
+                borderRadius: 14,
+                border: "1px solid rgba(0,0,0,0.06)",
+              }}
+            >
               {/* Good compressions checklist */}
               <div>
-                <p style={{
-                  margin: "0 0 10px",
-                  fontSize: 11, fontWeight: 700,
-                  letterSpacing: "0.08em", textTransform: "uppercase",
-                  color: "var(--ink-3)",
-                }}>
+                <p
+                  style={{
+                    margin: "0 0 10px",
+                    fontSize: 11,
+                    fontWeight: 700,
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
+                    color: "var(--ink-3)",
+                  }}
+                >
                   Good Compressions
                 </p>
                 {[
@@ -1488,21 +1584,51 @@ export function CRCprPill({
                   "Minimize interruptions ( <10 s )",
                   "Firm surface under patient",
                 ].map((item) => (
-                  <div key={item} style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: 7 }}>
-                    <span style={{ color: "var(--green)", fontWeight: 800, fontSize: 13, flexShrink: 0, marginTop: 1 }}>✓</span>
-                    <span style={{ fontSize: 14, color: "var(--ink-2)", lineHeight: 1.45 }}>{item}</span>
+                  <div
+                    key={item}
+                    style={{
+                      display: "flex",
+                      gap: 8,
+                      alignItems: "flex-start",
+                      marginBottom: 7,
+                    }}
+                  >
+                    <span
+                      style={{
+                        color: "var(--green)",
+                        fontWeight: 800,
+                        fontSize: 13,
+                        flexShrink: 0,
+                        marginTop: 1,
+                      }}
+                    >
+                      ✓
+                    </span>
+                    <span
+                      style={{
+                        fontSize: 14,
+                        color: "var(--ink-2)",
+                        lineHeight: 1.45,
+                      }}
+                    >
+                      {item}
+                    </span>
                   </div>
                 ))}
               </div>
 
               {/* Per-rescuer protocol */}
               <div>
-                <p style={{
-                  margin: "0 0 10px",
-                  fontSize: 11, fontWeight: 700,
-                  letterSpacing: "0.08em", textTransform: "uppercase",
-                  color: "var(--ink-3)",
-                }}>
+                <p
+                  style={{
+                    margin: "0 0 10px",
+                    fontSize: 11,
+                    fontWeight: 700,
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
+                    color: "var(--ink-3)",
+                  }}
+                >
                   {rescuers === "?"
                     ? "Select Rescuers Above"
                     : rescuers === "Team"
@@ -1510,22 +1636,48 @@ export function CRCprPill({
                       : `${rescuers}-Rescuer Protocol${isInfant ? " · Infant" : isPeds ? " · Child" : ""}`}
                 </p>
                 {rescuers !== "?" && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 10,
+                    }}
+                  >
                     {[
                       { label: "Ratio", value: ratioLabel() },
                       { label: "Technique", value: techniqueLabel() },
                       { label: "Breaths", value: breathLabel() },
                     ].map(({ label, value }) => (
-                      <div key={label} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                        <span style={{
-                          width: 72, fontSize: 11, fontWeight: 700,
-                          color: "var(--ink-3)", flexShrink: 0,
-                          textTransform: "uppercase", letterSpacing: "0.05em",
-                          paddingTop: 2,
-                        }}>
+                      <div
+                        key={label}
+                        style={{
+                          display: "flex",
+                          gap: 12,
+                          alignItems: "flex-start",
+                        }}
+                      >
+                        <span
+                          style={{
+                            width: 72,
+                            fontSize: 11,
+                            fontWeight: 700,
+                            color: "var(--ink-3)",
+                            flexShrink: 0,
+                            textTransform: "uppercase",
+                            letterSpacing: "0.05em",
+                            paddingTop: 2,
+                          }}
+                        >
                           {label}
                         </span>
-                        <span style={{ fontSize: 14, color: "var(--ink)", lineHeight: 1.45, fontWeight: label === "Ratio" ? 700 : 400 }}>
+                        <span
+                          style={{
+                            fontSize: 14,
+                            color: "var(--ink)",
+                            lineHeight: 1.45,
+                            fontWeight: label === "Ratio" ? 700 : 400,
+                          }}
+                        >
                           {value}
                         </span>
                       </div>
@@ -1536,12 +1688,16 @@ export function CRCprPill({
 
               {/* Compression rate tapper */}
               <div>
-                <p style={{
-                  margin: "0 0 10px",
-                  fontSize: 11, fontWeight: 700,
-                  letterSpacing: "0.08em", textTransform: "uppercase",
-                  color: "var(--ink-3)",
-                }}>
+                <p
+                  style={{
+                    margin: "0 0 10px",
+                    fontSize: 11,
+                    fontWeight: 700,
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
+                    color: "var(--ink-3)",
+                  }}
+                >
                   Compression Rate
                 </p>
                 <button
@@ -1551,9 +1707,10 @@ export function CRCprPill({
                     padding: "18px 16px",
                     borderRadius: 12,
                     border: `1.5px solid ${comprRate !== null ? rateColor : "var(--line-strong)"}`,
-                    background: comprRate !== null
-                      ? `color-mix(in srgb, ${rateColor} 8%, white)`
-                      : "white",
+                    background:
+                      comprRate !== null
+                        ? `color-mix(in srgb, ${rateColor} 8%, white)`
+                        : "white",
                     cursor: "pointer",
                     display: "flex",
                     flexDirection: "column",
@@ -1564,15 +1721,25 @@ export function CRCprPill({
                 >
                   {comprRate !== null ? (
                     <>
-                      <span style={{
-                        fontSize: 40, fontWeight: 800,
-                        color: rateColor, letterSpacing: "-0.03em",
-                        fontFamily: "monospace",
-                        lineHeight: 1,
-                      }}>
+                      <span
+                        style={{
+                          fontSize: 40,
+                          fontWeight: 800,
+                          color: rateColor,
+                          letterSpacing: "-0.03em",
+                          fontFamily: "monospace",
+                          lineHeight: 1,
+                        }}
+                      >
                         {comprRate}
                       </span>
-                      <span style={{ fontSize: 12, color: "var(--ink-3)", fontWeight: 600 }}>
+                      <span
+                        style={{
+                          fontSize: 12,
+                          color: "var(--ink-3)",
+                          fontWeight: 600,
+                        }}
+                      >
                         / min ·{" "}
                         {comprRate >= 100 && comprRate <= 120
                           ? "✓ Good rate"
@@ -1584,14 +1751,21 @@ export function CRCprPill({
                   ) : (
                     <>
                       <span style={{ fontSize: 24 }}>👆</span>
-                      <span style={{ fontSize: 14, fontWeight: 600, color: "var(--ink-2)" }}>
-                        {lastTap !== null ? "Tap again to count" : "Tap to Count Rate"}
+                      <span
+                        style={{
+                          fontSize: 14,
+                          fontWeight: 600,
+                          color: "var(--ink-2)",
+                        }}
+                      >
+                        {lastTap !== null
+                          ? "Tap again to count"
+                          : "Tap to Count Rate"}
                       </span>
                     </>
                   )}
                 </button>
               </div>
-
             </div>
           </div>
         </div>
@@ -1650,8 +1824,8 @@ export function CRNextList({
               t.popup
                 ? () => setActiveTask(t)
                 : !t.recurring
-                ? () => onCheck(t)
-                : undefined
+                  ? () => onCheck(t)
+                  : undefined
             }
             style={{
               display: "flex",
@@ -1733,19 +1907,22 @@ export function CRNextList({
                 <CRIcon name="question" size={17} color="var(--ink-3)" />
               </button>
             )}
-            {critical && !t.popup && t.id !== "start-cpr" && t.id !== "resume-cpr" && (
-              <span
-                style={{
-                  fontSize: 10,
-                  fontWeight: 700,
-                  letterSpacing: "0.08em",
-                  color: "var(--red)",
-                  textTransform: "uppercase",
-                }}
-              >
-                now
-              </span>
-            )}
+            {critical &&
+              !t.popup &&
+              t.id !== "start-cpr" &&
+              t.id !== "resume-cpr" && (
+                <span
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: "0.08em",
+                    color: "var(--red)",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  now
+                </span>
+              )}
           </div>
         );
       })}
@@ -1775,8 +1952,8 @@ export function CRNextList({
               ? activeTask.id === "shock"
                 ? "⚡️ Shock"
                 : activeTask.id === "cardiovert"
-                ? "⚡️ Cardiovert"
-                : activeTask.label
+                  ? "⚡️ Cardiovert"
+                  : activeTask.label
               : undefined
           }
         />
@@ -2052,6 +2229,7 @@ export function CRGaveList({
                     borderRadius: 5,
                     background: "var(--surface-2)",
                     color: "var(--ink-2)",
+                    textWrap: "nowrap",
                   }}
                 >
                   x {count}
@@ -2336,19 +2514,21 @@ function CRMedDetailModal({
   const isPeds = patient.type === "pediatric";
   const wt = patient.weightKg;
 
-  const primaryDose = detail.sharedDose ?? (isPeds ? detail.pedsDose : detail.adultDose);
+  const primaryDose =
+    detail.sharedDose ?? (isPeds ? detail.pedsDose : detail.adultDose);
   const secondaryLabel = isPeds ? "Adult" : "Peds";
   const secondaryDose = isPeds ? detail.adultDose : detail.pedsDose;
-  const weightCalc = isPeds && wt != null && detail.pedsDoseCalc
-    ? detail.pedsDoseCalc(wt)
-    : null;
+  const weightCalc =
+    isPeds && wt != null && detail.pedsDoseCalc
+      ? detail.pedsDoseCalc(wt)
+      : null;
 
   return (
     <CRModalShell title={med?.name ?? String(medKey)} onClose={onClose}>
       {primaryDose && (
         <div style={{ marginBottom: 8 }}>
           <span style={{ fontWeight: 700 }}>
-            {detail.sharedDose ? "Dose" : (isPeds ? "Peds" : "Adult")}:
+            {detail.sharedDose ? "Dose" : isPeds ? "Peds" : "Adult"}:
           </span>{" "}
           {primaryDose}
         </div>
@@ -2369,7 +2549,8 @@ function CRMedDetailModal({
       )}
       {!detail.sharedDose && secondaryDose && (
         <div style={{ marginBottom: 8, color: "var(--ink-3)", fontSize: 12 }}>
-          <span style={{ fontWeight: 600 }}>{secondaryLabel}:</span> {secondaryDose}
+          <span style={{ fontWeight: 600 }}>{secondaryLabel}:</span>{" "}
+          {secondaryDose}
         </div>
       )}
       {detail.freq && (
@@ -2474,7 +2655,14 @@ export function CRPopupModal({
   onTrigger,
   triggerLabel,
 }: {
-  type: "shock" | "ht" | "strokeSx" | "strokeScale" | "rhythm" | "symptomatic" | "rescueBreaths";
+  type:
+    | "shock"
+    | "ht"
+    | "strokeSx"
+    | "strokeScale"
+    | "rhythm"
+    | "symptomatic"
+    | "rescueBreaths";
   patient: Patient;
   onClose: () => void;
   onTrigger?: () => void;
@@ -2771,9 +2959,7 @@ export function CRPopupModal({
           </li>
           <li>Allow full passive exhalation before next breath</li>
           {isPeds && (
-            <li>
-              Use gentle puffs for infants — do not over-inflate
-            </li>
+            <li>Use gentle puffs for infants — do not over-inflate</li>
           )}
         </ul>
         <p style={{ fontWeight: 600, marginBottom: 4 }}>
