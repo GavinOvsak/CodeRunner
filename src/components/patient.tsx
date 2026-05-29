@@ -1579,7 +1579,7 @@ export function CRNextList({
   onCheck,
   patient,
 }: CRNextListProps) {
-  const [activePopup, setActivePopup] = useState<string | null>(null);
+  const [activeTask, setActiveTask] = useState<NextTask | null>(null);
 
   const isFirstRender = useRef(true);
   const prevTaskIds = useRef<Set<string>>(new Set());
@@ -1616,7 +1616,13 @@ export function CRNextList({
           <div
             key={t.id}
             className={isFading ? "cr-fade" : isNew ? "cr-task-new" : ""}
-            onClick={t.popup ? () => setActivePopup(t.popup!) : undefined}
+            onClick={
+              t.popup
+                ? () => setActiveTask(t)
+                : !t.recurring
+                ? () => onCheck(t)
+                : undefined
+            }
             style={{
               display: "flex",
               alignItems: "center",
@@ -1627,14 +1633,14 @@ export function CRNextList({
               background: critical
                 ? "color-mix(in srgb, var(--red) 6%, white)"
                 : "transparent",
-              cursor: t.popup ? "pointer" : undefined,
+              cursor: t.popup || !t.recurring ? "pointer" : undefined,
             }}
           >
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 if (t.recurring && t.popup) {
-                  setActivePopup(t.popup!);
+                  setActiveTask(t);
                 } else {
                   onCheck(t);
                 }
@@ -1678,7 +1684,7 @@ export function CRNextList({
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  setActivePopup(t.popup!);
+                  setActiveTask(t);
                 }}
                 aria-label="more info"
                 style={{
@@ -1713,10 +1719,10 @@ export function CRNextList({
           </div>
         );
       })}
-      {activePopup && (
+      {activeTask?.popup && (
         <CRPopupModal
           type={
-            activePopup as
+            activeTask.popup as
               | "shock"
               | "ht"
               | "strokeSx"
@@ -1725,7 +1731,24 @@ export function CRNextList({
               | "symptomatic"
           }
           patient={patient}
-          onClose={() => setActivePopup(null)}
+          onClose={() => setActiveTask(null)}
+          onTrigger={
+            !activeTask.recurring
+              ? () => {
+                  onCheck(activeTask);
+                  setActiveTask(null);
+                }
+              : undefined
+          }
+          triggerLabel={
+            !activeTask.recurring
+              ? activeTask.id === "shock"
+                ? "⚡️ Shock"
+                : activeTask.id === "cardiovert"
+                ? "⚡️ Cardiovert"
+                : activeTask.label
+              : undefined
+          }
         />
       )}
     </div>
@@ -2292,10 +2315,14 @@ export function CRPopupModal({
   type,
   patient,
   onClose,
+  onTrigger,
+  triggerLabel,
 }: {
   type: "shock" | "ht" | "strokeSx" | "strokeScale" | "rhythm" | "symptomatic";
   patient: Patient;
   onClose: () => void;
+  onTrigger?: () => void;
+  triggerLabel?: string;
 }) {
   const isPeds = patient.type === "pediatric";
   const wt = patient.weightKg;
@@ -2352,6 +2379,26 @@ export function CRPopupModal({
               <li>VT (with pulse): 100 J</li>
             </ul>
           </>
+        )}
+        {onTrigger && triggerLabel && (
+          <button
+            onClick={onTrigger}
+            style={{
+              marginTop: 16,
+              width: "100%",
+              padding: "12px 16px",
+              borderRadius: 10,
+              border: "none",
+              background: "var(--shock)",
+              color: "#fff",
+              fontSize: 15,
+              fontWeight: 700,
+              cursor: "pointer",
+              letterSpacing: "-0.01em",
+            }}
+          >
+            {triggerLabel}
+          </button>
         )}
       </CRModalShell>
     );
