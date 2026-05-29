@@ -708,7 +708,7 @@ export function crNextTasks(s: Patient, now: number = Date.now()): NextTask[] {
         push({ id: "amio", label: amioLabel, kind: "med", medKey: "amio" });
       }
     }
-    if (s.rhythm === "AF")
+    if (s.rhythm === "AF" || s.rhythm === "SVT" || s.rhythm === "WideTach")
       push({
         id: "cardiovert",
         label: "Synchronized Cardioversion",
