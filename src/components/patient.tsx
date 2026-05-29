@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
 import type {
   Patient,
   CPRState,
@@ -188,7 +194,13 @@ export function CRPatientScreen({
   const [infoOpen, setInfoOpen] = useState(false);
   const [roscPopup, setRoscPopup] = useState(false);
   const [popup, setPopup] = useState<
-    "shock" | "ht" | "strokeSx" | "strokeScale" | "rhythm" | "symptomatic" | null
+    | "shock"
+    | "ht"
+    | "strokeSx"
+    | "strokeScale"
+    | "rhythm"
+    | "symptomatic"
+    | null
   >(null);
   const [fadingTasks, setFadingTasks] = useState<Record<string, boolean>>({});
   const [flashKey, setFlashKey] = useState(0);
@@ -254,7 +266,16 @@ export function CRPatientScreen({
     log({ type: "status", field: "alert", value: v as AlertValue });
     if (v === "Yes" && cpr.active && !cpr.pausedAt) {
       const elapsed = now - cpr.cycleStartAt;
-      setTimeout(() => log({ type: "cpr", event: "pause", cycleNumber: cpr.cycleNumber, elapsed }), 0);
+      setTimeout(
+        () =>
+          log({
+            type: "cpr",
+            event: "pause",
+            cycleNumber: cpr.cycleNumber,
+            elapsed,
+          }),
+        0,
+      );
     }
   }
   function setBreathing(v: string) {
@@ -450,7 +471,7 @@ export function CRPatientScreen({
       // Adenosine/atropine reset rate+rhythm to prompt reassessment
       if (key === "adenosine" || key === "atropine") {
         setTimeout(() => {
-          log({ type: "status", field: "rate",   value: "?" });
+          log({ type: "status", field: "rate", value: "?" });
           log({ type: "status", field: "rhythm", value: "?" });
         }, 0);
       }
@@ -544,13 +565,36 @@ export function CRPatientScreen({
                 buttonGroup
               />
             </CRStatusRow>
-            <CRStatusRow label="Breathing" uncertain={s.breathing === "?"} flashKey={flashTargets.has("breathing") ? flashKey : null}>
+            <CRStatusRow
+              label="Breathing"
+              uncertain={s.breathing === "?"}
+              flashKey={flashTargets.has("breathing") ? flashKey : null}
+            >
               {s.breathing === "ETT" ? (
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ background: "var(--green-soft)", color: "var(--green)", padding: "3px 10px", borderRadius: 8, fontSize: 14, fontWeight: 600 }}>ETT</span>
+                  <span
+                    style={{
+                      background: "var(--green-soft)",
+                      color: "var(--green)",
+                      padding: "3px 10px",
+                      borderRadius: 8,
+                      fontSize: 14,
+                      fontWeight: 600,
+                    }}
+                  >
+                    ETT
+                  </span>
                   <button
                     onClick={() => setBreathing("?")}
-                    style={{ background: "none", border: "none", cursor: "pointer", color: "var(--ink-3)", padding: 4, display: "flex", alignItems: "center" }}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      color: "var(--ink-3)",
+                      padding: 4,
+                      display: "flex",
+                      alignItems: "center",
+                    }}
                   >
                     <CRIcon name="close" size={16} />
                   </button>
@@ -585,7 +629,11 @@ export function CRPatientScreen({
               </CRStatusRow>
             )}
             {s.pulse === "Yes" && (
-              <CRStatusRow label="Heart Rate" uncertain={s.rate === "?"} flashKey={flashTargets.has("rate") ? flashKey : null}>
+              <CRStatusRow
+                label="Heart Rate"
+                uncertain={s.rate === "?"}
+                flashKey={flashTargets.has("rate") ? flashKey : null}
+              >
                 <CRDropdown
                   value={s.rate}
                   options={CR_OPTS_RATE}
@@ -660,20 +708,31 @@ export function CRPatientScreen({
               )
             )}
             {/* Rescuers — shown during cardiac arrest for CPR guidance */}
-            {(s.pulse === "No" || cpr.active) && s.breathing !== "ETT" && (s.gave.find(g => g.key === "epi")?.doses.length ?? 0) === 0 && (
-              <CRStatusRow label="Rescuers" uncertain={s.rescuers === "?"} flashKey={flashTargets.has("rescuers") ? flashKey : null}>
-                <CRDropdown
-                  value={s.rescuers}
-                  options={CR_OPTS_RESCUERS}
-                  onChange={setRescuers}
-                  tone="accent"
-                  buttonGroup
-                />
-              </CRStatusRow>
-            )}
+            {(s.pulse === "No" || cpr.active) &&
+              s.breathing !== "ETT" &&
+              (s.gave.find((g) => g.key === "epi")?.doses.length ?? 0) ===
+                0 && (
+                <CRStatusRow
+                  label="Rescuers"
+                  uncertain={s.rescuers === "?"}
+                  flashKey={flashTargets.has("rescuers") ? flashKey : null}
+                >
+                  <CRDropdown
+                    value={s.rescuers}
+                    options={CR_OPTS_RESCUERS}
+                    onChange={setRescuers}
+                    tone="accent"
+                    buttonGroup
+                  />
+                </CRStatusRow>
+              )}
             {/* Weight — pediatric patients only */}
             {s.type === "pediatric" && (
-              <CRStatusRow label="Weight" uncertain={s.weightKg == null} flashKey={flashTargets.has("weightKg") ? flashKey : null}>
+              <CRStatusRow
+                label="Weight"
+                uncertain={s.weightKg == null}
+                flashKey={flashTargets.has("weightKg") ? flashKey : null}
+              >
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <input
                     type="text"
@@ -713,7 +772,11 @@ export function CRPatientScreen({
             {/* Glucose + Stroke Sx — shown when alert is Altered */}
             {s.alert === "Altered" && (
               <>
-                <CRStatusRow label="Glucose" uncertain={s.glucose === "?"} flashKey={flashTargets.has("glucose") ? flashKey : null}>
+                <CRStatusRow
+                  label="Glucose"
+                  uncertain={s.glucose === "?"}
+                  flashKey={flashTargets.has("glucose") ? flashKey : null}
+                >
                   <CRDropdown
                     value={s.glucose}
                     options={CR_OPTS_GLUCOSE}
@@ -917,6 +980,19 @@ export function CRCprPill({
   const near = !paused && !past && elapsed >= 105000;
   const cls = past ? "cr-past-2min" : near ? "cr-near-2min" : "";
 
+  const pillRef = useRef<HTMLDivElement>(null);
+  const [showLabel, setShowLabel] = useState(true);
+  useEffect(() => {
+    const el = pillRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      const width = entries[0]?.contentRect.width ?? el.offsetWidth;
+      setShowLabel(width >= 260);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   const period = 500;
   const since = Date.now() - cpr.metronomeAnchor;
   const beatIndex = Math.floor(since / period);
@@ -947,6 +1023,7 @@ export function CRCprPill({
 
   return (
     <div
+      ref={pillRef}
       className={cls}
       style={{
         display: "flex",
@@ -1050,10 +1127,14 @@ export function CRCprPill({
         style={{
           ...crCprBtn(past),
           width: "auto",
-          padding: "0 12px",
+          minWidth: 34,
+          padding: "0 10px",
           fontSize: 12,
           fontWeight: 700,
           gap: 5,
+          display: "flex",
+          flexDirection: "row",
+          overflow: "hidden",
         }}
       >
         <CRIcon
@@ -1061,7 +1142,7 @@ export function CRCprPill({
           size={14}
           color={past ? "white" : "var(--ink)"}
         />
-        <span>{paused ? "Resume" : "Pause"}</span>
+        {showLabel && <span style={{ whiteSpace: "nowrap" }}>{paused ? "Resume" : "Pause"}</span>}
       </button>
     </div>
   );
@@ -1173,7 +1254,10 @@ export function CRNextList({
             </div>
             {t.popup && (
               <button
-                onClick={(e) => { e.stopPropagation(); setActivePopup(t.popup!); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActivePopup(t.popup!);
+                }}
                 aria-label="more info"
                 style={{
                   width: 28,

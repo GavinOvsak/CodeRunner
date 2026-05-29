@@ -22,6 +22,7 @@ export function CRIcon({
     strokeWidth: 1.7,
     strokeLinecap: "round" as const,
     strokeLinejoin: "round" as const,
+    flex: "none",
   };
   switch (name) {
     case "chevron-left":
@@ -329,8 +330,7 @@ export function CRDropdown({
     if (v === "NSR") return "yes";
     if (["VF", "VT", "VF_pVT"].includes(v)) return "no";
     if (["PEA", "Asystole"].includes(v)) return "altered";
-    if (["SVT", "AF", "WideTach", "SinusBrady"].includes(v))
-      return "accent";
+    if (["SVT", "AF", "WideTach", "SinusBrady"].includes(v)) return "accent";
     return "neutral";
   };
   const currentTone = getTone(value);
