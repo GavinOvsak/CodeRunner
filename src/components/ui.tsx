@@ -149,6 +149,16 @@ export function CRIcon({
           <path d="M12 3v13M7 11l5 5 5-5M5 20h14" />
         </svg>
       );
+    case "stop-sign":
+      return (
+        <svg {...props}>
+          <polygon
+            points="7.86,2 16.14,2 22,7.86 22,16.14 16.14,22 7.86,22 2,16.14 2,7.86"
+            fill={color}
+            fillOpacity="var(--stop-fill-opacity, 0)"
+          />
+        </svg>
+      );
     case "question":
       return (
         <svg {...props}>

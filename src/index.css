@@ -98,3 +98,15 @@ button { font: inherit; color: inherit; }
     grid-template-areas: "status next gave";
   }
 }
+
+/* Stop sign button hover/focus filled state */
+.cr-btn-stop {
+  transition: background 150ms ease, color 150ms ease;
+  --stop-fill-opacity: 0;
+}
+.cr-btn-stop:hover,
+.cr-btn-stop:focus,
+.cr-btn-stop:focus-within,
+.cr-btn-stop:active {
+  --stop-fill-opacity: 1;
+}

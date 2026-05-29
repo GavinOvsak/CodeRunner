@@ -30,14 +30,14 @@ export interface MedDetail {
 
 export const CR_MEDS: Med[] = [
   // Code drugs (most-used first)
-  { key: "epi", name: "Epinephrine 1mg", cat: "Code", short: "Epi" },
+  { key: "epi", name: "Epinephrine", cat: "Code", short: "Epi" },
   { key: "amio", name: "Amiodarone", cat: "Code", short: "Amio" },
   { key: "lido", name: "Lidocaine", cat: "Code", short: "Lido" },
-  { key: "atropine", name: "Atropine 1mg", cat: "Code", short: "Atropine" },
-  { key: "adenosine", name: "Adenosine 6mg", cat: "Code", short: "Adenosine" },
+  { key: "atropine", name: "Atropine", cat: "Code", short: "Atropine" },
+  { key: "adenosine", name: "Adenosine", cat: "Code", short: "Adenosine" },
   { key: "bicarb", name: "Sodium Bicarb", cat: "Code", short: "Bicarb" },
   { key: "calcium", name: "Calcium", cat: "Code", short: "Calcium" },
-  { key: "magnesium", name: "Magnesium 2g", cat: "Code", short: "Mag" },
+  { key: "magnesium", name: "Magnesium", cat: "Code", short: "Mag" },
   { key: "naloxone", name: "Naloxone", cat: "Code", short: "Naloxone" },
   { key: "dopamine", name: "Dopamine gtt", cat: "Drip", short: "Dopa" },
   { key: "norepi", name: "Norepinephrine", cat: "Drip", short: "Norepi" },
@@ -302,7 +302,7 @@ export const TASK_LABELS: Record<TaskId, string> = {
   ecg: "12-Lead ECG",
   adenosine: "Adenosine 6mg rapid push",
   cardiovert: "Synchronized Cardioversion",
-  atropine: "Atropine 1mg",
+  atropine: "Atropine",
   pace: "Transcutaneous Pacing",
   dopamine: "Dopamine gtt",
   glucose: "Check Glucose",
@@ -727,7 +727,7 @@ export function crNextTasks(s: Patient, now: number = Date.now()): NextTask[] {
     if (given("atropine") < 3 && atropineReady)
       push({
         id: "atropine",
-        label: "Atropine 1mg",
+        label: "Atropine",
         kind: "med",
         medKey: "atropine",
       });

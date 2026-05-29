@@ -112,6 +112,7 @@ interface CRPatientHeaderProps {
   onBack: () => void;
   onOpenLog: () => void;
   onInfo: () => void;
+  onStopCode: () => void;
 }
 
 interface CRCprPillProps {
@@ -167,17 +168,13 @@ function crCprBtn(invertOnDark: boolean): React.CSSProperties {
     minWidth: 30,
     padding: 0,
     borderRadius: 8,
-    background: invertOnDark
-      ? "rgba(255,255,255,0.18)"
-      : "rgba(255,255,255,0.7)",
-    border: invertOnDark
-      ? "1px solid rgba(255,255,255,0.3)"
-      : "1px solid var(--line-strong)",
+    background: invertOnDark ? "white" : "rgba(255,255,255,0.7)",
+    border: invertOnDark ? "1px solid white" : "1px solid var(--line-strong)",
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
     cursor: "pointer",
-    color: invertOnDark ? "white" : "var(--ink)",
+    color: invertOnDark ? "var(--red)" : "var(--ink)",
   };
 }
 
@@ -213,6 +210,7 @@ export function CRPatientScreen({
     key: MedKey;
     time: number;
   } | null>(null);
+  const [confirmStopOpen, setConfirmStopOpen] = useState(false);
 
   const update = useCallback(
     (mut: Patient | ((p: Patient) => Patient)) => {
@@ -235,6 +233,28 @@ export function CRPatientScreen({
     [update],
   );
 
+  const stopCode = useCallback(() => {
+    // 1. Log cpr end event (this stops CPR and starts freeze condition)
+    log({ type: "cpr", event: "end" });
+
+    // 2. Identify and stop active continuous meds
+    const activeContinuousMeds = s.gave.filter((g) => {
+      const isContinuous = CR_CONTINUOUS_KEYS.has(g.key);
+      const isActive = isContinuous && g.doses.length % 2 === 1;
+      return isActive;
+    });
+
+    activeContinuousMeds.forEach((g) => {
+      log({
+        type: "med",
+        action: "stop",
+        key: g.key as ContinuousMedKey,
+      });
+    });
+
+    setConfirmStopOpen(false);
+  }, [log, s.gave]);
+
   // Coarse tick (10 s) — only drives medication timing windows in crNextTasks.
   // Sub-second display updates are handled inside CRCprPill, CRPatientHeader,
   // and CRGaveList with their own isolated intervals.
@@ -248,11 +268,24 @@ export function CRPatientScreen({
   const cpr = s.cpr;
   const lastLog = s.log.at(-1) ?? null;
   const lastLogAt = lastLog ? lastLog.at : Date.now();
-  const isRecent = Date.now() - lastLogAt < 5 * 60 * 1000;
+  const lastNonStatusLog =
+    [...s.log]
+      .reverse()
+      .find((entry) => entry.type !== "status" && entry.type !== "note") ??
+    null;
+  const isCodeEnded =
+    lastNonStatusLog?.type === "cpr" &&
+    (lastNonStatusLog.event === "end" || lastNonStatusLog.event === "rosc");
+  const isRecent = !isCodeEnded && Date.now() - lastLogAt < 5 * 60 * 1000;
   // taskNow only changes every 10 s (via taskTick) or when patient state changes
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const taskNow = useMemo(
-    () => (isRecent || cpr.active ? Date.now() : lastLogAt),
+    () =>
+      isRecent || cpr.active
+        ? Date.now()
+        : isCodeEnded && lastNonStatusLog
+          ? lastNonStatusLog.at
+          : lastLogAt,
     [s, taskTick],
   );
 
@@ -541,6 +574,7 @@ export function CRPatientScreen({
         onBack={onBack}
         onOpenLog={onOpenLog}
         onInfo={() => setInfoOpen(true)}
+        onStopCode={() => setConfirmStopOpen(true)}
       />
 
       {cpr.active && (
@@ -897,10 +931,16 @@ export function CRPatientScreen({
         </div>
       </div>
 
-      {infoOpen && <CRInfoModal onClose={() => setInfoOpen(false)} />}
       {roscPopup && <CRRoscModal onClose={() => setRoscPopup(false)} />}
       {popup && (
         <CRPopupModal type={popup} patient={s} onClose={() => setPopup(null)} />
+      )}
+      {infoOpen && <CRInfoModal onClose={() => setInfoOpen(false)} />}
+      {confirmStopOpen && (
+        <CRStopConfirmationModal
+          onConfirm={stopCode}
+          onClose={() => setConfirmStopOpen(false)}
+        />
       )}
     </div>
   );
@@ -914,6 +954,7 @@ export function CRPatientHeader({
   onBack,
   onOpenLog,
   onInfo,
+  onStopCode,
 }: CRPatientHeaderProps) {
   // Self-managed 1 s tick — keeps the case-elapsed clock ticking
   const [, setTick] = useState(0);
@@ -924,8 +965,21 @@ export function CRPatientHeader({
 
   const lastLog = patient.log.at(-1) ?? null;
   const lastLogAt = lastLog ? lastLog.at : Date.now();
-  const isRecent = Date.now() - lastLogAt < 5 * 60 * 1000;
-  const currentTime = isRecent || patient.cpr.active ? Date.now() : lastLogAt;
+  const lastNonStatusLog =
+    [...patient.log]
+      .reverse()
+      .find((entry) => entry.type !== "status" && entry.type !== "note") ??
+    null;
+  const isCodeEnded =
+    lastNonStatusLog?.type === "cpr" &&
+    (lastNonStatusLog.event === "end" || lastNonStatusLog.event === "rosc");
+  const isRecent = !isCodeEnded && Date.now() - lastLogAt < 5 * 60 * 1000;
+  const currentTime =
+    isRecent || patient.cpr.active
+      ? Date.now()
+      : isCodeEnded && lastNonStatusLog
+        ? lastNonStatusLog.at
+        : lastLogAt;
   const elapsed = currentTime - patient.startedAt;
   return (
     <header
@@ -981,6 +1035,14 @@ export function CRPatientHeader({
           </div>
         </div>
         <div style={{ display: "flex", gap: 2 }}>
+          <button
+            onClick={onStopCode}
+            className="cr-btn-stop"
+            style={{ ...crIconBtn(), color: "var(--red)" }}
+            aria-label="Stop Resuscitation"
+          >
+            <CRIcon name="stop-sign" size={20} color="var(--red)" />
+          </button>
           <button onClick={onOpenLog} style={crIconBtn()}>
             <CRIcon name="list" size={20} />
           </button>
@@ -1230,7 +1292,7 @@ export function CRCprPill({
       <CRIcon
         name={paused ? "play" : "pause"}
         size={14}
-        color={past ? "white" : "var(--ink)"}
+        color={past ? "var(--red)" : "var(--ink)"}
       />
       {showLabel && (
         <span style={{ whiteSpace: "nowrap" }}>
@@ -1821,7 +1883,7 @@ export function CRNextList({
             key={t.id}
             className={isFading ? "cr-fade" : isNew ? "cr-task-new" : ""}
             onClick={
-              (t.popup || t.medKey || t.id === "shock" || t.id === "cardiovert")
+              t.popup || t.medKey || t.id === "shock" || t.id === "cardiovert"
                 ? () => setActiveTask(t)
                 : !t.recurring
                   ? () => onCheck(t)
@@ -1837,13 +1899,26 @@ export function CRNextList({
               background: critical
                 ? "color-mix(in srgb, var(--red) 6%, white)"
                 : "transparent",
-              cursor: (t.popup || t.medKey || t.id === "shock" || t.id === "cardiovert" || !t.recurring) ? "pointer" : undefined,
+              cursor:
+                t.popup ||
+                t.medKey ||
+                t.id === "shock" ||
+                t.id === "cardiovert" ||
+                !t.recurring
+                  ? "pointer"
+                  : undefined,
             }}
           >
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                if (t.recurring && (t.popup || t.medKey || t.id === "shock" || t.id === "cardiovert")) {
+                if (
+                  t.recurring &&
+                  (t.popup ||
+                    t.medKey ||
+                    t.id === "shock" ||
+                    t.id === "cardiovert")
+                ) {
                   setActiveTask(t);
                 } else {
                   onCheck(t);
@@ -1884,7 +1959,10 @@ export function CRNextList({
             >
               {t.label}
             </div>
-            {(t.popup || t.medKey || t.id === "shock" || t.id === "cardiovert") && (
+            {(t.popup ||
+              t.medKey ||
+              t.id === "shock" ||
+              t.id === "cardiovert") && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -1929,8 +2007,8 @@ export function CRNextList({
           </div>
         );
       })}
-      {activeTask && (
-        activeTask.medKey && activeTask.medKey !== "shock" ? (
+      {activeTask &&
+        (activeTask.medKey && activeTask.medKey !== "shock" ? (
           <CRMedDetailModal
             medKey={activeTask.medKey}
             patient={patient}
@@ -1943,12 +2021,22 @@ export function CRNextList({
                   }
                 : undefined
             }
-            triggerLabel={!activeTask.recurring ? activeTask.label : undefined}
+            triggerLabel={
+              !activeTask.recurring
+                ? activeTask.medKey
+                  ? CR_CONTINUOUS_KEYS.has(activeTask.medKey)
+                    ? `${(patient.gave.find((g) => g.key === activeTask.medKey)?.doses.length ?? 0) % 2 === 1 ? "Stop" : "Start"} ${activeTask.label}`
+                    : `+1 ${CR_MED_BY_KEY[activeTask.medKey]?.name ?? activeTask.label}`
+                  : activeTask.label
+                : undefined
+            }
           />
-        ) : (activeTask.popup || activeTask.id === "shock" || activeTask.id === "cardiovert" ? (
+        ) : activeTask.popup ||
+          activeTask.id === "shock" ||
+          activeTask.id === "cardiovert" ? (
           <CRPopupModal
             type={
-              (activeTask.id === "shock" || activeTask.id === "cardiovert")
+              activeTask.id === "shock" || activeTask.id === "cardiovert"
                 ? "shock"
                 : (activeTask.popup as
                     | "shock"
@@ -1979,8 +2067,7 @@ export function CRNextList({
                 : undefined
             }
           />
-        ) : null)
-      )}
+        ) : null)}
     </div>
   );
 }
@@ -2013,8 +2100,21 @@ export function CRGaveList({
 
   const lastLog = state.log.at(-1) ?? null;
   const lastLogAt = lastLog ? lastLog.at : Date.now();
-  const isRecent = Date.now() - lastLogAt < 5 * 60 * 1000;
-  const currentTime = isRecent || state.cpr.active ? Date.now() : lastLogAt;
+  const lastNonStatusLog =
+    [...state.log]
+      .reverse()
+      .find((entry) => entry.type !== "status" && entry.type !== "note") ??
+    null;
+  const isCodeEnded =
+    lastNonStatusLog?.type === "cpr" &&
+    (lastNonStatusLog.event === "end" || lastNonStatusLog.event === "rosc");
+  const isRecent = !isCodeEnded && Date.now() - lastLogAt < 5 * 60 * 1000;
+  const currentTime =
+    isRecent || state.cpr.active
+      ? Date.now()
+      : isCodeEnded && lastNonStatusLog
+        ? lastNonStatusLog.at
+        : lastLogAt;
 
   const givenKeys = state.gave
     .filter((g) => g.doses.length > 0)
@@ -2335,8 +2435,8 @@ export function CRGaveList({
           </div>
         );
       })}
-      {detailMed && (
-        detailMed === "shock" ? (
+      {detailMed &&
+        (detailMed === "shock" ? (
           <CRPopupModal
             type="shock"
             patient={state}
@@ -2348,8 +2448,7 @@ export function CRGaveList({
             patient={state}
             onClose={() => setDetailMed(null)}
           />
-        )
-      )}
+        ))}
     </div>
   );
 }
@@ -2645,7 +2744,7 @@ function CRModalShell({
       style={{
         position: "fixed",
         inset: 0,
-        zIndex: 80,
+        zIndex: 150,
         background: "rgba(20,18,12,0.55)",
         display: "flex",
         alignItems: "center",
@@ -2740,7 +2839,8 @@ export function CRPopupModal({
               fontWeight: 600,
             }}
           >
-            For {wt} kg: 1st: {(wt * 2).toFixed(0)} J · 2nd: {(wt * 4).toFixed(0)} J
+            For {wt} kg: 1st: {(wt * 2).toFixed(0)} J · 2nd:{" "}
+            {(wt * 4).toFixed(0)} J
           </div>
         )}
         {isPeds ? (
@@ -3082,7 +3182,7 @@ function CRRoscModal({ onClose }: { onClose: () => void }) {
       style={{
         position: "fixed",
         inset: 0,
-        zIndex: 80,
+        zIndex: 150,
         background: "rgba(20,18,12,0.55)",
         display: "flex",
         alignItems: "center",
@@ -3168,9 +3268,9 @@ export function CRInfoModal({ onClose }: { onClose: () => void }) {
     <div
       onClick={onClose}
       style={{
-        position: "absolute",
+        position: "fixed",
         inset: 0,
-        zIndex: 70,
+        zIndex: 150,
         background: "rgba(20,18,12,0.5)",
         display: "flex",
         alignItems: "center",
@@ -3224,6 +3324,131 @@ export function CRInfoModal({ onClose }: { onClose: () => void }) {
           <p style={{ marginBottom: 0, color: "var(--ink-3)", fontSize: 12 }}>
             v0.1 · prototype · no patient data leaves this device.
           </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// CRStopConfirmationModal — shown to confirm stopping the code
+// ─────────────────────────────────────────────────────────────
+function CRStopConfirmationModal({
+  onConfirm,
+  onClose,
+}: {
+  onConfirm: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 150,
+        background: "rgba(20,18,12,0.55)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 20,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: "var(--surface)",
+          borderRadius: 16,
+          padding: 20,
+          maxWidth: 400,
+          width: "100%",
+          boxShadow: "0 20px 50px rgba(0,0,0,0.28)",
+          display: "flex",
+          flexDirection: "column",
+          gap: 16,
+        }}
+      >
+        <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+          <div
+            style={
+              {
+                width: 40,
+                height: 40,
+                borderRadius: "50%",
+                background: "var(--red-soft)",
+                color: "var(--red)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+                "--stop-fill-opacity": 1,
+              } as React.CSSProperties
+            }
+          >
+            <CRIcon name="stop-sign" size={24} color="var(--red)" />
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <h3
+              style={{
+                margin: 0,
+                fontSize: 18,
+                fontWeight: 700,
+                color: "var(--ink)",
+              }}
+            >
+              Stop Resuscitation?
+            </h3>
+            <p
+              style={{
+                margin: 0,
+                fontSize: 14,
+                color: "var(--ink-3)",
+                lineHeight: 1.4,
+              }}
+            >
+              This will stop CPR and all timers.
+            </p>
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            justifyContent: "flex-end",
+            marginTop: 4,
+          }}
+        >
+          <button
+            onClick={onClose}
+            style={{
+              padding: "8px 16px",
+              borderRadius: 8,
+              border: "1px solid var(--line-strong)",
+              background: "#fff",
+              color: "var(--ink-2)",
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            style={{
+              padding: "8px 16px",
+              borderRadius: 8,
+              border: "none",
+              background: "var(--red)",
+              color: "#fff",
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            Yes, Stop Code
+          </button>
         </div>
       </div>
     </div>
