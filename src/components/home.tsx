@@ -94,15 +94,17 @@ export function CRHomeScreen({
   onRename,
   onDelete,
 }: CRHomeScreenProps) {
-  const [installPrompt, setInstallPrompt] = useState<Event & { prompt: () => Promise<void> } | null>(null);
+  const [installPrompt, setInstallPrompt] = useState<
+    (Event & { prompt: () => Promise<void> }) | null
+  >(null);
 
   useEffect(() => {
     const handler = (e: Event) => {
       e.preventDefault();
       setInstallPrompt(e as Event & { prompt: () => Promise<void> });
     };
-    window.addEventListener('beforeinstallprompt', handler);
-    return () => window.removeEventListener('beforeinstallprompt', handler);
+    window.addEventListener("beforeinstallprompt", handler);
+    return () => window.removeEventListener("beforeinstallprompt", handler);
   }, []);
 
   function startedLabel(ts: number) {
@@ -133,7 +135,14 @@ export function CRHomeScreen({
       }}
     >
       <div style={{ paddingTop: "env(safe-area-inset-top, 0px)" }} />
-      <div style={{ padding: "8px 22px 6px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div
+        style={{
+          padding: "8px 22px 6px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
         <div>
           <h1
             style={{
@@ -300,7 +309,7 @@ export function CRHomeScreen({
                             color: "white",
                           }}
                         >
-                          LIVE
+                          ACTIVE CPR
                         </span>
                       )}
                     </div>
