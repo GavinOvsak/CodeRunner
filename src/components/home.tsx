@@ -376,7 +376,9 @@ export function CRHomeScreen({
           background: "var(--amber-soft)",
           borderTop: "1px solid color-mix(in srgb, var(--amber) 30%, transparent)",
           borderLeft: "4px solid var(--amber)",
-          padding: isDisclaimerCollapsed ? "10px 16px" : "14px 16px",
+          padding: isDisclaimerCollapsed
+            ? "10px 16px calc(10px + env(safe-area-inset-bottom, 0px))"
+            : "14px 16px calc(14px + env(safe-area-inset-bottom, 0px))",
           display: "flex",
           flexDirection: "column",
           gap: isDisclaimerCollapsed ? 0 : 8,
