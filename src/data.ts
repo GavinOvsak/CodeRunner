@@ -353,7 +353,10 @@ export function crNextTasks(s: Patient): NextTask[] {
       }
     } else {
       // RUNNING — compressions in progress; show setup tasks
-      if (shockable && aedDone) {
+      // Suppress if a shock was delivered before CPR started (just shocked → do CPR first)
+      const shockDoses = s.gave.find((g) => g.key === "shock")?.doses ?? [];
+      const shockBeforeCpr = shockDoses.some((d) => d < s.cpr.cycleStartAt);
+      if (shockable && aedDone && !shockBeforeCpr) {
         push({
           id: "pause-to-shock",
           label: "Pause CPR to Shock",
