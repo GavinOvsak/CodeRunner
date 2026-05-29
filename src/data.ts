@@ -17,6 +17,17 @@ import type {
   Patient,
 } from "./types";
 
+export interface MedDetail {
+  adultDose?: string;
+  pedsDose?: string;
+  sharedDose?: string;
+  freq?: string;
+  route?: string;
+  notes?: string[];
+  /** Returns a calculated dose string given patient weight in kg. */
+  pedsDoseCalc?: (wt: number) => string;
+}
+
 export const CR_MEDS: Med[] = [
   // Code drugs (most-used first)
   { key: "epi", name: "Epinephrine 1mg", cat: "Code", short: "Epi" },
@@ -57,6 +68,174 @@ export const CR_CONTINUOUS_KEYS: ReadonlySet<MedKey> =
 export const CR_MED_BY_KEY: Record<MedKey, Med> = Object.fromEntries(
   CR_MEDS.map((m) => [m.key, m]),
 ) as Record<MedKey, Med>;
+
+export const MED_DETAILS: Partial<Record<MedKey, MedDetail>> = {
+  epi: {
+    adultDose: "1 mg IV/IO",
+    pedsDose: "0.01 mg/kg IV/IO (max 1 mg)",
+    freq: "q 3–5 min",
+    notes: ["Flush with 20 mL NS after each push"],
+    pedsDoseCalc: (wt) => `${Math.min(wt * 0.01, 1).toFixed(2)} mg`,
+  },
+  amio: {
+    adultDose: "300 mg IV/IO (1st), 150 mg (repeat)",
+    pedsDose: "5 mg/kg (max 300 mg 1st, 150 mg repeat)",
+    route: "IV/IO",
+    notes: ["Give after ≥2 shocks in VF/pVT", "Stable VT: 150 mg over 10 min"],
+    pedsDoseCalc: (wt) =>
+      `1st: ${Math.min(wt * 5, 300).toFixed(0)} mg · repeat: ${Math.min(wt * 5, 150).toFixed(0)} mg`,
+  },
+  lido: {
+    adultDose: "1–1.5 mg/kg IV/IO (1st), 0.5–0.75 mg/kg (repeat)",
+    pedsDose: "1 mg/kg (max 100 mg); repeat 0.5 mg/kg",
+    route: "IV/IO",
+    notes: ["Alternative to amiodarone for VF/pVT after ≥2 shocks"],
+    pedsDoseCalc: (wt) =>
+      `1st: ${Math.min(wt * 1, 100).toFixed(0)} mg · repeat: ${Math.min(wt * 0.5, 100).toFixed(0)} mg`,
+  },
+  atropine: {
+    adultDose: "1 mg IV q 3–5 min (max 3 mg)",
+    pedsDose: "0.02 mg/kg IV/IO (min 0.1 mg, max 0.5 mg child / 1 mg adolescent)",
+    route: "IV/IO",
+    pedsDoseCalc: (wt) =>
+      `${Math.min(Math.max(wt * 0.02, 0.1), 0.5).toFixed(2)} mg`,
+  },
+  adenosine: {
+    adultDose: "6 mg rapid IV push → 12 mg → 12 mg",
+    pedsDose: "0.1 mg/kg (max 6 mg) → 0.2 mg/kg (max 12 mg)",
+    route: "IV (antecubital or central)",
+    notes: ["Flush immediately with 20 mL NS", "Short half-life — push fast"],
+    pedsDoseCalc: (wt) =>
+      `1st: ${Math.min(wt * 0.1, 6).toFixed(1)} mg · 2nd: ${Math.min(wt * 0.2, 12).toFixed(1)} mg`,
+  },
+  bicarb: {
+    sharedDose: "1 mEq/kg IV; repeat 0.5 mEq/kg q 10 min",
+    route: "IV/IO",
+    notes: ["Use for tricyclic overdose, severe metabolic acidosis, hyperkalemia"],
+    pedsDoseCalc: (wt) => `${wt.toFixed(0)} mEq`,
+  },
+  calcium: {
+    adultDose: "CaCl 1 g (10 mL of 10%) or CaGluconate 3 g (30 mL)",
+    pedsDose: "CaCl 20 mg/kg IV (max 1 g) or CaGluconate 60 mg/kg",
+    route: "IV (CaCl via central line preferred)",
+    notes: ["Indications: hyperkalemia, hypocalcemia, CCB or Mg overdose"],
+    pedsDoseCalc: (wt) =>
+      `CaCl: ${Math.min(wt * 20, 1000).toFixed(0)} mg · CaGluconate: ${Math.min(wt * 60, 3000).toFixed(0)} mg`,
+  },
+  magnesium: {
+    adultDose: "2 g IV over 15 min (Torsades: over 1–2 min)",
+    pedsDose: "25–50 mg/kg IV over 15–30 min (max 2 g)",
+    route: "IV/IO",
+    notes: ["First-line treatment for Torsades de pointes"],
+    pedsDoseCalc: (wt) =>
+      `${Math.min(wt * 0.025, 2).toFixed(1)}–${Math.min(wt * 0.05, 2).toFixed(1)} g`,
+  },
+  naloxone: {
+    adultDose: "0.4–2 mg IV/IM/IN; repeat q 2–3 min",
+    pedsDose: "0.01 mg/kg IV/IM (max 0.4 mg initial)",
+    route: "IV, IM, or IN",
+    notes: ["Duration 45–90 min — may need repeat doses", "Can precipitate acute withdrawal"],
+    pedsDoseCalc: (wt) => `${Math.min(wt * 0.01, 0.4).toFixed(3)} mg`,
+  },
+  d50: {
+    adultDose: "25 g (50 mL of D50W) IV push",
+    pedsDose: "0.5–1 g/kg IV; prefer D25 or D10 in neonates",
+    route: "IV",
+    notes: ["Confirm hypoglycemia first", "Flush IV line after administration"],
+  },
+  dopamine: {
+    sharedDose: "5–20 mcg/kg/min IV infusion",
+    route: "IV infusion",
+    notes: [
+      "Low (1–5 mcg/kg/min): dopaminergic",
+      "Mid (5–10): β₁ inotrope/chronotrope",
+      "High (>10): α vasoconstriction",
+      "Titrate to MAP ≥65 mmHg",
+    ],
+  },
+  norepi: {
+    sharedDose: "0.1–0.5 mcg/kg/min; titrate to MAP ≥65 mmHg",
+    route: "IV infusion (central line preferred)",
+    notes: ["First-line vasopressor for septic shock"],
+  },
+  vaso: {
+    sharedDose: "0.04 units/min IV (fixed dose, not titrated)",
+    route: "IV infusion",
+    notes: ["No dose escalation", "Use as adjunct to norepinephrine"],
+  },
+  procain: {
+    adultDose: "20–50 mg/min IV; max 17 mg/kg",
+    route: "IV infusion",
+    notes: [
+      "Stop if: QRS widens >50%, hypotension, or arrhythmia resolves",
+      "Do not combine with amiodarone",
+    ],
+  },
+  prbc: {
+    sharedDose: "1 unit (~300–350 mL) IV",
+    route: "IV",
+    notes: [
+      "Raises Hgb ≈1 g/dL per unit",
+      "Consider for Hgb <7 (or <8 in ACS/cardiac patients)",
+    ],
+  },
+  ffp: {
+    sharedDose: "10–15 mL/kg IV",
+    route: "IV",
+    notes: [
+      "Reverses warfarin and clotting factor deficiencies",
+      "Use 1:1:1 ratio (pRBC:FFP:PLT) in massive transfusion",
+    ],
+  },
+  plt: {
+    sharedDose: "1 apheresis unit (or 4–6 pooled)",
+    route: "IV",
+    notes: [
+      "Raises platelets ≈25–50 k/μL per unit",
+      "Transfuse if <50 k/μL with active bleeding; <10 k/μL prophylactic",
+    ],
+  },
+  cryo: {
+    sharedDose: "1 unit/5 kg (typically 10 units)",
+    route: "IV",
+    notes: [
+      "Target fibrinogen >150–200 mg/dL",
+      "Contains: fibrinogen, FVIII, vWF, FXIII",
+    ],
+  },
+  albumin: {
+    sharedDose: "5%: 250–500 mL IV | 25%: 50–100 mL IV",
+    route: "IV",
+    notes: ["Use for volume expansion, SBP, hepatorenal syndrome"],
+  },
+  tranex: {
+    sharedDose: "1 g IV over 10 min; 2nd dose 1 g over 8 h",
+    route: "IV",
+    notes: [
+      "Give within 3 h of traumatic injury for best effect",
+      "Inhibits fibrinolysis (antifibrinolytic)",
+    ],
+  },
+  shock: {
+    adultDose: "Biphasic: 120–200 J (mfr. rec.) | Monophasic: 360 J",
+    pedsDose: "1st: 2 J/kg · 2nd: 4 J/kg · Subsequent: ≥4 J/kg (max 10 J/kg)",
+    notes: [
+      "Confirm shockable rhythm before discharge",
+      "Clear all personnel — announce before shocking",
+      "Resume CPR immediately after shock",
+    ],
+    pedsDoseCalc: (wt) =>
+      `1st: ${(wt * 2).toFixed(0)} J · 2nd: ${(wt * 4).toFixed(0)} J`,
+  },
+  pace: {
+    sharedDose: "Rate 60–80 bpm; start at 0 mA, increase by 10 mA until capture",
+    notes: [
+      "Capture threshold typically 50–90 mA",
+      "Confirm mechanical capture by palpating pulse",
+      "Sedation/analgesia strongly recommended",
+    ],
+  },
+};
 
 // ─────────────────────────────────────────────────────────────
 // Display label maps (single source of truth for UI text)

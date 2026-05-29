@@ -29,6 +29,7 @@ import {
   CR_MEDS,
   CR_MED_BY_KEY,
   CR_CONTINUOUS_KEYS,
+  MED_DETAILS,
   crNextTasks,
   crRecommendedMedKeys,
 } from "../data";
@@ -1789,6 +1790,8 @@ export function CRGaveList({
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [isPills, setIsPills] = useState(false);
 
+  const [detailMed, setDetailMed] = useState<MedKey | null>(null);
+
   // Per-key animation counters — bumped on each trigger to restart animations
   const [rippleKeys, setRippleKeys] = useState<Record<string, number>>({});
   const [countKeys, setCountKeys] = useState<Record<string, number>>({});
@@ -2014,6 +2017,36 @@ export function CRGaveList({
                   {count}
                 </span>
               )}
+              {/* Info button — shown for meds with clinical detail */}
+              {MED_DETAILS[k] && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDetailMed(k);
+                  }}
+                  title="Dosing info"
+                  style={{
+                    width: 18,
+                    height: 18,
+                    borderRadius: "50%",
+                    background: "transparent",
+                    border: "1.5px solid var(--ink-3)",
+                    color: "var(--ink-3)",
+                    fontSize: 10,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                    padding: 0,
+                    lineHeight: 1,
+                    marginLeft: 2,
+                  }}
+                >
+                  ?
+                </button>
+              )}
             </div>
             {/* Right side: timer for continuous (when active), or time-since-last-dose for countable */}
             {isContinuous ? (
@@ -2061,6 +2094,13 @@ export function CRGaveList({
           </div>
         );
       })}
+      {detailMed && (
+        <CRMedDetailModal
+          medKey={detailMed}
+          patient={state}
+          onClose={() => setDetailMed(null)}
+        />
+      )}
     </div>
   );
 }
@@ -2237,6 +2277,82 @@ export function CRGaveSearch({ onPick }: CRGaveSearchProps) {
 
 // ─────────────────────────────────────────────────────────────
 // CRPopupModal — contextual info overlays for tasks and status rows
+// ─────────────────────────────────────────────────────────────
+// CRMedDetailModal
+// ─────────────────────────────────────────────────────────────
+function CRMedDetailModal({
+  medKey,
+  patient,
+  onClose,
+}: {
+  medKey: MedKey;
+  patient: Patient;
+  onClose: () => void;
+}) {
+  const med = CR_MED_BY_KEY[medKey];
+  const detail = MED_DETAILS[medKey];
+  if (!detail) return null;
+
+  const isPeds = patient.type === "pediatric";
+  const wt = patient.weightKg;
+
+  const primaryDose = detail.sharedDose ?? (isPeds ? detail.pedsDose : detail.adultDose);
+  const secondaryLabel = isPeds ? "Adult" : "Peds";
+  const secondaryDose = isPeds ? detail.adultDose : detail.pedsDose;
+  const weightCalc = isPeds && wt != null && detail.pedsDoseCalc
+    ? detail.pedsDoseCalc(wt)
+    : null;
+
+  return (
+    <CRModalShell title={med?.name ?? String(medKey)} onClose={onClose}>
+      {primaryDose && (
+        <div style={{ marginBottom: 8 }}>
+          <span style={{ fontWeight: 700 }}>
+            {detail.sharedDose ? "Dose" : (isPeds ? "Peds" : "Adult")}:
+          </span>{" "}
+          {primaryDose}
+        </div>
+      )}
+      {weightCalc && (
+        <div
+          style={{
+            background: "var(--accent-soft)",
+            borderRadius: 8,
+            padding: "5px 10px",
+            marginBottom: 8,
+            fontSize: 13,
+            fontWeight: 600,
+          }}
+        >
+          For {wt} kg: {weightCalc}
+        </div>
+      )}
+      {!detail.sharedDose && secondaryDose && (
+        <div style={{ marginBottom: 8, color: "var(--ink-3)", fontSize: 12 }}>
+          <span style={{ fontWeight: 600 }}>{secondaryLabel}:</span> {secondaryDose}
+        </div>
+      )}
+      {detail.freq && (
+        <div style={{ marginBottom: 6 }}>
+          <span style={{ fontWeight: 600 }}>Frequency:</span> {detail.freq}
+        </div>
+      )}
+      {detail.route && (
+        <div style={{ marginBottom: 6 }}>
+          <span style={{ fontWeight: 600 }}>Route:</span> {detail.route}
+        </div>
+      )}
+      {detail.notes && detail.notes.length > 0 && (
+        <ul style={{ margin: "8px 0 0", paddingLeft: 16, lineHeight: 1.6 }}>
+          {detail.notes.map((note, i) => (
+            <li key={i}>{note}</li>
+          ))}
+        </ul>
+      )}
+    </CRModalShell>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────
 function CRModalShell({
   title,
