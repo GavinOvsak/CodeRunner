@@ -1,3 +1,13 @@
+/**
+ * # UI Components Library
+ * 
+ * This file contains reusable, highly responsive UI elements for the CodeRunner application,
+ * including icons, custom dropdowns/button groups, styled sections, and status rows.
+ * 
+ * All elements adhere to the application design system and support dynamic responsiveness
+ * (e.g. collapsing button groups into dropdowns when space is limited).
+ */
+
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { DropdownOption } from "../types";
 
@@ -198,15 +208,20 @@ function CRDropdownLabel({
 }
 
 /**
- * Estimates the minimum pixel width needed to render options as a button group.
- * Uses 14px per character (approximate glyph width at 15px font) + 24px for padding/borders.
+ * # estimateButtonGroupWidth
+ * 
+ * Estimates the minimum pixel width needed to render options as an inline button group.
+ * Uses an estimated character glyph width plus padding and borders per button.
+ * 
+ * Modified to be slightly less conservative (7.6px per char, 21px padding for "md") to prevent
+ * premature collapsing/wrapping of the button group when screen or panel width is reduced.
  */
 function estimateButtonGroupWidth(
   options: DropdownOption[],
   size: "md" | "lg",
 ): number {
-  const charWidth = size === "lg" ? 10 : 8.5;
-  const padPerBtn = size === "lg" ? 32 : 24;
+  const charWidth = size === "lg" ? 9 : 7.6;
+  const padPerBtn = size === "lg" ? 29 : 21;
   return options.reduce((sum, opt) => {
     const lbl = typeof opt === "string" ? opt : opt.label;
     return sum + lbl.length * charWidth + padPerBtn;
@@ -236,22 +251,33 @@ export function CRDropdown({
   const [useButtonGroup, setUseButtonGroup] = useState(true);
 
   /**
-   * Walks up the DOM from wrapRef to find the first ancestor whose width is
-   * substantially wider than our own element (i.e. a full-width container rather
-   * than a shrink-wrapped parent). We compare that stable width — minus a fixed
-   * label allowance — against the estimated button group minimum width.
+   * # checkWidth
+   * 
+   * Finds the stable outer container (the CRStatusRow grandparent) to measure the
+   * available layout width. This makes the calculation independent of the active
+   * mode (button group vs dropdown) and completely eliminates layout flashing/flickering.
+   * 
+   * Includes a hysteresis offset (12px) to prevent rapid layout oscillation/flashing
+   * near the threshold boundaries.
    */
   const checkWidth = useCallback(() => {
     if (!buttonGroup || !wrapRef.current) return;
-    // Walk up until we find an ancestor at least 2× wider than our element,
-    // stopping at body. This skips the shrink-wrapped wrapper divs.
+    
+    // Find the stable CRStatusRow ancestor. The immediate parent is a wrapper div,
+    // and the grandparent is the full-width CRStatusRow container.
     let el: HTMLElement | null = wrapRef.current.parentElement;
-    const selfWidth = wrapRef.current.getBoundingClientRect().width || 1;
-    while (el && el !== document.body) {
-      const w = el.getBoundingClientRect().width;
-      if (w > selfWidth * 1.5) break;
+    if (el && el.parentElement && el.parentElement !== document.body) {
       el = el.parentElement;
+    } else {
+      // Fallback traversal in case of different DOM nesting
+      const selfWidth = wrapRef.current.getBoundingClientRect().width || 1;
+      while (el && el !== document.body) {
+        const w = el.getBoundingClientRect().width;
+        if (w > selfWidth * 1.5) break;
+        el = el.parentElement;
+      }
     }
+    
     const rowWidth = el ? el.getBoundingClientRect().width : window.innerWidth;
     // Measure the actual label element (first child of the row) + row padding
     const labelEl = el?.firstElementChild;
@@ -260,7 +286,13 @@ export function CRDropdown({
     const labelAllowance = labelWidth + 30;
     const available = rowWidth - labelAllowance;
     const needed = estimateButtonGroupWidth(options, size);
-    setUseButtonGroup(available >= needed);
+    
+    // Apply hysteresis: once expanded, allow it to remain expanded down to needed - 12px.
+    // This prevents layout oscillation/flicker when the wrapper adapts to the new child width.
+    setUseButtonGroup((currentActive) => {
+      const threshold = currentActive ? needed - 12 : needed;
+      return available >= threshold;
+    });
   }, [buttonGroup, options, size]);
 
   useEffect(() => {
@@ -330,7 +362,7 @@ export function CRDropdown({
     if (v === "NSR") return "yes";
     if (["VF", "VT", "VF_pVT"].includes(v)) return "no";
     if (["PEA", "Asystole"].includes(v)) return "altered";
-    if (["SVT", "AF", "WideTach", "SinusBrady"].includes(v)) return "accent";
+    if (["SVT", "AF", "WideTach", "SinusBrady", "AVB1", "AVB2", "AVB3"].includes(v)) return "accent";
     return "neutral";
   };
   const currentTone = getTone(value);

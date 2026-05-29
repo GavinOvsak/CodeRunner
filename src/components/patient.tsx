@@ -88,8 +88,8 @@ const CR_OPTS_RHYTHM_TACH = [
 ];
 const CR_OPTS_RHYTHM_BRADY = [
   { value: "SinusBrady", label: "Sinus Brady" },
-  { value: "AVB1", label: "1° AVB" },
-  { value: "AVB2", label: "2° AVB" },
+  { value: "AVB1", label: "1°" },
+  { value: "AVB2", label: "2°" },
   { value: "AVB3", label: "3° AVB" },
 ];
 const CR_OPTS_RHYTHM_NORMAL = [
@@ -594,8 +594,8 @@ export function CRPatientScreen({
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <span
                     style={{
-                      background: "var(--green-soft)",
-                      color: "var(--green)",
+                      background: "var(--accent-soft)",
+                      color: "var(--accent)",
                       padding: "3px 10px",
                       borderRadius: 8,
                       fontSize: 14,
