@@ -468,6 +468,12 @@ export function CRPatientScreen({
         action: isCurrentlyActive ? "stop" : "start",
         key: key as ContinuousMedKey,
       });
+      // Starting pacing on a non-tachycardic patient — prompt rate reassessment
+      if (key === "pace" && !isCurrentlyActive && (s.rate === "Normal" || s.rate === "Slow")) {
+        setTimeout(() => {
+          log({ type: "status", field: "rate", value: "?" });
+        }, 0);
+      }
     } else {
       // Adenosine/atropine reset rate+rhythm to prompt reassessment
       if (key === "adenosine" || key === "atropine") {
