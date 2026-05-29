@@ -116,7 +116,6 @@ interface CRPatientHeaderProps {
 
 interface CRCprPillProps {
   cpr: CPRState;
-  elapsed: number;
   onPause: () => void;
   guidance: string;
   rescuers: RescuersValue;
@@ -138,7 +137,6 @@ interface CRGaveListProps {
   /** Called whenever the layout mode switches between list rows and pill grid. */
   onLayoutChange?: (isPills: boolean) => void;
   lastAction?: { key: MedKey; time: number } | null;
-  currentTime?: number;
 }
 
 interface CRGaveSearchProps {
@@ -237,28 +235,25 @@ export function CRPatientScreen({
     [update],
   );
 
-  // tick (4Hz) to drive timers
-  const [, setTick] = useState(0);
+  // Coarse tick (10 s) — only drives medication timing windows in crNextTasks.
+  // Sub-second display updates are handled inside CRCprPill, CRPatientHeader,
+  // and CRGaveList with their own isolated intervals.
+  const [taskTick, setTaskTick] = useState(0);
   useEffect(() => {
-    const id = setInterval(() => setTick((t) => t + 1), 250);
+    const id = setInterval(() => setTaskTick((t) => t + 1), 10_000);
     return () => clearInterval(id);
   }, []);
 
   // derived
+  const cpr = s.cpr;
   const lastLog = s.log.at(-1) ?? null;
   const lastLogAt = lastLog ? lastLog.at : Date.now();
   const isRecent = Date.now() - lastLogAt < 5 * 60 * 1000;
-  const currentTime = isRecent || s.cpr.active ? Date.now() : lastLogAt;
+  // taskNow only changes every 10 s (via taskTick) or when patient state changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const taskNow = useMemo(() => (isRecent || cpr.active ? Date.now() : lastLogAt), [s, taskTick]);
 
-  const cpr = s.cpr;
-  const cycleElapsed =
-    cpr.active && !cpr.pausedAt
-      ? currentTime - cpr.cycleStartAt
-      : cpr.pausedAt
-        ? cpr.pausedAt - cpr.cycleStartAt
-        : 0;
-
-  const tasks = crNextTasks(s, currentTime);
+  const tasks = crNextTasks(s, taskNow);
   const recKeys = crRecommendedMedKeys(tasks);
 
   // Status field setters — log entries drive all state via reconstructStateFromLog
@@ -527,7 +522,6 @@ export function CRPatientScreen({
         <div style={{ padding: "8px 12px 0" }}>
           <CRCprPill
             cpr={cpr}
-            elapsed={cycleElapsed}
             onPause={toggleCprPause}
             guidance={getCprGuidance()}
             rescuers={s.rescuers}
@@ -870,7 +864,6 @@ export function CRPatientScreen({
                 onGive={giveMed}
                 onLayoutChange={setIsPillGave}
                 lastAction={lastAction}
-                currentTime={currentTime}
               />
             </div>
           </div>
@@ -895,6 +888,13 @@ export function CRPatientHeader({
   onOpenLog,
   onInfo,
 }: CRPatientHeaderProps) {
+  // Self-managed 1 s tick — keeps the case-elapsed clock ticking
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
+
   const lastLog = patient.log.at(-1) ?? null;
   const lastLogAt = lastLog ? lastLog.at : Date.now();
   const isRecent = Date.now() - lastLogAt < 5 * 60 * 1000;
@@ -983,7 +983,6 @@ export function CRPatientHeader({
 // ─────────────────────────────────────────────────────────────
 export function CRCprPill({
   cpr,
-  elapsed,
   onPause,
   guidance: _guidance,
   rescuers,
@@ -991,6 +990,20 @@ export function CRCprPill({
   onRescuers,
 }: CRCprPillProps) {
   const paused = !!cpr.pausedAt;
+
+  // Self-managed 250ms tick — only runs while CPR is active and not paused
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (paused) return;
+    const id = setInterval(() => setTick((t) => t + 1), 250);
+    return () => clearInterval(id);
+  }, [paused]);
+
+  const elapsed = cpr.active && !cpr.pausedAt
+    ? Date.now() - cpr.cycleStartAt
+    : cpr.pausedAt
+      ? cpr.pausedAt - cpr.cycleStartAt
+      : 0;
   const past = !paused && elapsed >= 120000;
   const near = !paused && !past && elapsed >= 105000;
   const cls = near ? "cr-near-2min" : "";
@@ -1773,8 +1786,19 @@ export function CRGaveList({
   onGive,
   onLayoutChange,
   lastAction,
-  currentTime,
 }: CRGaveListProps) {
+  // Self-managed 1 s tick — keeps "time since last dose" counters updating
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const lastLog = state.log.at(-1) ?? null;
+  const lastLogAt = lastLog ? lastLog.at : Date.now();
+  const isRecent = Date.now() - lastLogAt < 5 * 60 * 1000;
+  const currentTime = isRecent || state.cpr.active ? Date.now() : lastLogAt;
+
   const givenKeys = state.gave
     .filter((g) => g.doses.length > 0)
     .sort((a, b) => Math.min(...a.doses) - Math.min(...b.doses))

@@ -12,9 +12,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg'],
       manifest: {
-        name: 'CodeRunner — ACLS Companion',
+        name: 'CodeRunner — ACLS / PALS Companion',
         short_name: 'CodeRunner',
-        description: 'ACLS protocol companion for trained providers',
+        description: 'ACLS / PALS protocol companion for trained providers',
         theme_color: '#16140F',
         background_color: '#F5F4F0',
         display: 'standalone',

@@ -6,6 +6,38 @@ import { CRLogScreen } from './log'
 import { reconstructStateFromLog, isLegacyPatientData } from '../utils'
 
 // ─────────────────────────────────────────────────────────────
+// Storage
+// ─────────────────────────────────────────────────────────────
+
+const STORAGE_KEY = 'cr_patients_v2';
+const STORAGE_KEY_V1 = 'cr_patients';
+
+function loadPatients(): Patient[] {
+  try {
+    // Try current versioned key first
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return (JSON.parse(raw) as Patient[]).map(reconstructStateFromLog);
+
+    // Migrate from v1 if present
+    const rawV1 = localStorage.getItem(STORAGE_KEY_V1);
+    if (rawV1) {
+      const parsed = JSON.parse(rawV1);
+      if (isLegacyPatientData(parsed)) {
+        // Stringly-typed format — unrecoverable, clear it
+        localStorage.removeItem(STORAGE_KEY_V1);
+        localStorage.removeItem('cr_seeded_cleared_v1');
+        return [];
+      }
+      // Valid discriminated-union format — migrate to versioned key
+      localStorage.setItem(STORAGE_KEY, rawV1);
+      localStorage.removeItem(STORAGE_KEY_V1);
+      return (parsed as Patient[]).map(reconstructStateFromLog);
+    }
+  } catch { /* ignore parse errors */ }
+  return [];
+}
+
+// ─────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────
 export function nowShort(): string {
@@ -105,27 +137,12 @@ export function seedPatients(): Patient[] {
 // CRApp
 // ─────────────────────────────────────────────────────────────
 export function CRApp() {
-  const [patients, setPatients] = useState<Patient[]>(() => {
-    try {
-      const raw = localStorage.getItem('cr_patients');
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        // Clear legacy stringly-typed data — not worth migrating in beta
-        if (isLegacyPatientData(parsed)) {
-          localStorage.removeItem('cr_patients');
-          localStorage.removeItem('cr_seeded_cleared_v1');
-          return [];
-        }
-        return (parsed as Patient[]).map(reconstructStateFromLog);
-      }
-    } catch { /* ignore */ }
-    return [];
-  });
+  const [patients, setPatients] = useState<Patient[]>(loadPatients);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [view, setView] = useState<'home' | 'patient' | 'log'>('home');
 
   useEffect(() => {
-    localStorage.setItem('cr_patients', JSON.stringify(patients));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(patients));
   }, [patients]);
 
   const active = patients.find(p => p.id === activeId);
