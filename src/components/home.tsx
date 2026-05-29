@@ -94,6 +94,9 @@ export function CRHomeScreen({
   onRename,
   onDelete,
 }: CRHomeScreenProps) {
+  const [isDisclaimerCollapsed, setIsDisclaimerCollapsed] = useState(() => {
+    return localStorage.getItem("cr_disclaimer_collapsed") === "true";
+  });
   const [installPrompt, setInstallPrompt] = useState<
     (Event & { prompt: () => Promise<void> }) | null
   >(null);
@@ -359,6 +362,77 @@ export function CRHomeScreen({
             );
           })}
         </div>
+      </div>
+
+      {/* Collapsible Fixed-Bottom Medical Disclaimer */}
+      <div
+        style={{
+          background: "var(--amber-soft)",
+          borderTop: "1px solid color-mix(in srgb, var(--amber) 30%, transparent)",
+          borderLeft: "4px solid var(--amber)",
+          padding: isDisclaimerCollapsed ? "10px 16px" : "14px 16px",
+          display: "flex",
+          flexDirection: "column",
+          gap: isDisclaimerCollapsed ? 0 : 8,
+          flexShrink: 0,
+          position: "relative",
+          transition: "padding 200ms ease",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            width: "100%",
+          }}
+        >
+          <div
+            style={{
+              fontSize: 13.5,
+              fontWeight: 700,
+              color: "var(--ink)",
+              textTransform: "uppercase",
+              letterSpacing: "0.04em",
+            }}
+          >
+            Medical Disclaimer
+          </div>
+          <button
+            onClick={() => {
+              const nextVal = !isDisclaimerCollapsed;
+              localStorage.setItem("cr_disclaimer_collapsed", String(nextVal));
+              setIsDisclaimerCollapsed(nextVal);
+            }}
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: 4,
+              color: "var(--ink-2)",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+            aria-label={isDisclaimerCollapsed ? "Expand disclaimer" : "Collapse disclaimer"}
+          >
+            <CRIcon name={isDisclaimerCollapsed ? "plus" : "minus"} size={16} color="var(--ink-2)" />
+          </button>
+        </div>
+
+        {!isDisclaimerCollapsed && (
+          <div
+            style={{
+              fontSize: 12.5,
+              color: "var(--ink-2)",
+              lineHeight: 1.45,
+              paddingRight: 12,
+              animation: "crCountWipe 200ms ease both",
+            }}
+          >
+            This application is an educational aid for trained providers running resuscitations and is not a substitute for clinical judgment. Protocols and dosages are designed to assist in ACLS/PALS simulation and learning. We gratefully acknowledge the work of the <a href="https://cpr.heart.org/en/" target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)", fontWeight: 600, textDecoration: "underline" }}>American Heart Association (AHA)</a>, and strongly encourage all users to consult their official publications for complete clinical context and guidance.
+          </div>
+        )}
       </div>
     </div>
   );

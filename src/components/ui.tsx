@@ -65,6 +65,12 @@ export function CRIcon({
           <path d="M12 5v14M5 12h14" />
         </svg>
       );
+    case "minus":
+      return (
+        <svg {...props}>
+          <path d="M5 12h14" />
+        </svg>
+      );
     case "kebab":
       return (
         <svg {...props}>
