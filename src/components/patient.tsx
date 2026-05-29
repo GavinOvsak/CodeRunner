@@ -993,7 +993,7 @@ export function CRCprPill({
   const paused = !!cpr.pausedAt;
   const past = !paused && elapsed >= 120000;
   const near = !paused && !past && elapsed >= 105000;
-  const cls = past ? "cr-past-2min" : near ? "cr-near-2min" : "";
+  const cls = near ? "cr-near-2min" : "";
 
   // ── resize observer for pause/resume label ────────────────
   const pillRef = useRef<HTMLDivElement>(null);
@@ -1042,11 +1042,12 @@ export function CRCprPill({
   const [lastTap, setLastTap] = useState<number | null>(null);
   const [comprRate, setComprRate] = useState<number | null>(null);
 
-  /** Records a tap; computes BPM between last two taps. Resets if >10 s idle. */
+  /** Records a tap; computes BPM between last two taps. Resets if >10 s idle. Rate < 50 means taps too far apart. */
   function handleComprTap() {
     const now = Date.now();
     if (lastTap !== null && now - lastTap < 10000) {
-      setComprRate(Math.round((60000 / (now - lastTap)) * 10) / 10);
+      const rate = Math.round(60000 / (now - lastTap));
+      setComprRate(rate >= 50 ? rate : null);
     } else {
       setComprRate(null);
     }
@@ -1088,7 +1089,7 @@ export function CRCprPill({
   const bg = paused
     ? "var(--surface-2)"
     : past
-      ? "color-mix(in srgb, var(--red) 18%, white)"
+      ? "var(--red)"
       : near
         ? "var(--amber-soft)"
         : "color-mix(in srgb, var(--red) 8%, white)";
@@ -1099,12 +1100,11 @@ export function CRCprPill({
       : near
         ? "var(--amber)"
         : "color-mix(in srgb, var(--red) 25%, transparent)";
-  // past bg is light pink (~18% red) so use red ink for contrast, not white
-  const ink = past ? "var(--red)" : "var(--ink)";
+  const ink = past ? "white" : "var(--ink)";
   const badgeBg = paused
     ? "var(--ink-3)"
     : past
-      ? "var(--red)"
+      ? "rgba(255,255,255,0.9)"
       : "color-mix(in srgb, var(--red) 80%, white)";
   const badgeLabel = paused
     ? `PAUSED · #${cpr.cycleNumber}`
@@ -1160,7 +1160,7 @@ export function CRCprPill({
   // ── shared pill / header bar JSX ──────────────────────────
   const pauseBtn = (
     <button
-      onClick={(e) => { e.stopPropagation(); onPause(); }}
+      onClick={(e) => { e.stopPropagation(); onPause(); if (!paused) closeOverlay(); }}
       aria-label={paused ? "resume" : "pause"}
       style={{
         ...crCprBtn(past),
@@ -1176,7 +1176,7 @@ export function CRCprPill({
         flexShrink: 0,
       }}
     >
-      <CRIcon name={paused ? "play" : "pause"} size={14} color={past ? "var(--red)" : "var(--ink)"} />
+      <CRIcon name={paused ? "play" : "pause"} size={14} color={past ? "white" : "var(--ink)"} />
       {showLabel && <span style={{ whiteSpace: "nowrap" }}>{paused ? "Resume" : "Pause"}</span>}
     </button>
   );
@@ -1190,7 +1190,7 @@ export function CRCprPill({
         width: 12,
         height: 12,
         borderRadius: "50%",
-        background: "var(--red)",
+        background: past ? "white" : "var(--red)",
         animation: "crMetronome 500ms linear",
       }}
     />
@@ -1200,7 +1200,7 @@ export function CRCprPill({
     <div style={{
       fontSize: 11, fontWeight: 800, letterSpacing: "0.08em",
       padding: "3px 7px", borderRadius: 6,
-      background: badgeBg, color: "white",
+      background: badgeBg, color: past ? "var(--red)" : "white",
       whiteSpace: "nowrap", flexShrink: 0,
     }}>
       {badgeLabel}
@@ -1291,9 +1291,10 @@ export function CRCprPill({
             paddingBottom: "env(safe-area-inset-bottom, 0px)",
           }}
         >
-          {/* ── Header — flashes red when past 2 min ── */}
+          {/* ── Header — solid red when past 2 min ── */}
           <div
             className={cls}
+            onClick={closeOverlay}
             style={{
             display: "flex",
             alignItems: "center",
@@ -1303,13 +1304,12 @@ export function CRCprPill({
             background: bg,
             color: ink,
             flexShrink: 0,
+            cursor: "pointer",
           }}>
-            {/* Collapse chevron */}
-            <button
-              onClick={closeOverlay}
-              aria-label="collapse"
+            {/* Collapse chevron — decorative only, whole bar is clickable */}
+            <span
+              aria-hidden="true"
               style={{
-                ...crCprBtn(past),
                 width: 32,
                 height: 32,
                 display: "flex",
@@ -1318,8 +1318,8 @@ export function CRCprPill({
                 flexShrink: 0,
               }}
             >
-              <CRIcon name="chevron-down" size={16} color={past ? "var(--red)" : "var(--ink)"} />
-            </button>
+              <CRIcon name="chevron-down" size={16} color={past ? "white" : "var(--ink)"} />
+            </span>
 
             {badgeEl}
 
@@ -1334,7 +1334,7 @@ export function CRCprPill({
             <div style={{ flex: 1, minWidth: 0 }}>
               <span style={{
                 fontSize: 14, fontWeight: 500,
-                color: "var(--ink-3)",
+                color: past ? "rgba(255,255,255,0.7)" : "var(--ink-3)",
                 opacity: 0.8,
               }}>
                 / 2:00
@@ -1375,9 +1375,9 @@ export function CRCprPill({
                       style={{
                         padding: "7px 16px",
                         borderRadius: 22,
-                        border: `1.5px solid ${active ? "var(--red)" : "var(--line-strong)"}`,
-                        background: active ? "color-mix(in srgb, var(--red) 10%, white)" : "var(--surface)",
-                        color: active ? "var(--red)" : "var(--ink-2)",
+                        border: `1.5px solid ${active ? "var(--accent)" : "var(--line-strong)"}`,
+                        background: active ? "var(--accent-soft)" : "var(--surface)",
+                        color: active ? "var(--accent)" : "var(--ink-2)",
                         fontSize: 13,
                         fontWeight: active ? 700 : 500,
                         cursor: "pointer",
@@ -1540,7 +1540,7 @@ export function CRCprPill({
                         fontFamily: "monospace",
                         lineHeight: 1,
                       }}>
-                        {comprRate.toFixed(1)}
+                        {comprRate}
                       </span>
                       <span style={{ fontSize: 12, color: "var(--ink-3)", fontWeight: 600 }}>
                         / min ·{" "}
