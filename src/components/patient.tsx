@@ -1727,7 +1727,7 @@ export function CRNextList({
                 <CRIcon name="question" size={17} color="var(--ink-3)" />
               </button>
             )}
-            {critical && !t.popup && (
+            {critical && !t.popup && t.id !== "start-cpr" && t.id !== "resume-cpr" && (
               <span
                 style={{
                   fontSize: 10,
