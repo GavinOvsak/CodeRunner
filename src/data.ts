@@ -327,6 +327,7 @@ export const TASK_LABELS: Record<TaskId, string> = {
 export const TASK_PRIORITY: TaskId[] = [
   // Cardiac arrest — immediate actions
   "shock",
+  "cardiovert",
   "pause-to-shock",
   "start-cpr",
   "rosc",
@@ -346,7 +347,6 @@ export const TASK_PRIORITY: TaskId[] = [
   "reversible",
   "check-rescuers",
   // Tachycardia
-  "cardiovert",
   "ecg",
   "adenosine",
   // Bradycardia
