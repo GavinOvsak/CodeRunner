@@ -282,6 +282,8 @@ export function CRPatientScreen({
   function setPulse(v: string) {
     if (v === s.pulse) return;
     log({ type: "status", field: "pulse", value: v as PulseValue });
+    if (v === "No" && s.alert !== "No")
+      log({ type: "status", field: "alert", value: "No" });
   }
   function setRate(v: string) {
     if (v === s.rate) return;
