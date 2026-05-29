@@ -76,8 +76,8 @@ export function reconstructStateFromLog(p: Patient): Patient {
             }
             break;
           case "rate":
+            if (entry.value !== base.rate) base.rhythm = "?";
             base.rate = entry.value;
-            base.rhythm = "?";
             break;
           case "rhythm": {
             base.rhythm = entry.value;
@@ -134,10 +134,7 @@ export function reconstructStateFromLog(p: Patient): Patient {
           base.breathing = "ETT";
           base.alert = "Sedated";
         }
-        if (entry.taskId === "access") {
-          base.doneTasks["access"] = true;
-        }
-        base.doneTasks[entry.taskId + "__hidden"] = true;
+        base.doneTasks[entry.taskId] = true;
         break;
 
       case "cpr":
@@ -188,12 +185,14 @@ export function reconstructStateFromLog(p: Patient): Patient {
     base.pulse = "Yes";
   }
 
-  // Reset/override symptomatic based on rate, pulse, and alert status
+  // Auto-promote to Yes when patient is obtunded and has an abnormal rate —
+  // they cannot self-report symptoms. Never override an explicit logged "No".
   if (base.pulse === "Yes" && (base.rate === "Fast" || base.rate === "Slow")) {
     if (base.alert === "No" || base.alert === "Altered") {
       base.symptomatic = "Yes";
     }
   } else {
+    // Rate is normal or pulse absent — symptomatic is not clinically applicable
     base.symptomatic = "?";
   }
 

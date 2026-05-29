@@ -257,9 +257,8 @@ export function CRPatientScreen({
         ? cpr.pausedAt - cpr.cycleStartAt
         : 0;
 
-  // Memoized: only recomputes when patient state changes, not on every 250ms tick
-  const tasks = useMemo(() => crNextTasks(s), [s]);
-  const recKeys = useMemo(() => crRecommendedMedKeys(tasks), [tasks]);
+  const tasks = crNextTasks(s, currentTime);
+  const recKeys = crRecommendedMedKeys(tasks);
 
   // Status field setters — log entries drive all state via reconstructStateFromLog
   function setAlert(v: string) {

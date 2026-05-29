@@ -30,7 +30,7 @@ export type TaskId =
   | "opioid-reversal" | "rescue-breaths"
   | "ecg" | "adenosine" | "cardiovert"
   | "atropine" | "pace" | "dopamine"
-  | "glucose" | "d50" | "lkw" | "check-stroke-sx" | "fast" | "ct"
+  | "glucose" | "d50" | "check-stroke-sx" | "fast" | "ct"
   | "choking-cycles" | "reassess-responsiveness"
   | "check-rhythm" | "check-symptomatic" | "check-weight" | "check-rescuers";
 
