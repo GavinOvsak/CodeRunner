@@ -32,7 +32,8 @@ export type TaskId =
   | "atropine" | "pace" | "dopamine"
   | "glucose" | "d50" | "check-stroke-sx" | "fast" | "ct"
   | "choking-cycles" | "reassess-responsiveness"
-  | "check-rhythm" | "check-symptomatic" | "check-weight" | "check-rescuers";
+  | "check-rhythm" | "check-symptomatic" | "check-weight" | "check-rescuers"
+  | "wean-pacing";
 
 export type StatusField =
   | "alert" | "breathing" | "pulse" | "rate" | "rhythm"
@@ -157,7 +158,7 @@ export interface NextTask {
   medKey?: MedKey;
   need?: "alert" | "breathing" | "pulse" | "rate" | "rhythm" | "symptomatic" | "rescuers" | "weightKg" | "glucose" | "strokeSx";
   recurring?: boolean;
-  popup?: "shock" | "ht" | "strokeSx" | "strokeScale" | "rhythm";
+  popup?: "shock" | "ht" | "strokeSx" | "strokeScale" | "rhythm" | "rescueBreaths";
 }
 
 export type DropdownOptionObj = {
