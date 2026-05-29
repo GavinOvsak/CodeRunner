@@ -1821,7 +1821,7 @@ export function CRNextList({
             key={t.id}
             className={isFading ? "cr-fade" : isNew ? "cr-task-new" : ""}
             onClick={
-              t.popup
+              (t.popup || t.medKey || t.id === "shock" || t.id === "cardiovert")
                 ? () => setActiveTask(t)
                 : !t.recurring
                   ? () => onCheck(t)
@@ -1837,13 +1837,13 @@ export function CRNextList({
               background: critical
                 ? "color-mix(in srgb, var(--red) 6%, white)"
                 : "transparent",
-              cursor: t.popup || !t.recurring ? "pointer" : undefined,
+              cursor: (t.popup || t.medKey || t.id === "shock" || t.id === "cardiovert" || !t.recurring) ? "pointer" : undefined,
             }}
           >
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                if (t.recurring && t.popup) {
+                if (t.recurring && (t.popup || t.medKey || t.id === "shock" || t.id === "cardiovert")) {
                   setActiveTask(t);
                 } else {
                   onCheck(t);
@@ -1884,7 +1884,7 @@ export function CRNextList({
             >
               {t.label}
             </div>
-            {t.popup && (
+            {(t.popup || t.medKey || t.id === "shock" || t.id === "cardiovert") && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -1909,6 +1909,9 @@ export function CRNextList({
             )}
             {critical &&
               !t.popup &&
+              !t.medKey &&
+              t.id !== "shock" &&
+              t.id !== "cardiovert" &&
               t.id !== "start-cpr" &&
               t.id !== "resume-cpr" && (
                 <span
@@ -1926,37 +1929,57 @@ export function CRNextList({
           </div>
         );
       })}
-      {activeTask?.popup && (
-        <CRPopupModal
-          type={
-            activeTask.popup as
-              | "shock"
-              | "ht"
-              | "strokeSx"
-              | "strokeScale"
-              | "rhythm"
-              | "symptomatic"
-          }
-          patient={patient}
-          onClose={() => setActiveTask(null)}
-          onTrigger={
-            !activeTask.recurring
-              ? () => {
-                  onCheck(activeTask);
-                  setActiveTask(null);
-                }
-              : undefined
-          }
-          triggerLabel={
-            !activeTask.recurring
-              ? activeTask.id === "shock"
-                ? "⚡️ Shock"
-                : activeTask.id === "cardiovert"
-                  ? "⚡️ Cardiovert"
-                  : activeTask.label
-              : undefined
-          }
-        />
+      {activeTask && (
+        activeTask.medKey && activeTask.medKey !== "shock" ? (
+          <CRMedDetailModal
+            medKey={activeTask.medKey}
+            patient={patient}
+            onClose={() => setActiveTask(null)}
+            onTrigger={
+              !activeTask.recurring
+                ? () => {
+                    onCheck(activeTask);
+                    setActiveTask(null);
+                  }
+                : undefined
+            }
+            triggerLabel={!activeTask.recurring ? activeTask.label : undefined}
+          />
+        ) : (activeTask.popup || activeTask.id === "shock" || activeTask.id === "cardiovert" ? (
+          <CRPopupModal
+            type={
+              (activeTask.id === "shock" || activeTask.id === "cardiovert")
+                ? "shock"
+                : (activeTask.popup as
+                    | "shock"
+                    | "ht"
+                    | "strokeSx"
+                    | "strokeScale"
+                    | "rhythm"
+                    | "symptomatic"
+                    | "rescueBreaths")
+            }
+            patient={patient}
+            onClose={() => setActiveTask(null)}
+            onTrigger={
+              !activeTask.recurring
+                ? () => {
+                    onCheck(activeTask);
+                    setActiveTask(null);
+                  }
+                : undefined
+            }
+            triggerLabel={
+              !activeTask.recurring
+                ? activeTask.id === "shock"
+                  ? "⚡️ Shock"
+                  : activeTask.id === "cardiovert"
+                    ? "⚡️ Cardiovert"
+                    : activeTask.label
+                : undefined
+            }
+          />
+        ) : null)
       )}
     </div>
   );
@@ -2313,11 +2336,19 @@ export function CRGaveList({
         );
       })}
       {detailMed && (
-        <CRMedDetailModal
-          medKey={detailMed}
-          patient={state}
-          onClose={() => setDetailMed(null)}
-        />
+        detailMed === "shock" ? (
+          <CRPopupModal
+            type="shock"
+            patient={state}
+            onClose={() => setDetailMed(null)}
+          />
+        ) : (
+          <CRMedDetailModal
+            medKey={detailMed}
+            patient={state}
+            onClose={() => setDetailMed(null)}
+          />
+        )
       )}
     </div>
   );
@@ -2502,10 +2533,14 @@ function CRMedDetailModal({
   medKey,
   patient,
   onClose,
+  onTrigger,
+  triggerLabel,
 }: {
   medKey: MedKey;
   patient: Patient;
   onClose: () => void;
+  onTrigger?: () => void;
+  triggerLabel?: string;
 }) {
   const med = CR_MED_BY_KEY[medKey];
   const detail = MED_DETAILS[medKey];
@@ -2569,6 +2604,26 @@ function CRMedDetailModal({
             <li key={i}>{note}</li>
           ))}
         </ul>
+      )}
+      {onTrigger && triggerLabel && (
+        <button
+          onClick={onTrigger}
+          style={{
+            marginTop: 16,
+            width: "100%",
+            padding: "12px 16px",
+            borderRadius: 10,
+            border: "none",
+            background: "var(--accent)",
+            color: "#fff",
+            fontSize: 15,
+            fontWeight: 700,
+            cursor: "pointer",
+            letterSpacing: "-0.01em",
+          }}
+        >
+          {triggerLabel}
+        </button>
       )}
     </CRModalShell>
   );
@@ -2674,6 +2729,20 @@ export function CRPopupModal({
   if (type === "shock") {
     return (
       <CRModalShell title="Shock Energy" onClose={onClose}>
+        {isPeds && wt != null && (
+          <div
+            style={{
+              background: "var(--accent-soft)",
+              borderRadius: 8,
+              padding: "5px 10px",
+              marginBottom: 12,
+              fontSize: 13,
+              fontWeight: 600,
+            }}
+          >
+            For {wt} kg: 1st: {(wt * 2).toFixed(0)} J · 2nd: {(wt * 4).toFixed(0)} J
+          </div>
+        )}
         {isPeds ? (
           <>
             <p style={{ marginTop: 0, fontWeight: 600 }}>
