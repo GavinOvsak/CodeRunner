@@ -424,46 +424,54 @@ export function crNextTasks(s: Patient, now: number = Date.now()): NextTask[] {
 
       if (shockable && shockCount >= 2) {
         const amioGiven = given("amio");
-        if (isPeds) {
-          const maxAmt = amioGiven === 0 ? 300 : 150;
-          const dose =
-            s.weightKg != null
-              ? `${Math.min(s.weightKg * 5, maxAmt).toFixed(0)}mg`
-              : `5mg/kg (max ${maxAmt}mg)`;
-          push({
-            id: "amio",
-            label: `Give Amiodarone ${dose} IV/IO`,
-            kind: "med",
-            medKey: "amio",
-          });
-        } else {
-          const amioLabel =
-            amioGiven === 0 ? "Give Amiodarone 300mg" : "Give Amiodarone 150mg";
-          push({ id: "amio", label: amioLabel, kind: "med", medKey: "amio" });
+        const amioDoses = s.gave.find((g) => g.key === "amio")?.doses ?? [];
+        const amioReady = amioDoses.length === 0 || refTime - amioDoses[amioDoses.length - 1] >= 5 * 60 * 1000;
+        if (amioReady) {
+          if (isPeds) {
+            const maxAmt = amioGiven === 0 ? 300 : 150;
+            const dose =
+              s.weightKg != null
+                ? `${Math.min(s.weightKg * 5, maxAmt).toFixed(0)}mg`
+                : `5mg/kg (max ${maxAmt}mg)`;
+            push({
+              id: "amio",
+              label: `Give Amiodarone ${dose} IV/IO`,
+              kind: "med",
+              medKey: "amio",
+            });
+          } else {
+            const amioLabel =
+              amioGiven === 0 ? "Give Amiodarone 300mg" : "Give Amiodarone 150mg";
+            push({ id: "amio", label: amioLabel, kind: "med", medKey: "amio" });
+          }
         }
 
         const lidoGiven = given("lido");
-        if (isPeds) {
-          const maxFirst = 100;
-          const doseFirst =
-            s.weightKg != null
-              ? `${Math.min(s.weightKg * 1, maxFirst).toFixed(1)}mg`
-              : `1mg/kg (max ${maxFirst}mg)`;
-          const doseRepeat =
-            s.weightKg != null
-              ? `${Math.min(s.weightKg * 0.5, maxFirst).toFixed(1)}mg`
-              : `0.5mg/kg`;
-          const lidoLabel =
-            lidoGiven === 0
-              ? `Give Lidocaine ${doseFirst} IV/IO`
-              : `Give Lidocaine ${doseRepeat} IV/IO`;
-          push({ id: "lido", label: lidoLabel, kind: "med", medKey: "lido" });
-        } else {
-          const lidoLabel =
-            lidoGiven === 0
-              ? "Give Lidocaine 1–1.5 mg/kg"
-              : "Give Lidocaine 0.5–0.75 mg/kg";
-          push({ id: "lido", label: lidoLabel, kind: "med", medKey: "lido" });
+        const lidoDoses = s.gave.find((g) => g.key === "lido")?.doses ?? [];
+        const lidoReady = lidoDoses.length === 0 || refTime - lidoDoses[lidoDoses.length - 1] >= 5 * 60 * 1000;
+        if (lidoReady) {
+          if (isPeds) {
+            const maxFirst = 100;
+            const doseFirst =
+              s.weightKg != null
+                ? `${Math.min(s.weightKg * 1, maxFirst).toFixed(1)}mg`
+                : `1mg/kg (max ${maxFirst}mg)`;
+            const doseRepeat =
+              s.weightKg != null
+                ? `${Math.min(s.weightKg * 0.5, maxFirst).toFixed(1)}mg`
+                : `0.5mg/kg`;
+            const lidoLabel =
+              lidoGiven === 0
+                ? `Give Lidocaine ${doseFirst} IV/IO`
+                : `Give Lidocaine ${doseRepeat} IV/IO`;
+            push({ id: "lido", label: lidoLabel, kind: "med", medKey: "lido" });
+          } else {
+            const lidoLabel =
+              lidoGiven === 0
+                ? "Give Lidocaine 1–1.5 mg/kg"
+                : "Give Lidocaine 0.5–0.75 mg/kg";
+            push({ id: "lido", label: lidoLabel, kind: "med", medKey: "lido" });
+          }
         }
       }
     };
@@ -604,11 +612,15 @@ export function crNextTasks(s: Patient, now: number = Date.now()): NextTask[] {
     }
     if (s.rhythm === "WideTach") {
       const amioGiven = given("amio");
-      const amioLabel =
-        amioGiven === 0
-          ? "Amiodarone 150mg over 10 min"
-          : "Amiodarone 150mg (repeat)";
-      push({ id: "amio", label: amioLabel, kind: "med", medKey: "amio" });
+      const amioDoses = s.gave.find((g) => g.key === "amio")?.doses ?? [];
+      const amioReady = amioDoses.length === 0 || now - amioDoses[amioDoses.length - 1] >= 5 * 60 * 1000;
+      if (amioReady) {
+        const amioLabel =
+          amioGiven === 0
+            ? "Amiodarone 150mg over 10 min"
+            : "Amiodarone 150mg (repeat)";
+        push({ id: "amio", label: amioLabel, kind: "med", medKey: "amio" });
+      }
     }
     if (s.rhythm === "AF")
       push({

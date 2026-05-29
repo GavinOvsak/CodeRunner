@@ -193,12 +193,30 @@ assertEqual(hasTask(twoShockPausedTasks, 'lido'), true, '2 shocks: lido shown');
 const amioFirst = twoShockPausedTasks.find(t => t.id === 'amio');
 assertEqual(amioFirst?.label, 'Give Amiodarone 300mg', 'Amio first dose: 300mg label');
 
-const amioRepeatTasks = tasks([
+const amioGivenAt = BASE + 121_500;
+const amioRepeatLog: LogEntry[] = [
   ...makeArrestPaused(2),
-  { at: BASE + 121_500, type: 'med', action: 'give', key: 'amio' },
-], BASE + 122_000);
+  { at: amioGivenAt, type: 'med', action: 'give', key: 'amio' },
+];
+
+// < 5 min after dose: amio should NOT be shown
+assertEqual(hasTask(tasks(amioRepeatLog, amioGivenAt + 4 * 60_000 + 59_000), 'amio'), false, 'Amio: NOT shown at 4:59 after last dose');
+
+// >= 5 min after dose: amio IS shown with repeat label
+const amioRepeatTasks = tasks(amioRepeatLog, amioGivenAt + 5 * 60_000 + 1_000);
 const amioRepeat = amioRepeatTasks.find(t => t.id === 'amio');
-assertEqual(amioRepeat?.label, 'Give Amiodarone 150mg', 'Amio repeat dose: 150mg label');
+assertEqual(amioRepeat?.label, 'Give Amiodarone 150mg', 'Amio repeat dose: 150mg label at 5:01 after last dose');
+
+// < 5 min after lido dose: lido should NOT be shown
+const lidoGivenAt = BASE + 121_500;
+const lidoRepeatLog: LogEntry[] = [
+  ...makeArrestPaused(2),
+  { at: lidoGivenAt, type: 'med', action: 'give', key: 'lido' },
+];
+assertEqual(hasTask(tasks(lidoRepeatLog, lidoGivenAt + 4 * 60_000 + 59_000), 'lido'), false, 'Lido: NOT shown at 4:59 after last dose');
+
+// >= 5 min after lido dose: lido IS shown
+assertEqual(hasTask(tasks(lidoRepeatLog, lidoGivenAt + 5 * 60_000 + 1_000), 'lido'), true, 'Lido: shown at 5:01 after last dose');
 
 // ─────────────────────────────────────────────────────────────
 // ROSC: pulse returns during pause
