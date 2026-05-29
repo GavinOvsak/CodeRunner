@@ -468,8 +468,8 @@ export function CRPatientScreen({
         action: isCurrentlyActive ? "stop" : "start",
         key: key as ContinuousMedKey,
       });
-      // Starting pacing on a non-tachycardic patient — prompt rate reassessment
-      if (key === "pace" && !isCurrentlyActive && (s.rate === "Normal" || s.rate === "Slow")) {
+      // Stopping pacing always clears rate; starting clears it unless already tachycardic
+      if (key === "pace" && (isCurrentlyActive || s.rate !== "Fast")) {
         setTimeout(() => {
           log({ type: "status", field: "rate", value: "?" });
         }, 0);
