@@ -775,8 +775,8 @@ export function CRPatientScreen({
                 </div>
               </CRStatusRow>
             )}
-            {/* Glucose + Stroke Sx — shown when alert is Altered */}
-            {s.alert === "Altered" && (
+            {/* Glucose + Stroke Sx — shown when alert is Altered and patient has a pulse */}
+            {s.alert === "Altered" && s.pulse !== "No" && (
               <>
                 <CRStatusRow
                   label="Glucose"
