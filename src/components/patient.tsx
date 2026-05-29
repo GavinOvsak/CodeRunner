@@ -2574,7 +2574,26 @@ export function CRPopupModal({
             <p style={{ marginTop: 0, fontWeight: 600 }}>H's</p>
             <ul style={{ margin: 0, paddingLeft: 16 }}>
               <li>Hypovolemia</li>
-              <li>Hypoxia</li>
+              <li>
+                Hypoxia
+                {isPeds && (
+                  <span
+                    style={{
+                      marginLeft: 6,
+                      fontSize: "0.75em",
+                      fontWeight: 600,
+                      color: "#b45309",
+                      background: "#fef3c7",
+                      border: "1px solid #fcd34d",
+                      borderRadius: 4,
+                      padding: "1px 5px",
+                      verticalAlign: "middle",
+                    }}
+                  >
+                    most common in peds
+                  </span>
+                )}
+              </li>
               <li>Hydrogen ion (acidosis)</li>
               <li>Hypo/hyperkalemia</li>
               {isPeds && <li>Hypoglycemia</li>}
