@@ -282,8 +282,12 @@ export function CRPatientScreen({
   function setPulse(v: string) {
     if (v === s.pulse) return;
     log({ type: "status", field: "pulse", value: v as PulseValue });
-    if (v === "No" && s.alert !== "No")
-      log({ type: "status", field: "alert", value: "No" });
+    if (v === "No") {
+      if (s.alert !== "No" && s.alert !== "Sedated")
+        log({ type: "status", field: "alert", value: "No" });
+      if (s.breathing !== "ETT")
+        log({ type: "status", field: "breathing", value: "No" as BreathingValue });
+    }
   }
   function setRate(v: string) {
     if (v === s.rate) return;
