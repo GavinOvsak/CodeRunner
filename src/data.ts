@@ -313,6 +313,61 @@ export const TASK_LABELS: Record<TaskId, string> = {
 };
 
 // ─────────────────────────────────────────────────────────────
+// Task priority — index = priority (0 = highest)
+// Tasks not listed sort after all listed tasks.
+// ─────────────────────────────────────────────────────────────
+
+export const TASK_PRIORITY: TaskId[] = [
+  // Cardiac arrest — immediate actions
+  "shock",
+  "pause-to-shock",
+  "start-cpr",
+  "rosc",
+  "resume-cpr",
+  "pause-pulse-check",
+  "pulse-rhythm-check",
+  // Respiratory arrest
+  "rescue-breaths",
+  "opioid-reversal",
+  // Arrest support
+  "get-aed",
+  "airway",
+  "epi",
+  "amio",
+  "lido",
+  "access",
+  "reversible",
+  "check-rescuers",
+  // Tachycardia
+  "cardiovert",
+  "ecg",
+  "adenosine",
+  // Bradycardia
+  "atropine",
+  "pace",
+  "dopamine",
+  "wean-pacing",
+  // Altered / stroke
+  "glucose",
+  "d50",
+  "check-stroke-sx",
+  "fast",
+  "ct",
+  // Choking
+  "choking-cycles",
+  "reassess-responsiveness",
+  // Assessment
+  "check-alert",
+  "check-breath",
+  "check-pulse",
+  "check-rate",
+  "check-rhythm",
+  "check-symptomatic",
+  // Lowest
+  "check-weight",
+];
+
+// ─────────────────────────────────────────────────────────────
 // Rules engine
 // ─────────────────────────────────────────────────────────────
 
@@ -640,7 +695,11 @@ export function crNextTasks(s: Patient, now: number = Date.now()): NextTask[] {
   // ===== Bradycardia with a pulse =====
   if (s.pulse === "Yes" && s.rate === "Slow" && s.symptomatic === "Yes") {
     push({ id: "access", label: "Obtain IV / IO Access" });
-    if (given("atropine") < 3)
+    const atropineDoses = s.gave.find((g) => g.key === "atropine")?.doses ?? [];
+    const atropineReady =
+      atropineDoses.length === 0 ||
+      now - atropineDoses[atropineDoses.length - 1] >= 3 * 60 * 1000;
+    if (given("atropine") < 3 && atropineReady)
       push({
         id: "atropine",
         label: "Atropine 1mg",
@@ -701,18 +760,13 @@ export function crNextTasks(s: Patient, now: number = Date.now()): NextTask[] {
     (t) => t.recurring || !s.doneTasks[t.id],
   );
 
-  // Shock and Start CPR always at top
-  const topIds: TaskId[] = [
-    "start-cpr",
-    "get-aed",
-    "shock",
-    "cardiovert",
-    "pause-to-shock",
-    "resume-cpr",
-  ];
-  const topTasks = filtered.filter((t) => topIds.includes(t.id));
-  const otherTasks = filtered.filter((t) => !topIds.includes(t.id));
-  return [...topTasks, ...otherTasks];
+  const priorityIndex = new Map(TASK_PRIORITY.map((id, i) => [id, i]));
+  filtered.sort((a, b) => {
+    const pa = priorityIndex.get(a.id) ?? TASK_PRIORITY.length;
+    const pb = priorityIndex.get(b.id) ?? TASK_PRIORITY.length;
+    return pa - pb;
+  });
+  return filtered;
 }
 
 // Recommended med keys (so Gave can surface them as "+1" rows even when not yet given)

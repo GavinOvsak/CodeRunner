@@ -331,6 +331,14 @@ const bradyThreeAtropineLog: LogEntry[] = [
 ];
 assertEqual(hasTask(tasks(bradyThreeAtropineLog), 'atropine'), false, 'Brady: atropine NOT shown after 3 doses (3mg max)');
 
+// Atropine cooldown: q 3-5 min — not shown within 3 min of last dose
+const bradyOneAtropineLog: LogEntry[] = [
+  ...bradyLog,
+  { at: BASE + 4000, type: 'med', action: 'give', key: 'atropine' },
+];
+assertEqual(hasTask(tasks(bradyOneAtropineLog, BASE + 64_000),  'atropine'), false, 'Brady: atropine NOT shown within 3 min of last dose');
+assertEqual(hasTask(tasks(bradyOneAtropineLog, BASE + 184_000), 'atropine'), true,  'Brady: atropine shown again after 3 min cooldown');
+
 // Bradycardia not triggered when asymptomatic
 const bradyAsymptLog: LogEntry[] = [
   { at: BASE + 1000, type: 'status', field: 'pulse',       value: 'Yes' },
