@@ -95,7 +95,8 @@ export const MED_DETAILS: Partial<Record<MedKey, MedDetail>> = {
   },
   atropine: {
     adultDose: "1 mg IV q 3–5 min (max 3 mg)",
-    pedsDose: "0.02 mg/kg IV/IO (min 0.1 mg, max 0.5 mg child / 1 mg adolescent)",
+    pedsDose:
+      "0.02 mg/kg IV/IO (min 0.1 mg, max 0.5 mg child / 1 mg adolescent)",
     route: "IV/IO",
     pedsDoseCalc: (wt) =>
       `${Math.min(Math.max(wt * 0.02, 0.1), 0.5).toFixed(2)} mg`,
@@ -111,7 +112,9 @@ export const MED_DETAILS: Partial<Record<MedKey, MedDetail>> = {
   bicarb: {
     sharedDose: "1 mEq/kg IV; repeat 0.5 mEq/kg q 10 min",
     route: "IV/IO",
-    notes: ["Use for tricyclic overdose, severe metabolic acidosis, hyperkalemia"],
+    notes: [
+      "Use for tricyclic overdose, severe metabolic acidosis, hyperkalemia",
+    ],
     pedsDoseCalc: (wt) => `${wt.toFixed(0)} mEq`,
   },
   calcium: {
@@ -134,7 +137,10 @@ export const MED_DETAILS: Partial<Record<MedKey, MedDetail>> = {
     adultDose: "0.4–2 mg IV/IM/IN; repeat q 2–3 min",
     pedsDose: "0.01 mg/kg IV/IM (max 0.4 mg initial)",
     route: "IV, IM, or IN",
-    notes: ["Duration 45–90 min — may need repeat doses", "Can precipitate acute withdrawal"],
+    notes: [
+      "Duration 45–90 min — may need repeat doses",
+      "Can precipitate acute withdrawal",
+    ],
     pedsDoseCalc: (wt) => `${Math.min(wt * 0.01, 0.4).toFixed(3)} mg`,
   },
   d50: {
@@ -228,7 +234,8 @@ export const MED_DETAILS: Partial<Record<MedKey, MedDetail>> = {
       `1st: ${(wt * 2).toFixed(0)} J · 2nd: ${(wt * 4).toFixed(0)} J`,
   },
   pace: {
-    sharedDose: "Rate 60–80 bpm; start at 0 mA, increase by 10 mA until capture",
+    sharedDose:
+      "Rate 60–80 bpm; start at 0 mA, increase by 10 mA until capture",
     notes: [
       "Capture threshold typically 50–90 mA",
       "Confirm mechanical capture by palpating pulse",
@@ -439,7 +446,7 @@ export function crNextTasks(s: Patient, now: number = Date.now()): NextTask[] {
           s.rescuers === "One"
             ? "Get AED + Call for Help"
             : s.rescuers === "Two"
-              ? "Get AED + Call for Help (Rescuer 1)"
+              ? "Get AED + Call for Help (Rescuer 2)"
               : "Get AED / Defibrillator",
       });
     }
@@ -481,7 +488,9 @@ export function crNextTasks(s: Patient, now: number = Date.now()): NextTask[] {
       if (shockable && shockCount >= 2) {
         const amioGiven = given("amio");
         const amioDoses = s.gave.find((g) => g.key === "amio")?.doses ?? [];
-        const amioReady = amioDoses.length === 0 || refTime - amioDoses[amioDoses.length - 1] >= 5 * 60 * 1000;
+        const amioReady =
+          amioDoses.length === 0 ||
+          refTime - amioDoses[amioDoses.length - 1] >= 5 * 60 * 1000;
         if (amioReady) {
           if (isPeds) {
             const maxAmt = amioGiven === 0 ? 300 : 150;
@@ -497,14 +506,18 @@ export function crNextTasks(s: Patient, now: number = Date.now()): NextTask[] {
             });
           } else {
             const amioLabel =
-              amioGiven === 0 ? "Give Amiodarone 300mg" : "Give Amiodarone 150mg";
+              amioGiven === 0
+                ? "Give Amiodarone 300mg"
+                : "Give Amiodarone 150mg";
             push({ id: "amio", label: amioLabel, kind: "med", medKey: "amio" });
           }
         }
 
         const lidoGiven = given("lido");
         const lidoDoses = s.gave.find((g) => g.key === "lido")?.doses ?? [];
-        const lidoReady = lidoDoses.length === 0 || refTime - lidoDoses[lidoDoses.length - 1] >= 5 * 60 * 1000;
+        const lidoReady =
+          lidoDoses.length === 0 ||
+          refTime - lidoDoses[lidoDoses.length - 1] >= 5 * 60 * 1000;
         if (lidoReady) {
           if (isPeds) {
             const maxFirst = 100;
@@ -541,7 +554,7 @@ export function crNextTasks(s: Patient, now: number = Date.now()): NextTask[] {
         id: "start-cpr",
         label:
           s.rescuers === "Two" && !aedDone
-            ? "Start CPR (Rescuer 2)"
+            ? "Start CPR (Rescuer 1)"
             : "Start CPR",
         kind: "critical",
       });
@@ -656,7 +669,11 @@ export function crNextTasks(s: Patient, now: number = Date.now()): NextTask[] {
 
   // ===== Wean pacing if rate has recovered to fast =====
   if (s.rate === "Fast" && given("pace") % 2 === 1)
-    push({ id: "wean-pacing", label: "Wean Transcutaneous Pacing", recurring: true });
+    push({
+      id: "wean-pacing",
+      label: "Wean Transcutaneous Pacing",
+      recurring: true,
+    });
 
   // ===== Tachycardia with a pulse =====
   if (s.pulse === "Yes" && s.rate === "Fast" && s.symptomatic === "Yes") {
@@ -665,16 +682,24 @@ export function crNextTasks(s: Patient, now: number = Date.now()): NextTask[] {
     if (s.rhythm === "SVT") {
       const adenoGiven = given("adenosine");
       if (adenoGiven < 3) {
-        const adenoLabel = adenoGiven === 0
-          ? "Adenosine 6mg rapid push"
-          : "Adenosine 12mg rapid push";
-        push({ id: "adenosine", label: adenoLabel, kind: "med", medKey: "adenosine" });
+        const adenoLabel =
+          adenoGiven === 0
+            ? "Adenosine 6mg rapid push"
+            : "Adenosine 12mg rapid push";
+        push({
+          id: "adenosine",
+          label: adenoLabel,
+          kind: "med",
+          medKey: "adenosine",
+        });
       }
     }
     if (s.rhythm === "WideTach") {
       const amioGiven = given("amio");
       const amioDoses = s.gave.find((g) => g.key === "amio")?.doses ?? [];
-      const amioReady = amioDoses.length === 0 || now - amioDoses[amioDoses.length - 1] >= 5 * 60 * 1000;
+      const amioReady =
+        amioDoses.length === 0 ||
+        now - amioDoses[amioDoses.length - 1] >= 5 * 60 * 1000;
       if (amioReady) {
         const amioLabel =
           amioGiven === 0
@@ -756,9 +781,7 @@ export function crNextTasks(s: Patient, now: number = Date.now()): NextTask[] {
   }
 
   // Strip already-completed tasks; recurring tasks always show through
-  const filtered = tasks.filter(
-    (t) => t.recurring || !s.doneTasks[t.id],
-  );
+  const filtered = tasks.filter((t) => t.recurring || !s.doneTasks[t.id]);
 
   const priorityIndex = new Map(TASK_PRIORITY.map((id, i) => [id, i]));
   filtered.sort((a, b) => {
