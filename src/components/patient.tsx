@@ -468,6 +468,13 @@ export function CRPatientScreen({
         action: isCurrentlyActive ? "stop" : "start",
         key: key as ContinuousMedKey,
       });
+      // Stopping pacing always clears rate; starting clears it unless already tachycardic
+      if (key === "pace" && (isCurrentlyActive || s.rate !== "Fast")) {
+        setTimeout(() => {
+          log({ type: "status", field: "rate", value: "?" });
+          if (isCurrentlyActive) log({ type: "status", field: "rhythm", value: "?" });
+        }, 0);
+      }
     } else {
       // Adenosine/atropine reset rate+rhythm to prompt reassessment
       if (key === "adenosine" || key === "atropine") {
@@ -2041,7 +2048,7 @@ export function CRGaveList({
                     color: "var(--ink-2)",
                   }}
                 >
-                  {count}
+                  x {count}
                 </span>
               )}
               {/* Info button — shown for meds with clinical detail */}
