@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "test": "npx tsx src/test_reconstruct.ts"
+    "test": "npx tsx src/test_reconstruct.ts && npx tsx src/test_algorithms.ts",
+    "test:reconstruct": "npx tsx src/test_reconstruct.ts",
+    "test:algorithms": "npx tsx src/test_algorithms.ts"
   },
   "dependencies": {
     "clsx": "^2.1.1",

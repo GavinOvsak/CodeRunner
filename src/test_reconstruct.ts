@@ -129,11 +129,10 @@ const taskLog: LogEntry[] = [
   { at: 1020000, type: 'task', taskId: 'airway' },
 ];
 const taskReconstructed = reconstructStateFromLog({ ...mockPatient, log: taskLog });
-assertEqual(taskReconstructed.doneTasks['access'],         true,    'Access task marked as done');
-assertEqual(taskReconstructed.doneTasks['access__hidden'], true,    'Access task hidden');
-assertEqual(taskReconstructed.breathing,                   'ETT',   'ETT Breathing set from advanced airway task');
-assertEqual(taskReconstructed.alert,                       'Sedated','Alert Sedated set from ETT Breathing');
-assertEqual(taskReconstructed.doneTasks['airway__hidden'], true,    'Airway task hidden');
+assertEqual(taskReconstructed.doneTasks['access'],  true,    'Access task marked as done');
+assertEqual(taskReconstructed.breathing,            'ETT',   'ETT Breathing set from advanced airway task');
+assertEqual(taskReconstructed.alert,                'Sedated','Alert Sedated set from ETT Breathing');
+assertEqual(taskReconstructed.doneTasks['airway'],  true,    'Airway task marked as done');
 
 // Test Case 10: Alert: Yes implicitly sets Pulse to Yes
 const alertYesLog: LogEntry[] = [

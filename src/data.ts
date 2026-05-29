@@ -300,7 +300,6 @@ export const TASK_LABELS: Record<TaskId, string> = {
   dopamine: "Dopamine gtt",
   glucose: "Check Glucose",
   d50: "Give D50 IV",
-  lkw: "Last Known Well",
   "check-stroke-sx": "Check Stroke Symptoms",
   fast: "FAST / NIH Stroke Scale",
   ct: "Activate Stroke / CT",
@@ -326,13 +325,13 @@ export const TASK_LABELS: Record<TaskId, string> = {
  * @param s Current patient state
  * @returns Array of active recommendation next tasks
  */
-export function crNextTasks(s: Patient): NextTask[] {
+export function crNextTasks(s: Patient, now: number = Date.now()): NextTask[] {
   const tasks: NextTask[] = [];
   const push = (t: NextTask) => tasks.push(t);
 
   const isPeds = s.type === "pediatric";
-  const aedDone = s.doneTasks["get-aed__hidden"] === true;
-  const roscDone = s.doneTasks["rosc__hidden"] === true;
+  const aedDone = s.doneTasks["get-aed"] === true;
+  const roscDone = s.doneTasks["rosc"] === true;
   const shockable =
     s.rhythm === "VF" || s.rhythm === "VT" || s.rhythm === "VF_pVT";
 
@@ -393,9 +392,9 @@ export function crNextTasks(s: Patient): NextTask[] {
       const epiDoses = s.gave.find((g) => g.key === "epi")?.doses ?? [];
       const shockCount = given("shock");
       const lastLog = s.log.at(-1);
-      const lastLogAt = lastLog ? lastLog.at : Date.now();
-      const isRecent = Date.now() - lastLogAt < 5 * 60 * 1000;
-      const refTime = isRecent || s.cpr.active ? Date.now() : lastLogAt;
+      const lastLogAt = lastLog ? lastLog.at : now;
+      const isRecent = now - lastLogAt < 5 * 60 * 1000;
+      const refTime = isRecent || s.cpr.active ? now : lastLogAt;
       const epiReady =
         epiDoses.length === 0
           ? !shockable || shockCount >= 1 // shockable: need 1 shock before first epi
@@ -593,14 +592,16 @@ export function crNextTasks(s: Patient): NextTask[] {
   // ===== Tachycardia with a pulse =====
   if (s.pulse === "Yes" && s.rate === "Fast" && s.symptomatic === "Yes") {
     push({ id: "ecg", label: "12-Lead ECG" });
-    push({ id: "access", label: "IV Access + Monitor" });
-    if (s.rhythm === "SVT")
-      push({
-        id: "adenosine",
-        label: "Adenosine 6mg rapid push",
-        kind: "med",
-        medKey: "adenosine",
-      });
+    push({ id: "access", label: "Obtain IV / IO Access" });
+    if (s.rhythm === "SVT") {
+      const adenoGiven = given("adenosine");
+      if (adenoGiven < 3) {
+        const adenoLabel = adenoGiven === 0
+          ? "Adenosine 6mg rapid push"
+          : "Adenosine 12mg rapid push";
+        push({ id: "adenosine", label: adenoLabel, kind: "med", medKey: "adenosine" });
+      }
+    }
     if (s.rhythm === "WideTach") {
       const amioGiven = given("amio");
       const amioLabel =
@@ -620,13 +621,14 @@ export function crNextTasks(s: Patient): NextTask[] {
 
   // ===== Bradycardia with a pulse =====
   if (s.pulse === "Yes" && s.rate === "Slow" && s.symptomatic === "Yes") {
-    push({ id: "access", label: "IV Access + Monitor" });
-    push({
-      id: "atropine",
-      label: "Atropine 1mg",
-      kind: "med",
-      medKey: "atropine",
-    });
+    push({ id: "access", label: "Obtain IV / IO Access" });
+    if (given("atropine") < 3)
+      push({
+        id: "atropine",
+        label: "Atropine 1mg",
+        kind: "med",
+        medKey: "atropine",
+      });
     if (given("pace") === 0)
       push({ id: "pace", label: "Transcutaneous Pacing" });
     if (given("dopamine") === 0)
@@ -678,7 +680,7 @@ export function crNextTasks(s: Patient): NextTask[] {
 
   // Strip already-completed tasks; recurring tasks always show through
   const filtered = tasks.filter(
-    (t) => t.recurring || !s.doneTasks[t.id + "__hidden"],
+    (t) => t.recurring || !s.doneTasks[t.id],
   );
 
   // Shock and Start CPR always at top
