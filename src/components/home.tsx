@@ -162,31 +162,54 @@ export function CRHomeScreen({
             ACLS / PALS companion
           </div>
         </div>
-        {installPrompt && (
-          <button
-            onClick={async () => {
-              await installPrompt.prompt();
-              setInstallPrompt(null);
-            }}
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+          <a
+            href="https://gavinovsak.github.io/FOAMapps/"
+            target="_blank"
+            rel="noopener noreferrer"
             style={{
               display: "inline-flex",
               alignItems: "center",
-              gap: 6,
-              padding: "6px 12px",
-              borderRadius: 8,
-              background: "var(--surface-2)",
-              border: "1px solid var(--line-strong)",
-              fontSize: 13,
-              fontWeight: 600,
-              color: "var(--ink)",
-              cursor: "pointer",
+              gap: 5,
+              padding: "4px 10px",
+              borderRadius: 6,
+              background: "var(--accent)",
+              fontSize: 11,
+              fontWeight: 700,
+              color: "#fff",
+              textDecoration: "none",
+              letterSpacing: "0.03em",
               flexShrink: 0,
             }}
           >
-            <CRIcon name="download" size={14} />
-            Install App
-          </button>
-        )}
+            #FOAM App
+          </a>
+          {installPrompt && (
+            <button
+              onClick={async () => {
+                await installPrompt.prompt();
+                setInstallPrompt(null);
+              }}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "6px 12px",
+                borderRadius: 8,
+                background: "var(--surface-2)",
+                border: "1px solid var(--line-strong)",
+                fontSize: 13,
+                fontWeight: 600,
+                color: "var(--ink)",
+                cursor: "pointer",
+                flexShrink: 0,
+              }}
+            >
+              <CRIcon name="download" size={14} />
+              Install App
+            </button>
+          )}
+        </div>
       </div>
 
       <div
