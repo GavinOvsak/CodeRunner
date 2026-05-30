@@ -145,8 +145,8 @@ export function CRHomeScreen({
           position: "absolute",
           top: 0,
           right: 0,
-          width: 130,
-          height: 130,
+          width: 120,
+          height: 120,
           overflow: "hidden",
           pointerEvents: "none",
           zIndex: 10,
@@ -158,10 +158,10 @@ export function CRHomeScreen({
           rel="noopener noreferrer"
           style={{
             position: "absolute",
-            top: 32,
+            top: 26,
             right: -60,
             transform: "rotate(45deg)",
-            width: 260,
+            width: 200,
             display: "block",
             padding: "7px 0",
             background: "var(--accent)",
