@@ -77,6 +77,7 @@ const CR_OPTS_RATE = [
 const boltIcon = <CRIcon name="bolt" size={14} color="var(--shock)" />;
 const CR_OPTS_RHYTHM_ARREST = [
   { value: "VF_pVT", label: "VF/VT", icon: boltIcon },
+  { value: "TdP", label: "Torsades", icon: boltIcon },
   { value: "PEA", label: "PEA" },
   { value: "Asystole", label: "Asys" },
   { value: "NSR", label: "NSR" },
@@ -85,6 +86,7 @@ const CR_OPTS_RHYTHM_TACH = [
   { value: "SVT", label: "SVT" },
   { value: "AF", label: "AF" },
   { value: "WideTach", label: "Wide VT" },
+  { value: "TdP", label: "Torsades" },
 ];
 const CR_OPTS_RHYTHM_BRADY = [
   { value: "SinusBrady", label: "Sinus Brady" },
@@ -198,6 +200,8 @@ export function CRPatientScreen({
     | "strokeScale"
     | "rhythm"
     | "symptomatic"
+    | "rescueBreaths"
+    | "choking"
     | null
   >(null);
   const [fadingTasks, setFadingTasks] = useState<Record<string, boolean>>({});
@@ -550,11 +554,7 @@ export function CRPatientScreen({
   // CPR compression:breath guidance based on rescuers, ETT, and patient type
   function getCprGuidance(): string {
     const hasETT = s.breathing === "ETT";
-    if (hasETT) {
-      return s.type === "pediatric"
-        ? "Continuous · 1 breath/2-3s"
-        : "Continuous · 1 breath/6s";
-    }
+    if (hasETT) return "Continuous · 1 breath/6s"; // ETT: 10/min for all ages
     if (s.rescuers === "Team") return "";
     if (s.type === "pediatric" && s.rescuers === "Two") return "Ratio = 15:2";
     return "Ratio = 30:2";
@@ -1241,9 +1241,7 @@ export function CRCprPill({
 
   function techniqueLabel(): string {
     if (rescuers === "Team") {
-      return isPeds
-        ? "Continuous compressions · 1 breath every 2–3 s"
-        : "Continuous compressions · 1 breath every 6 s";
+      return "Continuous compressions · 1 breath every 6 s";
     }
     if (isInfant) {
       return rescuers === "Two"
@@ -2047,7 +2045,8 @@ export function CRNextList({
                     | "strokeScale"
                     | "rhythm"
                     | "symptomatic"
-                    | "rescueBreaths")
+                    | "rescueBreaths"
+                    | "choking")
             }
             patient={patient}
             onClose={() => setActiveTask(null)}
@@ -2818,7 +2817,8 @@ export function CRPopupModal({
     | "strokeScale"
     | "rhythm"
     | "symptomatic"
-    | "rescueBreaths";
+    | "rescueBreaths"
+    | "choking";
   patient: Patient;
   onClose: () => void;
   onTrigger?: () => void;
@@ -3056,6 +3056,10 @@ export function CRPopupModal({
             desc: "Pulseless VT — wide QRS (>0.12s), fast (~150–250 bpm), regular, but no detectable pulse.",
           },
           {
+            name: "Torsades (TdP)",
+            desc: "Polymorphic VT — QRS twists around the baseline, associated with prolonged QT. Treat with Mg 2g IV push; avoid amiodarone.",
+          },
+          {
             name: "PEA",
             desc: "Organized rhythm on monitor, but no detectable pulse.",
           },
@@ -3166,6 +3170,48 @@ export function CRPopupModal({
           {isBrady
             ? "If any are present, consider atropine, pacing, or dopamine/epinephrine infusion."
             : "If any are present, consider urgent synchronized cardioversion."}
+        </p>
+      </CRModalShell>
+    );
+  }
+
+  if (type === "choking") {
+    return (
+      <CRModalShell title="Choking Relief Technique" onClose={onClose}>
+        <p style={{ marginTop: 0, fontWeight: 600 }}>Cycle (repeat until cleared)</p>
+        <ol style={{ margin: "0 0 12px", paddingLeft: 18 }}>
+          <li>5 firm back blows between shoulder blades</li>
+          <li>
+            5 abdominal thrusts (Heimlich){" "}
+            {isPeds && (
+              <strong>— use chest thrusts for infants under 1 year</strong>
+            )}
+          </li>
+        </ol>
+        {isPeds && (
+          <div
+            style={{
+              background: "#fef3c7",
+              border: "1px solid #fcd34d",
+              borderRadius: 6,
+              padding: "7px 12px",
+              marginBottom: 12,
+              fontSize: "0.9em",
+              color: "#92400e",
+            }}
+          >
+            <strong>Infants (&lt;1 yr):</strong> 5 back blows face-down on forearm →
+            5 chest thrusts with 2 fingers on lower sternum. Do <em>not</em> use
+            abdominal thrusts.
+          </div>
+        )}
+        <p style={{ fontWeight: 600, marginBottom: 4 }}>If patient becomes unresponsive</p>
+        <ul style={{ margin: "0 0 10px", paddingLeft: 18 }}>
+          <li>Lower to ground and begin CPR</li>
+          <li>Each time airway is opened for rescue breath, look for visible object and remove if seen</li>
+        </ul>
+        <p style={{ margin: 0, fontSize: 12, color: "var(--ink-3)" }}>
+          Reassess responsiveness after each cycle.
         </p>
       </CRModalShell>
     );

@@ -253,6 +253,7 @@ export const RHYTHM_LABELS: Record<RhythmValue, string> = {
   VF: "VF",
   VT: "VT",
   VF_pVT: "VF/VT",
+  TdP: "Torsades",
   PEA: "PEA",
   Asystole: "Asystole",
   NSR: "NSR",
@@ -294,6 +295,7 @@ export const TASK_LABELS: Record<TaskId, string> = {
   epi: "Give Epi",
   amio: "Give Amiodarone",
   lido: "Give Lidocaine",
+  magnesium: "Magnesium 2g IV",
   reversible: "Consider H's & T's",
   airway: "Airway → advanced (ETT)",
   access: "Obtain IV / IO Access",
@@ -310,7 +312,7 @@ export const TASK_LABELS: Record<TaskId, string> = {
   "check-stroke-sx": "Check Stroke Symptoms",
   fast: "FAST / NIH Stroke Scale",
   ct: "Activate Stroke / CT",
-  "choking-cycles": "5 back blows then 5 abdominal thrusts",
+  "choking-cycles": "5 back blows → 5 abdominal/chest thrusts",
   "reassess-responsiveness": "Reassess Responsiveness",
   "check-rhythm": "Check Rhythm",
   "check-symptomatic": "Assess Symptoms",
@@ -343,6 +345,7 @@ export const TASK_PRIORITY: TaskId[] = [
   "epi",
   "amio",
   "lido",
+  "magnesium",
   "access",
   "reversible",
   "check-rescuers",
@@ -396,7 +399,7 @@ export function crNextTasks(s: Patient, now: number = Date.now()): NextTask[] {
   const aedDone = s.doneTasks["get-aed"] === true;
   const roscDone = s.doneTasks["rosc"] === true;
   const shockable =
-    s.rhythm === "VF" || s.rhythm === "VT" || s.rhythm === "VF_pVT";
+    s.rhythm === "VF" || s.rhythm === "VT" || s.rhythm === "VF_pVT" || s.rhythm === "TdP";
 
   // Precompute given counts once for O(1) lookups throughout
   const givenMap = new Map(s.gave.map((g) => [g.key, g.doses.length]));
@@ -485,7 +488,17 @@ export function crNextTasks(s: Patient, now: number = Date.now()): NextTask[] {
         }
       }
 
-      if (shockable && shockCount >= 2) {
+      if (s.rhythm === "TdP") {
+        // TdP: magnesium is the antiarrhythmic of choice; amio/lido are not indicated
+        const magGiven = given("magnesium");
+        if (magGiven < 2) {
+          const magLabel =
+            magGiven === 0
+              ? "Magnesium 2g IV push (1–2 min)"
+              : "Magnesium 2g IV (repeat)";
+          push({ id: "magnesium", label: magLabel, kind: "med", medKey: "magnesium" });
+        }
+      } else if (shockable && shockCount >= 2) {
         const amioGiven = given("amio");
         const amioDoses = s.gave.find((g) => g.key === "amio")?.doses ?? [];
         const amioReady =
@@ -667,8 +680,8 @@ export function crNextTasks(s: Patient, now: number = Date.now()): NextTask[] {
       });
   }
 
-  // ===== Wean pacing if rate has recovered to fast =====
-  if (s.rate === "Fast" && given("pace") % 2 === 1)
+  // ===== Wean pacing if rate has recovered (fast or normalized) =====
+  if ((s.rate === "Fast" || s.rate === "Normal") && given("pace") % 2 === 1)
     push({
       id: "wean-pacing",
       label: "Wean Transcutaneous Pacing",
@@ -708,7 +721,18 @@ export function crNextTasks(s: Patient, now: number = Date.now()): NextTask[] {
         push({ id: "amio", label: amioLabel, kind: "med", medKey: "amio" });
       }
     }
-    if (s.rhythm === "AF" || s.rhythm === "SVT" || s.rhythm === "WideTach")
+    if (s.rhythm === "TdP") {
+      // Torsades: magnesium is first-line; amiodarone is contraindicated (prolongs QT)
+      const magGiven = given("magnesium");
+      if (magGiven < 2) {
+        const magLabel =
+          magGiven === 0
+            ? "Magnesium 2g IV push (1–2 min)"
+            : "Magnesium 2g IV (repeat)";
+        push({ id: "magnesium", label: magLabel, kind: "med", medKey: "magnesium" });
+      }
+    }
+    if (s.rhythm === "AF" || s.rhythm === "SVT" || s.rhythm === "WideTach" || s.rhythm === "TdP")
       push({
         id: "cardiovert",
         label: "Synchronized Cardioversion",
@@ -724,7 +748,7 @@ export function crNextTasks(s: Patient, now: number = Date.now()): NextTask[] {
     const atropineReady =
       atropineDoses.length === 0 ||
       now - atropineDoses[atropineDoses.length - 1] >= 3 * 60 * 1000;
-    if (given("atropine") < 3 && atropineReady)
+    if (given("atropine") < (isPeds ? 2 : 3) && atropineReady)
       push({
         id: "atropine",
         label: "Atropine",
@@ -770,8 +794,11 @@ export function crNextTasks(s: Patient, now: number = Date.now()): NextTask[] {
   if (s.breathing === "Choking") {
     push({
       id: "choking-cycles",
-      label: "5 back blows then 5 abdominal thrusts",
+      label: isPeds
+        ? "5 back blows → 5 abdominal/chest thrusts"
+        : "5 back blows then 5 abdominal thrusts",
       recurring: true,
+      popup: "choking",
     });
     push({
       id: "reassess-responsiveness",

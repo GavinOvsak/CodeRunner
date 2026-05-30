@@ -26,7 +26,7 @@ export type TaskId =
   | "check-alert" | "check-breath" | "check-pulse" | "check-rate"
   | "get-aed" | "shock" | "start-cpr" | "pause-pulse-check" | "pause-to-shock"
   | "resume-cpr" | "rosc" | "pulse-rhythm-check"
-  | "epi" | "amio" | "lido" | "reversible" | "airway" | "access"
+  | "epi" | "amio" | "lido" | "magnesium" | "reversible" | "airway" | "access"
   | "opioid-reversal" | "rescue-breaths"
   | "ecg" | "adenosine" | "cardiovert"
   | "atropine" | "pace" | "dopamine"
@@ -49,7 +49,7 @@ export type PulseValue = "?" | "Yes" | "No";
 export type RateValue = "?" | "Fast" | "Normal" | "Slow";
 export type SymptomaticValue = "?" | "Yes" | "No";
 export type RhythmValue =
-  | "?" | "VT" | "VF" | "VF_pVT" | "PEA" | "Asystole"
+  | "?" | "VT" | "VF" | "VF_pVT" | "TdP" | "PEA" | "Asystole"
   | "NSR" | "SVT" | "AF" | "WideTach"
   | "SinusBrady" | "AVB1" | "AVB2" | "AVB3";
 export type PatientType = "adult" | "pediatric";
@@ -158,7 +158,7 @@ export interface NextTask {
   medKey?: MedKey;
   need?: "alert" | "breathing" | "pulse" | "rate" | "rhythm" | "symptomatic" | "rescuers" | "weightKg" | "glucose" | "strokeSx";
   recurring?: boolean;
-  popup?: "shock" | "ht" | "strokeSx" | "strokeScale" | "rhythm" | "rescueBreaths";
+  popup?: "shock" | "ht" | "strokeSx" | "strokeScale" | "rhythm" | "rescueBreaths" | "choking";
 }
 
 export type DropdownOptionObj = {
