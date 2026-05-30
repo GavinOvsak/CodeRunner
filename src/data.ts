@@ -463,7 +463,7 @@ export function crNextTasks(s: Patient, now: number = Date.now()): NextTask[] {
       const refTime = isRecent || s.cpr.active ? now : lastLogAt;
       const epiReady =
         epiDoses.length === 0
-          ? !shockable || shockCount >= 1 // shockable: need 1 shock before first epi
+          ? !shockable || shockCount >= 2 // shockable: need 2 shocks before first epi
           : refTime - epiDoses[epiDoses.length - 1] >= 3 * 60 * 1000;
 
       if (epiReady && !roscDone) {
@@ -498,7 +498,7 @@ export function crNextTasks(s: Patient, now: number = Date.now()): NextTask[] {
               : "Magnesium 2g IV (repeat)";
           push({ id: "magnesium", label: magLabel, kind: "med", medKey: "magnesium" });
         }
-      } else if (shockable && shockCount >= 2) {
+      } else if (shockable && shockCount >= 3) {
         const amioGiven = given("amio");
         const amioDoses = s.gave.find((g) => g.key === "amio")?.doses ?? [];
         const amioReady =

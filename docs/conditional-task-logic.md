@@ -76,7 +76,7 @@ These appear before any pathway is entered to establish baseline information.
 ```
 epiReady =
   epiDoses.length === 0
-    ? (!shockable || shockCount >= 1)   // first dose: no shock needed unless shockable
+    ? (!shockable || shockCount >= 2)   // first dose: no shock needed unless shockable (requires 2 shocks)
     : refTime − epiDoses[last] >= 3 min // repeat: ≥ 3 min since last dose
 ```
 
@@ -90,7 +90,7 @@ amioReady =
     || refTime − amioDoses[last] >= 5 min
 ```
 
-Shown when: `shockable && shockCount >= 2 && amioReady`
+Shown when: `shockable && shockCount >= 3 && amioReady`
 
 Dose logic:
 - First dose → 300 mg
@@ -104,7 +104,7 @@ lidoReady =
     || refTime − lidoDoses[last] >= 5 min
 ```
 
-Shown when: `shockable && shockCount >= 2 && lidoReady`
+Shown when: `shockable && shockCount >= 3 && lidoReady`
 
 #### 1.3.3 Pre-CPR State (`!cpr.active`)
 
@@ -491,8 +491,8 @@ Rhythm option sets by context:
 | `rosc` | `cpr.pausedAt` (branch 1) | `pulse === "Yes"` | No |
 | `pulse-rhythm-check` | `cpr.pausedAt` (branch 2) | `pulse === "?" \|\| rhythm === "?"` (suppressed if shock-during-pause with pulse "No") | No |
 | `epi` | `pulse === "No" \|\| cpr.active` | `epiReady && !roscDone` | No |
-| `amio` (arrest) | `pulse === "No" \|\| cpr.active` | `shockable && shockCount >= 2 && amioReady` | No |
-| `lido` | `pulse === "No" \|\| cpr.active` | `shockable && shockCount >= 2 && lidoReady` | No |
+| `amio` (arrest) | `pulse === "No" \|\| cpr.active` | `shockable && shockCount >= 3 && amioReady` | No |
+| `lido` | `pulse === "No" \|\| cpr.active` | `shockable && shockCount >= 3 && lidoReady` | No |
 | `reversible` | `cpr.active` (both running and paused branch 3) | Paused: always in branch 3; Running: always | Yes |
 | `airway` | `cpr.active` (both running and paused branch 3) | `breathing !== "ETT"` | No |
 | `access` | `cpr.active` (both running and paused branch 3); also tach and brady pathways | `!doneTasks["access"]` (arrest); always (tach/brady) | No |

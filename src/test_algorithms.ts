@@ -151,13 +151,16 @@ function makeArrestPaused(shockCount: number): LogEntry[] {
   ];
 }
 
-// VF + 0 shocks: epi NOT shown (shockable requires 1 shock first); shock IS shown
+// VF + 0 shocks: epi NOT shown (shockable requires 2 shocks first); shock IS shown
 const vf0Tasks = tasks(makeArrestPaused(0), BASE + 122_000);
 assertEqual(hasTask(vf0Tasks, 'epi'),  false, 'VF + 0 shocks: epi NOT shown before first shock');
 assertEqual(hasTask(vf0Tasks, 'shock'), true,  'VF + 0 shocks: shock shown');
 
-// VF + 1 shock: epi now shown
-assertEqual(hasTask(tasks(makeArrestPaused(1), BASE + 122_000), 'epi'), true, 'VF + 1 shock: epi shown');
+// VF + 1 shock: epi NOT shown yet (requires 2 shocks)
+assertEqual(hasTask(tasks(makeArrestPaused(1), BASE + 122_000), 'epi'), false, 'VF + 1 shock: epi NOT shown');
+
+// VF + 2 shocks: epi now shown
+assertEqual(hasTask(tasks(makeArrestPaused(2), BASE + 122_000), 'epi'), true, 'VF + 2 shocks: epi shown');
 
 // ─────────────────────────────────────────────────────────────
 // Epinephrine timing: 3-minute readiness window
@@ -178,24 +181,24 @@ const ready = tasks(epiTimingLog, epiGivenAt + 3 * 60_000 + 1_000);
 assertEqual(hasTask(ready, 'epi'), true, 'Epi: ready at 3:01 after last dose');
 
 // ─────────────────────────────────────────────────────────────
-// Amiodarone / Lidocaine: only after 2nd shock
+// Amiodarone / Lidocaine: only after 3rd shock
 // ─────────────────────────────────────────────────────────────
 
-const oneShockPausedTasks = tasks(makeArrestPaused(1), BASE + 122_000);
-assertEqual(hasTask(oneShockPausedTasks, 'amio'), false, '1 shock: amio NOT shown yet');
-assertEqual(hasTask(oneShockPausedTasks, 'lido'), false, '1 shock: lido NOT shown yet');
-
 const twoShockPausedTasks = tasks(makeArrestPaused(2), BASE + 122_000);
-assertEqual(hasTask(twoShockPausedTasks, 'amio'), true, '2 shocks: amio shown');
-assertEqual(hasTask(twoShockPausedTasks, 'lido'), true, '2 shocks: lido shown');
+assertEqual(hasTask(twoShockPausedTasks, 'amio'), false, '2 shocks: amio NOT shown yet');
+assertEqual(hasTask(twoShockPausedTasks, 'lido'), false, '2 shocks: lido NOT shown yet');
+
+const threeShockPausedTasks = tasks(makeArrestPaused(3), BASE + 122_000);
+assertEqual(hasTask(threeShockPausedTasks, 'amio'), true, '3 shocks: amio shown');
+assertEqual(hasTask(threeShockPausedTasks, 'lido'), true, '3 shocks: lido shown');
 
 // Amiodarone dose labels: 300mg first, 150mg repeat
-const amioFirst = twoShockPausedTasks.find(t => t.id === 'amio');
+const amioFirst = threeShockPausedTasks.find(t => t.id === 'amio');
 assertEqual(amioFirst?.label, 'Give Amiodarone 300mg', 'Amio first dose: 300mg label');
 
 const amioGivenAt = BASE + 121_500;
 const amioRepeatLog: LogEntry[] = [
-  ...makeArrestPaused(2),
+  ...makeArrestPaused(3),
   { at: amioGivenAt, type: 'med', action: 'give', key: 'amio' },
 ];
 
@@ -210,7 +213,7 @@ assertEqual(amioRepeat?.label, 'Give Amiodarone 150mg', 'Amio repeat dose: 150mg
 // < 5 min after lido dose: lido should NOT be shown
 const lidoGivenAt = BASE + 121_500;
 const lidoRepeatLog: LogEntry[] = [
-  ...makeArrestPaused(2),
+  ...makeArrestPaused(3),
   { at: lidoGivenAt, type: 'med', action: 'give', key: 'lido' },
 ];
 assertEqual(hasTask(tasks(lidoRepeatLog, lidoGivenAt + 4 * 60_000 + 59_000), 'lido'), false, 'Lido: NOT shown at 4:59 after last dose');
@@ -430,18 +433,19 @@ const pedsArrestWithWeightLog: LogEntry[] = [
 const pedsWeightEpi = pedsTasks(pedsArrestWithWeightLog, BASE + 121_000).find(t => t.id === 'epi');
 assertEqual(pedsWeightEpi?.label, 'Give Epi 0.20mg IV/IO (q 3-5 min)', 'Peds 20kg: epi dose computed as 0.20mg');
 
-// Peds amio: after 2 shocks, first dose 5mg/kg (max 300mg)
-const pedsVfTwoShockLog: LogEntry[] = [
+// Peds amio: after 3 shocks, first dose 5mg/kg (max 300mg)
+const pedsVfThreeShockLog: LogEntry[] = [
   { at: BASE + 1000, type: 'task',   taskId: 'get-aed' },
   { at: BASE + 2000, type: 'status', field: 'weight', value: 10 },
   { at: BASE + 3000, type: 'med',    action: 'give', key: 'shock' },
   { at: BASE + 4000, type: 'med',    action: 'give', key: 'shock' },
+  { at: BASE + 4500, type: 'med',    action: 'give', key: 'shock' },
   { at: BASE + 5000, type: 'cpr',    event: 'start', cycleNumber: 1 },
   { at: BASE + 125_000, type: 'cpr', event: 'pause',  cycleNumber: 1, elapsed: 120_000 },
   { at: BASE + 125_500, type: 'status', field: 'pulse',  value: 'No' },
   { at: BASE + 126_000, type: 'status', field: 'rhythm', value: 'VF' },
 ];
-const pedsAmioTask = pedsTasks(pedsVfTwoShockLog, BASE + 127_000).find(t => t.id === 'amio');
+const pedsAmioTask = pedsTasks(pedsVfThreeShockLog, BASE + 127_000).find(t => t.id === 'amio');
 assertEqual(pedsAmioTask?.label, 'Give Amiodarone 50mg IV/IO', 'Peds 10kg: amio first dose 50mg (5mg/kg)');
 
 // ─────────────────────────────────────────────────────────────
