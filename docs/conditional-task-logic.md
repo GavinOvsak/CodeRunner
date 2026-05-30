@@ -115,19 +115,35 @@ Shown when: `shockable && shockCount >= 2 && lidoReady`
 
 #### 1.3.4 CPR Paused State (`cpr.pausedAt` is set)
 
+The paused state follows **three mutually exclusive branches** evaluated in order:
+
+**Branch 1 — ROSC detected** (`pulse === "Yes"`):
+
+| Task | Notes |
+|------|-------|
+| `rosc` | Only task shown in this branch |
+
+**Branch 2 — Pulse or rhythm unknown** (`pulse === "?" || rhythm === "?"`):
+
+| Task | Notes |
+|------|-------|
+| `pulse-rhythm-check` | Shown unless shock-during-pause suppression applies |
+| `resume-cpr` | Shown instead of `pulse-rhythm-check` when a shock was delivered in this pause window and `pulse === "No"` |
+
+**Shock-during-pause suppression rule** (`src/data.ts` lines 566–573):
+If `lastShockDose > cpr.pausedAt && pulse === "No"`, skip the rhythm check and
+show `resume-cpr` directly (ACLS protocol: resume CPR immediately after shock).
+
+**Branch 3 — Pulse No, rhythm known** (all other cases):
+
 | Task | Condition |
 |------|-----------|
-| `rosc` | `pulse === "Yes"` |
-| `pulse-rhythm-check` | `pulse === "?" \|\| rhythm === "?"` — **suppressed** if a shock was delivered during this pause window and pulse is "No" (shows `resume-cpr` instead) |
-| `shock` | `shockable && aedDone && pulse === "No"` |
+| `shock` | `shockable && aedDone` |
+| `epi` / `amio` / `lido` | Per medication readiness rules (§ 1.3.2) |
 | `reversible` (H's & T's) | Always — `recurring: true` |
 | `airway` | `breathing !== "ETT"` |
 | `access` | `!doneTasks["access"]` |
 | `resume-cpr` | Always |
-
-**Shock-during-pause suppression rule** (`src/data.ts` lines 566–573):
-If `lastShockDose > cpr.pausedAt && pulse === "No"`, the `pulse-rhythm-check`
-task is skipped and `resume-cpr` is shown directly.
 
 #### 1.3.5 CPR Running State (`cpr.active && !cpr.pausedAt`)
 
@@ -139,8 +155,19 @@ shockBeforeCpr = shockDoses.some(d => d < cpr.cycleStartAt)
 |------|-----------|
 | `pause-to-shock` | `shockable && aedDone && !shockBeforeCpr` |
 | `pause-pulse-check` | `pulse === "Yes"` — label: "Pause CPR (Patient responsive)" if `alert === "Yes"`, else "Pause CPR (Pulse detected)" |
-| `pause-nsr-check` | `rhythm === "NSR" && pulse !== "Yes"` |
-| `meds-support` | `pulse === "No" && rhythm !== "?"` |
+| `pause-pulse-check` | `rhythm === "NSR" && pulse !== "Yes"` — label: "Pause for Pulse Check" (same task ID, different label) |
+| `airway` | `breathing !== "ETT"` |
+| `access` | `!doneTasks["access"]` |
+| `epi` / `amio` / `lido` | `pulse === "No" && rhythm !== "?"` — per medication readiness rules (§ 1.3.2) |
+| `reversible` (H's & T's) | Always — `recurring: true` |
+
+#### 1.3.6 Rescuer confirmation (all cardiac arrest states)
+
+`check-rescuers` is evaluated **outside** all three CPR sub-states and can appear
+even before CPR starts:
+
+| Task | Condition |
+|------|-----------|
 | `check-rescuers` | `rescuers === "?" && breathing !== "ETT" && epiDoses.length === 0` |
 
 ---
@@ -170,6 +197,13 @@ The modulo-2 check determines if pacing is currently active (odd start/stop coun
 
 **Entry condition:** `pulse === "Yes" && rate === "Fast" && symptomatic === "Yes"`
 
+These tasks appear for **all** rhythms when the entry condition is met:
+
+| Task | Condition |
+|------|-----------|
+| `ecg` | Always |
+| `access` | `!doneTasks["access"]` |
+
 **SVT sub-pathway** (`rhythm === "SVT"`):
 
 ```
@@ -189,10 +223,10 @@ amioReadyTach =
     || refTime − amioDoses[last] >= 5 min
 ```
 
-| Task | Condition |
-|------|-----------|
-| `amio` | `amioReadyTach` |
-| `cardiovert` | `rhythm ∈ {AF, SVT, WideTach}` |
+| Task | Condition | Dose |
+|------|-----------|------|
+| `amio` | `amioReadyTach` | 150 mg over 10 min (both 1st and repeat doses — slower rate than arrest amio) |
+| `cardiovert` | `rhythm ∈ {AF, SVT, WideTach}` | — |
 
 **AF sub-pathway** (`rhythm === "AF"`): only `cardiovert` shown.
 
@@ -210,6 +244,7 @@ atropineReady =
 
 | Task | Condition |
 |------|-----------|
+| `access` | Always |
 | `atropine` | `given("atropine") < 3 && atropineReady` |
 | `pace` | `given("pace") === 0` |
 | `dopamine` | `given("dopamine") === 0` |
@@ -226,7 +261,7 @@ atropineReady =
 | `d50` | `glucose === "Low"` |
 | `check-stroke-sx` | `strokeSx === "?"` |
 | `fast` | `strokeSx === "Yes"` |
-| `ct-stroke` | `strokeSx === "Yes"` |
+| `ct` | `strokeSx === "Yes"` |
 
 ---
 
@@ -259,7 +294,7 @@ Recurring tasks always remain visible. Non-recurring tasks are hidden once
 3. Cardiac support: `get-aed`, `airway`, `epi`, `amio`, `lido`, `access`, `reversible`, `check-rescuers`, `meds-support`
 4. Tachycardia: `ecg`, `adenosine`
 5. Bradycardia: `atropine`, `pace`, `dopamine`, `wean-pacing`
-6. Altered/stroke: `glucose`, `d50`, `check-stroke-sx`, `fast`, `ct-stroke`
+6. Altered/stroke: `glucose`, `d50`, `check-stroke-sx`, `fast`, `ct`
 7. Choking: `choking-cycles`, `reassess-responsiveness`
 8. Assessment: `check-alert`, `check-breath`, `check-pulse`, `check-rate`, `check-rhythm`, `check-symptomatic`
 9. Lowest: `check-weight`
@@ -451,23 +486,26 @@ Rhythm option sets by context:
 | `shock` (paused) | `cpr.pausedAt` | `shockable && aedDone && pulse === "No"` | No |
 | `pause-to-shock` | `cpr.active && !cpr.pausedAt` | `shockable && aedDone && !shockBeforeCpr` | No |
 | `pause-pulse-check` | `cpr.active && !cpr.pausedAt` | `pulse === "Yes"` | No |
-| `pause-nsr-check` | `cpr.active && !cpr.pausedAt` | `rhythm === "NSR" && pulse !== "Yes"` | No |
-| `resume-cpr` | `cpr.pausedAt` | — | No |
-| `rosc` | `cpr.pausedAt` | `pulse === "Yes"` | No |
-| `pulse-rhythm-check` | `cpr.pausedAt` | `pulse === "?" \|\| rhythm === "?"` (suppressed if shock-during-pause with pulse "No") | No |
+| `pause-pulse-check` (NSR) | `cpr.active && !cpr.pausedAt` | `rhythm === "NSR" && pulse !== "Yes"` — same task ID as above, label: "Pause for Pulse Check" | No |
+| `resume-cpr` | `cpr.pausedAt` (branch 3 only) | `pulse === "No" && rhythm !== "?"` | No |
+| `rosc` | `cpr.pausedAt` (branch 1) | `pulse === "Yes"` | No |
+| `pulse-rhythm-check` | `cpr.pausedAt` (branch 2) | `pulse === "?" \|\| rhythm === "?"` (suppressed if shock-during-pause with pulse "No") | No |
 | `epi` | `pulse === "No" \|\| cpr.active` | `epiReady && !roscDone` | No |
 | `amio` (arrest) | `pulse === "No" \|\| cpr.active` | `shockable && shockCount >= 2 && amioReady` | No |
 | `lido` | `pulse === "No" \|\| cpr.active` | `shockable && shockCount >= 2 && lidoReady` | No |
-| `reversible` | `cpr.pausedAt` | — | Yes |
-| `airway` | `cpr.pausedAt` | `breathing !== "ETT"` | No |
-| `access` | `cpr.pausedAt` | `!doneTasks["access"]` | No |
-| `check-rescuers` | `cpr.active && !cpr.pausedAt` | `rescuers === "?" && breathing !== "ETT" && epiDoses.length === 0` | No |
+| `reversible` | `cpr.active` (both running and paused branch 3) | Paused: always in branch 3; Running: always | Yes |
+| `airway` | `cpr.active` (both running and paused branch 3) | `breathing !== "ETT"` | No |
+| `access` | `cpr.active` (both running and paused branch 3); also tach and brady pathways | `!doneTasks["access"]` (arrest); always (tach/brady) | No |
+| `check-rescuers` | `pulse === "No" \|\| cpr.active` (all cardiac arrest states, including pre-CPR) | `rescuers === "?" && breathing !== "ETT" && epiDoses.length === 0` | No |
 | `rescue-breaths` | `breathing === "No" && pulse !== "No" && !cpr.active` | `pulse === "Yes"` | Yes |
 | `opioid-reversal` | `breathing === "No" && pulse !== "No" && !cpr.active` | — | No |
 | `wean-pacing` | `rate === "Fast"` | `given("pace") % 2 === 1` | Yes |
+| `ecg` | `pulse === "Yes" && rate === "Fast" && symptomatic === "Yes"` | Always within tach pathway | No |
+| `access` (tach) | `pulse === "Yes" && rate === "Fast" && symptomatic === "Yes"` | Always within tach pathway | No |
 | `adenosine` | `pulse === "Yes" && rate === "Fast" && symptomatic === "Yes"` | `rhythm === "SVT" && adenoGiven < 3` | No |
 | `amio` (tach) | `pulse === "Yes" && rate === "Fast" && symptomatic === "Yes"` | `rhythm === "WideTach" && amioReadyTach` | No |
 | `cardiovert` | `pulse === "Yes" && rate === "Fast" && symptomatic === "Yes"` | `rhythm ∈ {AF, SVT, WideTach}` | No |
+| `access` (brady) | `pulse === "Yes" && rate === "Slow" && symptomatic === "Yes"` | Always within brady pathway | No |
 | `atropine` | `pulse === "Yes" && rate === "Slow" && symptomatic === "Yes"` | `given < 3 && atropineReady` | No |
 | `pace` | `pulse === "Yes" && rate === "Slow" && symptomatic === "Yes"` | `given("pace") === 0` | No |
 | `dopamine` | `pulse === "Yes" && rate === "Slow" && symptomatic === "Yes"` | `given("dopamine") === 0` | No |
@@ -475,6 +513,6 @@ Rhythm option sets by context:
 | `d50` | `alert === "Altered" && pulse !== "No"` | `glucose === "Low"` | No |
 | `check-stroke-sx` | `alert === "Altered" && pulse !== "No"` | `strokeSx === "?"` | No |
 | `fast` | `alert === "Altered" && pulse !== "No"` | `strokeSx === "Yes"` | No |
-| `ct-stroke` | `alert === "Altered" && pulse !== "No"` | `strokeSx === "Yes"` | No |
+| `ct` | `alert === "Altered" && pulse !== "No"` | `strokeSx === "Yes"` — note: task ID is `ct`, not `ct-stroke` | No |
 | `choking-cycles` | `breathing === "Choking"` | — | Yes |
 | `reassess-responsiveness` | `breathing === "Choking"` | — | Yes |
