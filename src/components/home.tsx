@@ -135,9 +135,49 @@ export function CRHomeScreen({
         flexDirection: "column",
         height: "100%",
         background: "var(--bg)",
+        position: "relative",
+        overflow: "hidden",
       }}
     >
       <div style={{ paddingTop: "env(safe-area-inset-top, 0px)" }} />
+      <div
+        style={{
+          position: "absolute",
+          top: 0,
+          right: 0,
+          width: 150,
+          height: 150,
+          overflow: "hidden",
+          pointerEvents: "none",
+          zIndex: 10,
+        }}
+      >
+        <a
+          href="https://gavinovsak.github.io/FOAMapps/"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            position: "absolute",
+            top: 42,
+            right: -45,
+            transform: "rotate(45deg)",
+            width: 180,
+            display: "block",
+            padding: "8px 0",
+            background: "var(--accent)",
+            color: "#fff",
+            fontSize: 11,
+            fontWeight: 700,
+            textAlign: "center",
+            letterSpacing: "0.06em",
+            textDecoration: "none",
+            boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
+            pointerEvents: "auto",
+          }}
+        >
+          #FOAM App
+        </a>
+      </div>
       <div
         style={{
           padding: "8px 22px 6px",
