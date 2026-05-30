@@ -135,9 +135,49 @@ export function CRHomeScreen({
         flexDirection: "column",
         height: "100%",
         background: "var(--bg)",
+        position: "relative",
+        overflow: "hidden",
       }}
     >
       <div style={{ paddingTop: "env(safe-area-inset-top, 0px)" }} />
+      <div
+        style={{
+          position: "absolute",
+          top: 0,
+          right: 0,
+          width: 150,
+          height: 150,
+          overflow: "hidden",
+          pointerEvents: "none",
+          zIndex: 10,
+        }}
+      >
+        <a
+          href="https://gavinovsak.github.io/FOAMapps/"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            position: "absolute",
+            top: 42,
+            right: -45,
+            transform: "rotate(45deg)",
+            width: 180,
+            display: "block",
+            padding: "8px 0",
+            background: "var(--accent)",
+            color: "#fff",
+            fontSize: 11,
+            fontWeight: 700,
+            textAlign: "center",
+            letterSpacing: "0.06em",
+            textDecoration: "none",
+            boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
+            pointerEvents: "auto",
+          }}
+        >
+          #FOAM App
+        </a>
+      </div>
       <div
         style={{
           padding: "8px 22px 6px",
@@ -162,54 +202,31 @@ export function CRHomeScreen({
             ACLS / PALS companion
           </div>
         </div>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
-          <a
-            href="https://gavinovsak.github.io/FOAMapps/"
-            target="_blank"
-            rel="noopener noreferrer"
+        {installPrompt && (
+          <button
+            onClick={async () => {
+              await installPrompt.prompt();
+              setInstallPrompt(null);
+            }}
             style={{
               display: "inline-flex",
               alignItems: "center",
-              gap: 5,
-              padding: "4px 10px",
-              borderRadius: 6,
-              background: "var(--accent)",
-              fontSize: 11,
-              fontWeight: 700,
-              color: "#fff",
-              textDecoration: "none",
-              letterSpacing: "0.03em",
+              gap: 6,
+              padding: "6px 12px",
+              borderRadius: 8,
+              background: "var(--surface-2)",
+              border: "1px solid var(--line-strong)",
+              fontSize: 13,
+              fontWeight: 600,
+              color: "var(--ink)",
+              cursor: "pointer",
               flexShrink: 0,
             }}
           >
-            #FOAM App
-          </a>
-          {installPrompt && (
-            <button
-              onClick={async () => {
-                await installPrompt.prompt();
-                setInstallPrompt(null);
-              }}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-                padding: "6px 12px",
-                borderRadius: 8,
-                background: "var(--surface-2)",
-                border: "1px solid var(--line-strong)",
-                fontSize: 13,
-                fontWeight: 600,
-                color: "var(--ink)",
-                cursor: "pointer",
-                flexShrink: 0,
-              }}
-            >
-              <CRIcon name="download" size={14} />
-              Install App
-            </button>
-          )}
-        </div>
+            <CRIcon name="download" size={14} />
+            Install App
+          </button>
+        )}
       </div>
 
       <div
