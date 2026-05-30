@@ -130,4 +130,15 @@ CodeRunner's algorithms are based on the current American Heart Association (AHA
 
 ---
 
+## Technical reference
+
+Detailed documentation of the conditional logic that drives task generation,
+state transitions, and medication timing is in
+[`docs/conditional-task-logic.md`](docs/conditional-task-logic.md).
+It covers every guard condition for each task, implicit field transitions,
+CPR state machine rules, and the priority sort order — intended for
+external validation of the clinical decision logic.
+
+---
+
 *Built for providers, by a provider.*
