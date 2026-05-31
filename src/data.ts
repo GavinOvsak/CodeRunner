@@ -457,6 +457,17 @@ export function crNextTasks(s: Patient, now: number = Date.now()): NextTask[] {
       });
     }
 
+    if (s.rhythm === "TdP") {
+      const magGiven = given("magnesium");
+      if (magGiven < 2) {
+        const magLabel =
+          magGiven === 0
+            ? "Magnesium 2g IV push (1–2 min)"
+            : "Magnesium 2g IV (repeat)";
+        push({ id: "magnesium", label: magLabel, kind: "med", medKey: "magnesium" });
+      }
+    }
+
     const pushArrestDrugs = () => {
       const epiDoses = s.gave.find((g) => g.key === "epi")?.doses ?? [];
       const shockCount = given("shock");
@@ -491,22 +502,7 @@ export function crNextTasks(s: Patient, now: number = Date.now()): NextTask[] {
         }
       }
 
-      if (s.rhythm === "TdP") {
-        // TdP: magnesium is the antiarrhythmic of choice; amio/lido are not indicated
-        const magGiven = given("magnesium");
-        if (magGiven < 2) {
-          const magLabel =
-            magGiven === 0
-              ? "Magnesium 2g IV push (1–2 min)"
-              : "Magnesium 2g IV (repeat)";
-          push({
-            id: "magnesium",
-            label: magLabel,
-            kind: "med",
-            medKey: "magnesium",
-          });
-        }
-      } else if (shockable && shockCount >= 3) {
+      if (shockable && s.rhythm !== "TdP" && shockCount >= 3) {
         const amioGiven = given("amio");
         const amioDoses = s.gave.find((g) => g.key === "amio")?.doses ?? [];
         const amioReady =
