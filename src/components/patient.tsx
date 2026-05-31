@@ -733,7 +733,7 @@ export function CRPatientScreen({
                   onChange={setRhythm}
                   tone="auto"
                   flashRedKey={flashTargets.has("rhythm") ? flashKey : null}
-                  buttonGroup
+                  wrapGroup
                 />
               </CRStatusRow>
             ) : (
@@ -758,7 +758,7 @@ export function CRPatientScreen({
                     onChange={setRhythm}
                     tone="auto"
                     flashRedKey={flashTargets.has("rhythm") ? flashKey : null}
-                    buttonGroup
+                    wrapGroup
                   />
                 </CRStatusRow>
               )
