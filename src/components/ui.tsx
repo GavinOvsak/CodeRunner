@@ -1,9 +1,9 @@
 /**
  * # UI Components Library
- * 
+ *
  * This file contains reusable, highly responsive UI elements for the CodeRunner application,
  * including icons, custom dropdowns/button groups, styled sections, and status rows.
- * 
+ *
  * All elements adhere to the application design system and support dynamic responsiveness
  * (e.g. collapsing button groups into dropdowns when space is limited).
  */
@@ -225,10 +225,10 @@ function CRDropdownLabel({
 
 /**
  * # estimateButtonGroupWidth
- * 
+ *
  * Estimates the minimum pixel width needed to render options as an inline button group.
  * Uses an estimated character glyph width plus padding and borders per button.
- * 
+ *
  * Modified to be slightly less conservative (7.6px per char, 21px padding for "md") to prevent
  * premature collapsing/wrapping of the button group when screen or panel width is reduced.
  */
@@ -268,17 +268,17 @@ export function CRDropdown({
 
   /**
    * # checkWidth
-   * 
+   *
    * Finds the stable outer container (the CRStatusRow grandparent) to measure the
    * available layout width. This makes the calculation independent of the active
    * mode (button group vs dropdown) and completely eliminates layout flashing/flickering.
-   * 
+   *
    * Includes a hysteresis offset (12px) to prevent rapid layout oscillation/flashing
    * near the threshold boundaries.
    */
   const checkWidth = useCallback(() => {
     if (!buttonGroup || !wrapRef.current) return;
-    
+
     // Find the stable CRStatusRow ancestor. The immediate parent is a wrapper div,
     // and the grandparent is the full-width CRStatusRow container.
     let el: HTMLElement | null = wrapRef.current.parentElement;
@@ -293,7 +293,7 @@ export function CRDropdown({
         el = el.parentElement;
       }
     }
-    
+
     const rowWidth = el ? el.getBoundingClientRect().width : window.innerWidth;
     // Measure the actual label element (first child of the row) + row padding
     const labelEl = el?.firstElementChild;
@@ -302,7 +302,7 @@ export function CRDropdown({
     const labelAllowance = labelWidth + 30;
     const available = rowWidth - labelAllowance;
     const needed = estimateButtonGroupWidth(options, size);
-    
+
     // Apply hysteresis: once expanded, allow it to remain expanded down to needed - 12px.
     // This prevents layout oscillation/flicker when the wrapper adapts to the new child width.
     setUseButtonGroup((currentActive) => {
@@ -376,9 +376,14 @@ export function CRDropdown({
     if (v === "Slow") return "altered";
     if (v === "Normal") return "yes";
     if (v === "NSR") return "yes";
-    if (["VF", "VT", "VF_pVT"].includes(v)) return "no";
+    if (["VF", "VT", "VF_pVT", "TdP"].includes(v)) return "no";
     if (["PEA", "Asystole"].includes(v)) return "altered";
-    if (["SVT", "AF", "WideTach", "SinusBrady", "AVB1", "AVB2", "AVB3"].includes(v)) return "accent";
+    if (
+      ["SVT", "AF", "WideTach", "SinusBrady", "AVB1", "AVB2", "AVB3"].includes(
+        v,
+      )
+    )
+      return "accent";
     return "neutral";
   };
   const currentTone = getTone(value);
