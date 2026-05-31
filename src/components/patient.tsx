@@ -77,7 +77,7 @@ const CR_OPTS_RATE = [
 const boltIcon = <CRIcon name="bolt" size={14} color="var(--shock)" />;
 const CR_OPTS_RHYTHM_ARREST = [
   { value: "VF_pVT", label: "VF/VT", icon: boltIcon },
-  { value: "TdP", label: "Torsades", icon: boltIcon },
+  { value: "TdP", label: "TdP", icon: boltIcon },
   { value: "PEA", label: "PEA" },
   { value: "Asystole", label: "Asys" },
   { value: "NSR", label: "NSR" },
@@ -86,7 +86,7 @@ const CR_OPTS_RHYTHM_TACH = [
   { value: "SVT", label: "SVT" },
   { value: "AF", label: "AF" },
   { value: "WideTach", label: "Wide VT" },
-  { value: "TdP", label: "Torsades" },
+  { value: "TdP", label: "TdP" },
 ];
 const CR_OPTS_RHYTHM_BRADY = [
   { value: "SinusBrady", label: "Sinus Brady" },
@@ -3178,7 +3178,9 @@ export function CRPopupModal({
   if (type === "choking") {
     return (
       <CRModalShell title="Choking Relief Technique" onClose={onClose}>
-        <p style={{ marginTop: 0, fontWeight: 600 }}>Cycle (repeat until cleared)</p>
+        <p style={{ marginTop: 0, fontWeight: 600 }}>
+          Cycle (repeat until cleared)
+        </p>
         <ol style={{ margin: "0 0 12px", paddingLeft: 18 }}>
           <li>5 firm back blows between shoulder blades</li>
           <li>
@@ -3200,15 +3202,20 @@ export function CRPopupModal({
               color: "#92400e",
             }}
           >
-            <strong>Infants (&lt;1 yr):</strong> 5 back blows face-down on forearm →
-            5 chest thrusts with 2 fingers on lower sternum. Do <em>not</em> use
-            abdominal thrusts.
+            <strong>Infants (&lt;1 yr):</strong> 5 back blows face-down on
+            forearm → 5 chest thrusts with 2 fingers on lower sternum. Do{" "}
+            <em>not</em> use abdominal thrusts.
           </div>
         )}
-        <p style={{ fontWeight: 600, marginBottom: 4 }}>If patient becomes unresponsive</p>
+        <p style={{ fontWeight: 600, marginBottom: 4 }}>
+          If patient becomes unresponsive
+        </p>
         <ul style={{ margin: "0 0 10px", paddingLeft: 18 }}>
           <li>Lower to ground and begin CPR</li>
-          <li>Each time airway is opened for rescue breath, look for visible object and remove if seen</li>
+          <li>
+            Each time airway is opened for rescue breath, look for visible
+            object and remove if seen
+          </li>
         </ul>
         <p style={{ margin: 0, fontSize: 12, color: "var(--ink-3)" }}>
           Reassess responsiveness after each cycle.

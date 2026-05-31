@@ -399,7 +399,10 @@ export function crNextTasks(s: Patient, now: number = Date.now()): NextTask[] {
   const aedDone = s.doneTasks["get-aed"] === true;
   const roscDone = s.doneTasks["rosc"] === true;
   const shockable =
-    s.rhythm === "VF" || s.rhythm === "VT" || s.rhythm === "VF_pVT" || s.rhythm === "TdP";
+    s.rhythm === "VF" ||
+    s.rhythm === "VT" ||
+    s.rhythm === "VF_pVT" ||
+    s.rhythm === "TdP";
 
   // Precompute given counts once for O(1) lookups throughout
   const givenMap = new Map(s.gave.map((g) => [g.key, g.doses.length]));
@@ -496,7 +499,12 @@ export function crNextTasks(s: Patient, now: number = Date.now()): NextTask[] {
             magGiven === 0
               ? "Magnesium 2g IV push (1–2 min)"
               : "Magnesium 2g IV (repeat)";
-          push({ id: "magnesium", label: magLabel, kind: "med", medKey: "magnesium" });
+          push({
+            id: "magnesium",
+            label: magLabel,
+            kind: "med",
+            medKey: "magnesium",
+          });
         }
       } else if (shockable && shockCount >= 3) {
         const amioGiven = given("amio");
@@ -608,7 +616,7 @@ export function crNextTasks(s: Patient, now: number = Date.now()): NextTask[] {
           popup: "ht",
         });
 
-        if (s.breathing !== "ETT")
+        if (s.breathing !== "ETT" && s.rescuers === "Team")
           push({ id: "airway", label: "Airway → advanced (ETT)" });
         if (!s.doneTasks["access"])
           push({ id: "access", label: "Obtain IV / IO Access" });
@@ -645,7 +653,7 @@ export function crNextTasks(s: Patient, now: number = Date.now()): NextTask[] {
           kind: "critical",
         });
       }
-      if (s.breathing !== "ETT")
+      if (s.breathing !== "ETT" && s.rescuers === "Team")
         push({ id: "airway", label: "Airway → advanced (ETT)" });
       if (!s.doneTasks["access"])
         push({ id: "access", label: "Obtain IV / IO Access" });
@@ -729,10 +737,20 @@ export function crNextTasks(s: Patient, now: number = Date.now()): NextTask[] {
           magGiven === 0
             ? "Magnesium 2g IV push (1–2 min)"
             : "Magnesium 2g IV (repeat)";
-        push({ id: "magnesium", label: magLabel, kind: "med", medKey: "magnesium" });
+        push({
+          id: "magnesium",
+          label: magLabel,
+          kind: "med",
+          medKey: "magnesium",
+        });
       }
     }
-    if (s.rhythm === "AF" || s.rhythm === "SVT" || s.rhythm === "WideTach" || s.rhythm === "TdP")
+    if (
+      s.rhythm === "AF" ||
+      s.rhythm === "SVT" ||
+      s.rhythm === "WideTach" ||
+      s.rhythm === "TdP"
+    )
       push({
         id: "cardiovert",
         label: "Synchronized Cardioversion",
