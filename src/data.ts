@@ -342,10 +342,10 @@ export const TASK_PRIORITY: TaskId[] = [
   // Arrest support
   "get-aed",
   "airway",
+  "magnesium",
   "epi",
   "amio",
   "lido",
-  "magnesium",
   "access",
   "reversible",
   "check-rescuers",
