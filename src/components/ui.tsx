@@ -198,6 +198,7 @@ interface CRDropdownProps {
   disabled?: boolean;
   flashRedKey?: number | null;
   buttonGroup?: boolean;
+  wrapGroup?: boolean;
 }
 
 function CRDropdownLabel({
@@ -254,6 +255,7 @@ export function CRDropdown({
   disabled,
   flashRedKey,
   buttonGroup,
+  wrapGroup,
 }: CRDropdownProps) {
   const [open, setOpen] = useState(false);
   const [flash, setFlash] = useState(0);
@@ -387,6 +389,58 @@ export function CRDropdown({
     return "neutral";
   };
   const currentTone = getTone(value);
+
+  if (wrapGroup) {
+    return (
+      <span
+        ref={wrapRef}
+        key={"k" + flash}
+        className={flash > 0 ? "cr-flash-red" : ""}
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 4,
+          alignItems: "center",
+        }}
+      >
+        {options.map((opt) => {
+          const v = typeof opt === "string" ? opt : opt.value;
+          const lbl = typeof opt === "string" ? opt : opt.label;
+          const icon = typeof opt === "string" ? null : opt.icon;
+          const selected = v === value;
+          const btnTone = getTone(v);
+          return (
+            <button
+              key={v}
+              onClick={() => onChange(v)}
+              style={{
+                padding: size === "lg" ? "7px 13px" : "4px 10px",
+                background: selected
+                  ? toneBg[btnTone] || "var(--accent-soft)"
+                  : "#fff",
+                border: "1px solid var(--line-strong)",
+                borderRadius: 7,
+                color: selected
+                  ? toneInk[btnTone] || "var(--accent)"
+                  : "var(--ink-3)",
+                fontSize: fs - 1,
+                fontWeight: selected ? 700 : 400,
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 4,
+                letterSpacing: "-0.005em",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {icon}
+              <span>{lbl}</span>
+            </button>
+          );
+        })}
+      </span>
+    );
+  }
 
   if (buttonGroup && useButtonGroup) {
     if (disabled) {
