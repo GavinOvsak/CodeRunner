@@ -76,7 +76,8 @@ const CR_OPTS_RATE = [
 ];
 const boltIcon = <CRIcon name="bolt" size={14} color="var(--shock)" />;
 const CR_OPTS_RHYTHM_ARREST = [
-  { value: "VF_pVT", label: "VF/VT", icon: boltIcon },
+  { value: "VF", label: "VF", icon: boltIcon },
+  { value: "VT", label: "pVT", icon: boltIcon },
   { value: "TdP", label: "TdP", icon: boltIcon },
   { value: "PEA", label: "PEA" },
   { value: "Asystole", label: "Asys" },
