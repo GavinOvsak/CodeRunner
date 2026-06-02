@@ -154,6 +154,10 @@ export type TaskKind = "critical" | "shock" | "med";
 export interface NextTask {
   id: TaskId;
   label: string;
+  /** i18n key override — used when the task has multiple label variants (e.g. 'task.get-aed.one'). Falls back to 'task.{id}'. */
+  labelKey?: string;
+  /** Interpolation params for the labelKey translation. */
+  labelParams?: Record<string, string | number>;
   kind?: TaskKind;
   medKey?: MedKey;
   need?: "alert" | "breathing" | "pulse" | "rate" | "rhythm" | "symptomatic" | "rescuers" | "weightKg" | "glucose" | "strokeSx";

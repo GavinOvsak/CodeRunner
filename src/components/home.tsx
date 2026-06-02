@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import type { Patient, PatientType } from "../types";
 import { CRIcon } from "./ui";
+import { SUPPORTED_LANGUAGES } from "../i18n/config";
 
 interface CRHomeScreenProps {
   patients: Patient[];
@@ -87,6 +89,109 @@ export function CRNewButton({
   );
 }
 
+const LANG_FLAGS: Record<string, string> = {
+  en: "🇺🇸",
+  fr: "🇫🇷",
+  es: "🇪🇸",
+  id: "🇮🇩",
+  vi: "🇻🇳",
+  zh: "🇨🇳",
+  de: "🇩🇪",
+};
+
+function CRLangSwitcher() {
+  const { t, i18n } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const current = i18n.resolvedLanguage ?? "en";
+  const ref = useState(() => ({ current: null as HTMLDivElement | null }))[0];
+
+  return (
+    <div
+      ref={(el) => { ref.current = el; }}
+      style={{ position: "relative" }}
+    >
+      <button
+        onClick={() => setOpen((o) => !o)}
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
+          padding: "5px 10px 5px 8px",
+          borderRadius: 20,
+          background: "var(--surface)",
+          border: "1px solid var(--line-strong)",
+          fontSize: 13,
+          fontWeight: 600,
+          color: "var(--ink)",
+          cursor: "pointer",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.07)",
+        }}
+        aria-label="Language"
+      >
+        <span style={{ fontSize: 18, lineHeight: 1 }}>{LANG_FLAGS[current] ?? "🌐"}</span>
+        <span style={{ fontSize: 12, color: "var(--ink-2)", fontWeight: 600 }}>{current.toUpperCase()}</span>
+        <CRIcon name="chevron-down" size={12} color="var(--ink-3)" />
+      </button>
+      {open && (
+        <>
+          {/* Backdrop */}
+          <div
+            onClick={() => setOpen(false)}
+            style={{ position: "fixed", inset: 0, zIndex: 49 }}
+          />
+          <div
+            style={{
+              position: "absolute",
+              top: "calc(100% + 6px)",
+              left: 0,
+              zIndex: 50,
+              background: "var(--surface)",
+              border: "1px solid var(--line-strong)",
+              borderRadius: 12,
+              boxShadow: "0 12px 32px rgba(0,0,0,0.14)",
+              minWidth: 190,
+              overflow: "hidden",
+              padding: "4px 0",
+            }}
+          >
+            {SUPPORTED_LANGUAGES.map((lang) => (
+              <button
+                key={lang}
+                onClick={() => {
+                  i18n.changeLanguage(lang);
+                  setOpen(false);
+                }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  width: "100%",
+                  padding: "9px 14px",
+                  background: lang === current ? "var(--accent-soft)" : "transparent",
+                  border: "none",
+                  textAlign: "left",
+                  fontSize: 14,
+                  fontWeight: lang === current ? 700 : 400,
+                  color: lang === current ? "var(--accent)" : "var(--ink)",
+                  cursor: "pointer",
+                }}
+              >
+                <span style={{ fontSize: 20, lineHeight: 1, flexShrink: 0 }}>{LANG_FLAGS[lang]}</span>
+                <span>{t(`lang.${lang}`)}</span>
+                {lang === current && (
+                  <span style={{ marginLeft: "auto", color: "var(--accent)" }}>
+                    <CRIcon name="check" size={14} color="var(--accent)" />
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export function CRHomeScreen({
   patients,
   onNew,
@@ -94,6 +199,7 @@ export function CRHomeScreen({
   onRename,
   onDelete,
 }: CRHomeScreenProps) {
+  const { t } = useTranslation();
   const [isDisclaimerCollapsed, setIsDisclaimerCollapsed] = useState(() => {
     return localStorage.getItem("cr_disclaimer_collapsed") === "true";
   });
@@ -122,8 +228,8 @@ export function CRHomeScreen({
       minute: "2-digit",
       hour12: false,
     });
-    if (sameDay) return `Today · ${time}`;
-    if (isYesterday) return `Yesterday · ${time}`;
+    if (sameDay) return `${t("home.today")} · ${time}`;
+    if (isYesterday) return `${t("home.yesterday")} · ${time}`;
     const date = d.toLocaleDateString([], { month: "short", day: "numeric" });
     return `${date} · ${time}`;
   }
@@ -199,35 +305,40 @@ export function CRHomeScreen({
           >
             Code<span style={{ color: "var(--accent)" }}>Runner</span>
           </h1>
-          <div style={{ marginTop: 4, fontSize: 13, color: "var(--ink-3)" }}>
-            ACLS / PALS companion
+          <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ fontSize: 13, color: "var(--ink-3)" }}>
+              {t("home.subtitle")}
+            </div>
+            <CRLangSwitcher />
           </div>
         </div>
-        {installPrompt && (
-          <button
-            onClick={async () => {
-              await installPrompt.prompt();
-              setInstallPrompt(null);
-            }}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              padding: "6px 12px",
-              borderRadius: 8,
-              background: "var(--surface-2)",
-              border: "1px solid var(--line-strong)",
-              fontSize: 13,
-              fontWeight: 600,
-              color: "var(--ink)",
-              cursor: "pointer",
-              flexShrink: 0,
-            }}
-          >
-            <CRIcon name="download" size={14} />
-            Install App
-          </button>
-        )}
+        <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
+          {installPrompt && (
+            <button
+              onClick={async () => {
+                await installPrompt.prompt();
+                setInstallPrompt(null);
+              }}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "6px 12px",
+                borderRadius: 8,
+                background: "var(--surface-2)",
+                border: "1px solid var(--line-strong)",
+                fontSize: 13,
+                fontWeight: 600,
+                color: "var(--ink)",
+                cursor: "pointer",
+              }}
+            >
+              <CRIcon name="download" size={14} />
+              {t("home.installApp")}
+            </button>
+          )}
+        </div>
+
       </div>
 
       <div
@@ -239,12 +350,12 @@ export function CRHomeScreen({
         }}
       >
         <CRNewButton
-          label="New Adult"
+          label={t("home.newAdult")}
           sub="ACLS"
           onClick={() => onNew("adult")}
         />
         <CRNewButton
-          label="New Child"
+          label={t("home.newChild")}
           sub="PALS"
           onClick={() => onNew("pediatric")}
         />
@@ -261,7 +372,7 @@ export function CRHomeScreen({
             color: "var(--ink-3)",
           }}
         >
-          Recent
+          {t("home.recent")}
         </h2>
       </div>
 
@@ -281,7 +392,7 @@ export function CRHomeScreen({
               fontSize: 13.5,
             }}
           >
-            No prior codes. Start one above.
+            {t("home.noCodes")}
           </div>
         )}
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -353,7 +464,7 @@ export function CRHomeScreen({
                             color: "white",
                           }}
                         >
-                          ACTIVE CPR
+                          {t("home.activeCpr")}
                         </span>
                       )}
                     </div>
@@ -365,7 +476,7 @@ export function CRHomeScreen({
                         marginTop: 2,
                       }}
                     >
-                      {p.type === "pediatric" ? "PEDS" : "ADULT"} ·{" "}
+                      {p.type === "pediatric" ? t("home.peds") : t("home.adult")} ·{" "}
                       {startedLabel(p.startedAt)}
                     </div>
                   </div>
@@ -382,7 +493,7 @@ export function CRHomeScreen({
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      const n = prompt("Rename patient", p.name);
+                      const n = prompt(t("home.renamePrompt"), p.name);
                       if (n) onRename(p.id, n);
                     }}
                     style={crIconBtn()}
@@ -392,7 +503,7 @@ export function CRHomeScreen({
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (confirm("Delete this code?")) onDelete(p.id);
+                      if (confirm(t("home.confirmDelete"))) onDelete(p.id);
                     }}
                     style={{ ...crIconBtn(), color: "var(--red)" }}
                   >
@@ -446,7 +557,7 @@ export function CRHomeScreen({
               letterSpacing: "0.04em",
             }}
           >
-            Medical Disclaimer
+            {t("home.disclaimer.title")}
           </div>
           <div
             style={{
@@ -456,7 +567,7 @@ export function CRHomeScreen({
               alignItems: "center",
               justifyContent: "center",
             }}
-            aria-label={isDisclaimerCollapsed ? "Expand disclaimer" : "Collapse disclaimer"}
+            aria-label={isDisclaimerCollapsed ? t("home.disclaimer.expand") : t("home.disclaimer.collapse")}
           >
             <CRIcon name={isDisclaimerCollapsed ? "plus" : "minus"} size={16} color="var(--ink-2)" />
           </div>
@@ -472,7 +583,16 @@ export function CRHomeScreen({
               animation: "crCountWipe 200ms ease both",
             }}
           >
-            This application is an educational aid for trained providers running resuscitations and is not a substitute for clinical judgment. Protocols and dosages are designed to assist in ACLS/PALS simulation and learning. We gratefully acknowledge the work of the <a href="https://cpr.heart.org/en/" target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)", fontWeight: 600, textDecoration: "underline" }}>American Heart Association (AHA)</a>, and strongly encourage all users to consult their official publications for complete clinical context and guidance.
+            {t("home.disclaimer.before")}{" "}
+            <a
+              href="https://cpr.heart.org/en/"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: "var(--accent)", fontWeight: 600, textDecoration: "underline" }}
+            >
+              {t("home.disclaimer.ahaName")}
+            </a>
+            {t("home.disclaimer.after")}
           </div>
         )}
       </div>

@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react'
+import i18n from '../i18n/config'
 import type { Patient, PatientType } from '../types'
 import { CRHomeScreen } from './home'
 import { CRPatientScreen } from './patient'
@@ -55,7 +56,7 @@ export function makeBlankPatient(type: PatientType, name?: string): Patient {
   const now = Date.now();
   return {
     id: 'p_' + Math.random().toString(36).slice(2, 9),
-    name: name || (type === 'pediatric' ? 'Child ' + nowShort() : 'Adult ' + nowShort()),
+    name: name || (type === 'pediatric' ? i18n.t('app.patientChild') + ' ' + nowShort() : i18n.t('app.patientAdult') + ' ' + nowShort()),
     type,
     startedAt: now,
     alert: '?',

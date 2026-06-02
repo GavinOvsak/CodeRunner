@@ -180,6 +180,16 @@ export function CRIcon({
           />
         </svg>
       );
+    case "globe":
+      return (
+        <svg {...props}>
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 3c-2.5 3-4 5.5-4 9s1.5 6 4 9" />
+          <path d="M12 3c2.5 3 4 5.5 4 9s-1.5 6-4 9" />
+          <line x1="3" y1="12" x2="21" y2="12" />
+          <path d="M3.6 8h16.8M3.6 16h16.8" />
+        </svg>
+      );
     default:
       return null;
   }

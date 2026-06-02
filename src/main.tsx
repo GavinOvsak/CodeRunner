@@ -1,6 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import './index.css'
+import './i18n/config'
 import { CRApp } from './components/app'
 
 class CRErrorBoundary extends React.Component<

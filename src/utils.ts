@@ -203,40 +203,70 @@ export function reconstructStateFromLog(p: Patient): Patient {
 // Display formatting (used by log screen)
 // ─────────────────────────────────────────────────────────────
 
-export function formatLogEntry(entry: LogEntry): string {
+type TFunc = (key: string, opts?: Record<string, string | number>) => string;
+
+export function formatLogEntry(entry: LogEntry, t?: TFunc): string {
+  const tr = t ?? ((key: string, opts?: Record<string, string | number>) => {
+    // Fallback: produce English string without i18next
+    if (key === "logEntry.rhythm") return `Rhythm: ${opts?.rhythm ?? ""}`;
+    if (key === "logEntry.weight") return `Weight: ${opts?.weight ?? ""}kg`;
+    if (key === "logEntry.status") return `${opts?.field ?? ""}: ${opts?.value ?? ""}`;
+    if (key === "logEntry.medGive") return `+1 ${opts?.name ?? ""}`;
+    if (key === "logEntry.medStart") return `Started ${opts?.name ?? ""}`;
+    if (key === "logEntry.medStop") return `Stopped ${opts?.name ?? ""}`;
+    if (key === "logEntry.task") return `✓ ${opts?.label ?? ""}`;
+    if (key === "logEntry.cprStart") return `CPR started — cycle ${opts?.cycle ?? ""}`;
+    if (key === "logEntry.cprPause") return `CPR cycle ${opts?.cycle ?? ""} ended (pause) — ${opts?.elapsed ?? ""}`;
+    if (key === "logEntry.cprResume") return `CPR resumed — cycle ${opts?.cycle ?? ""}`;
+    if (key === "logEntry.cprSync") return "Metronome synced";
+    if (key === "logEntry.cprRosc") return "ROSC — code ended";
+    if (key === "logEntry.cprEnd") return "Code ended";
+    return key;
+  });
+
   switch (entry.type) {
     case "note":
       return entry.text;
 
     case "status": {
       if (entry.field === "rhythm") {
-        return `Rhythm: ${RHYTHM_LABELS[entry.value]}`;
+        const rhythmLabel = t
+          ? tr(`rhythmLabel.${entry.value}`, {})
+          : (RHYTHM_LABELS[entry.value] ?? String(entry.value));
+        return tr("logEntry.rhythm", { rhythm: rhythmLabel });
       }
       if (entry.field === "weight") {
-        return `Weight: ${entry.value}kg`;
+        return tr("logEntry.weight", { weight: entry.value });
       }
-      return `${STATUS_FIELD_LABELS[entry.field]}: ${entry.value}`;
+      const fieldLabel = t
+        ? tr(`statusField.${entry.field}`, {})
+        : (STATUS_FIELD_LABELS[entry.field] ?? entry.field);
+      return tr("logEntry.status", { field: fieldLabel, value: String(entry.value) });
     }
 
     case "med": {
       const med = CR_MED_BY_KEY[entry.key];
       const name = med?.short ?? entry.key;
-      if (entry.action === "give") return `+1 ${name}`;
-      if (entry.action === "start") return `Started ${name}`;
-      return `Stopped ${name}`;
+      if (entry.action === "give") return tr("logEntry.medGive", { name });
+      if (entry.action === "start") return tr("logEntry.medStart", { name });
+      return tr("logEntry.medStop", { name });
     }
 
-    case "task":
-      return `✓ ${TASK_LABELS[entry.taskId] ?? entry.taskId}`;
+    case "task": {
+      const label = t
+        ? tr(`task.${entry.taskId}`, {}) || (TASK_LABELS[entry.taskId] ?? entry.taskId)
+        : (TASK_LABELS[entry.taskId] ?? entry.taskId);
+      return tr("logEntry.task", { label });
+    }
 
     case "cpr":
       switch (entry.event) {
-        case "start":  return `CPR started — cycle ${entry.cycleNumber}`;
-        case "pause":  return `CPR cycle ${entry.cycleNumber} ended (pause) — ${crFmt(entry.elapsed)}`;
-        case "resume": return `CPR resumed — cycle ${entry.cycleNumber}`;
-        case "sync":   return "Metronome synced";
-        case "rosc":   return "ROSC — code ended";
-        case "end":    return "Code ended";
+        case "start":  return tr("logEntry.cprStart", { cycle: entry.cycleNumber });
+        case "pause":  return tr("logEntry.cprPause", { cycle: entry.cycleNumber, elapsed: crFmt(entry.elapsed) });
+        case "resume": return tr("logEntry.cprResume", { cycle: entry.cycleNumber });
+        case "sync":   return tr("logEntry.cprSync", {});
+        case "rosc":   return tr("logEntry.cprRosc", {});
+        case "end":    return tr("logEntry.cprEnd", {});
       }
   }
 }

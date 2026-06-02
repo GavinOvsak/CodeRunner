@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { Patient } from '../types'
 import { crClock, formatLogEntry } from '../utils'
 import { CRIcon } from './ui'
@@ -79,6 +80,7 @@ interface CRLogEditModalProps {
 }
 
 export function CRLogEditModal({ entry, onChange, onSave, onDelete, onClose }: CRLogEditModalProps) {
+  const { t } = useTranslation();
   const d = new Date(entry.at);
   const timeStr = d.toTimeString().slice(0, 8); // HH:MM:SS
 
@@ -104,21 +106,21 @@ export function CRLogEditModal({ entry, onChange, onSave, onDelete, onClose }: C
         display: 'flex', flexDirection: 'column', gap: 10,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Edit event</h3>
+          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{t("modal.logEdit.title")}</h3>
           <button onClick={onClose} style={crIconBtnLocal()}><CRIcon name="close" size={20}/></button>
         </div>
         <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ink-3)' }}>Time</span>
+          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ink-3)' }}>{t("modal.logEdit.time")}</span>
           <input
             className="mono"
             defaultValue={timeStr}
             onBlur={e => applyTime(e.target.value)}
-            placeholder="HH:MM:SS"
+            placeholder={t("modal.logEdit.timePlaceholder")}
             style={crInputStyle()}
           />
         </label>
         <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ink-3)' }}>Description</span>
+          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ink-3)' }}>{t("modal.logEdit.description")}</span>
           {entry.isNote ? (
             <input
               value={entry.noteText}
@@ -135,11 +137,11 @@ export function CRLogEditModal({ entry, onChange, onSave, onDelete, onClose }: C
           <button onClick={onDelete} style={{
             ...crBtnSecondary(), color: 'var(--red)', borderColor: 'color-mix(in srgb, var(--red) 30%, var(--line-strong))',
           }}>
-            <CRIcon name="trash" size={14} /> Delete
+            <CRIcon name="trash" size={14} /> {t("common.delete")}
           </button>
           <div style={{ flex: 1 }} />
-          <button onClick={onClose} style={crBtnSecondary()}>Cancel</button>
-          <button onClick={onSave} style={crBtnPrimary()}>Save</button>
+          <button onClick={onClose} style={crBtnSecondary()}>{t("common.cancel")}</button>
+          <button onClick={onSave} style={crBtnPrimary()}>{t("common.save")}</button>
         </div>
       </div>
     </div>
@@ -156,6 +158,7 @@ interface CRLogScreenProps {
 }
 
 export function CRLogScreen({ patient, onBack, onUpdate }: CRLogScreenProps) {
+  const { t } = useTranslation();
   const entries = [...patient.log].map((e, idx) => ({ ...e, _idx: idx })).reverse();
   const [editing, setEditing] = useState<EditingEntry | null>(null);
   const [confirmDel, setConfirmDel] = useState<number | null>(null);
@@ -212,18 +215,18 @@ export function CRLogScreen({ patient, onBack, onUpdate }: CRLogScreenProps) {
           <button onClick={onBack} style={crIconBtnNav()}>
             <CRIcon name="chevron-left" size={22} />
           </button>
-          <div style={{ fontSize: 15, fontWeight: 700 }}>Event Log</div>
+          <div style={{ fontSize: 15, fontWeight: 700 }}>{t("log.title")}</div>
           <div style={{ width: 36 }} />
         </div>
       </header>
       <div className="cr-scroll" style={{ flex: 1, overflowY: 'auto', padding: '8px 12px 24px' }}>
         <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, overflow: 'hidden' }}>
           {entries.length === 0 && (
-            <div style={{ padding: '18px 14px', color: 'var(--ink-3)', fontSize: 14 }}>No events yet.</div>
+            <div style={{ padding: '18px 14px', color: 'var(--ink-3)', fontSize: 14 }}>{t("log.empty")}</div>
           )}
           {entries.map((e, i) => {
             const isConfirming = confirmDel === e._idx;
-            const displayText = formatLogEntry(e);
+            const displayText = formatLogEntry(e, (key, opts) => t(key, opts as Record<string, string | number>));
             return (
               <div key={e._idx} style={{
                 display: 'flex', alignItems: 'center', gap: 8,
@@ -251,11 +254,11 @@ export function CRLogScreen({ patient, onBack, onUpdate }: CRLogScreenProps) {
                     padding: '2px 5px', borderRadius: 4, minWidth: 38, textAlign: 'center',
                     background: CR_LOG_BG[e.type] || 'var(--surface-2)',
                     color: CR_LOG_FG[e.type] || 'var(--ink-2)',
-                  }}>{e.type}</div>
+                  }}>{t(`log.type.${e.type}`, { defaultValue: e.type })}</div>
                   <div style={{ flex: 1, fontSize: 14, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayText}</div>
                 </button>
                 {!isConfirming ? (
-                  <button onClick={(ev) => askDelete(e._idx, ev)} aria-label="delete entry" style={{
+                  <button onClick={(ev) => askDelete(e._idx, ev)} aria-label={t("log.deleteEntry")} style={{
                     width: 30, height: 30, borderRadius: 8,
                     background: 'transparent', border: 'none',
                     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
@@ -272,7 +275,7 @@ export function CRLogScreen({ patient, onBack, onUpdate }: CRLogScreenProps) {
                     cursor: 'pointer', flex: 'none',
                   }}>
                     <CRIcon name="trash" size={12} color="white" />
-                    Delete?
+                    {t("log.confirmDelete")}
                   </button>
                 )}
               </div>
@@ -280,7 +283,7 @@ export function CRLogScreen({ patient, onBack, onUpdate }: CRLogScreenProps) {
           })}
         </div>
         <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 12, textAlign: 'center' }}>
-          Started {crClock(patient.startedAt)} · {entries.length} event{entries.length === 1 ? '' : 's'} · tap a row to edit
+          {t(`log.footer`, { count: entries.length, time: crClock(patient.startedAt), defaultValue: `Started ${crClock(patient.startedAt)} · ${entries.length} event${entries.length === 1 ? '' : 's'} · tap a row to edit` })}
         </div>
       </div>
       {editing && (

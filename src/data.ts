@@ -446,6 +446,12 @@ export function crNextTasks(s: Patient, now: number = Date.now()): NextTask[] {
   if (s.pulse === "No" || s.cpr.active) {
     // Always request AED when shockable or unknown — gate Shock behind it
     if (!aedDone) {
+      const aedLabelKey =
+        s.rescuers === "One"
+          ? "task.get-aed.one"
+          : s.rescuers === "Two"
+            ? "task.get-aed.two"
+            : "task.get-aed";
       push({
         id: "get-aed",
         label:
@@ -454,6 +460,7 @@ export function crNextTasks(s: Patient, now: number = Date.now()): NextTask[] {
             : s.rescuers === "Two"
               ? "Get AED + Call for Help (Rescuer 2)"
               : "Get AED / Defibrillator",
+        labelKey: aedLabelKey,
       });
     }
 
@@ -464,7 +471,13 @@ export function crNextTasks(s: Patient, now: number = Date.now()): NextTask[] {
           magGiven === 0
             ? "Magnesium 2g IV push (1–2 min)"
             : "Magnesium 2g IV (repeat)";
-        push({ id: "magnesium", label: magLabel, kind: "med", medKey: "magnesium" });
+        push({
+          id: "magnesium",
+          label: magLabel,
+          labelKey: magGiven === 0 ? "task.magnesium.1st" : "task.magnesium.repeat",
+          kind: "med",
+          medKey: "magnesium",
+        });
       }
     }
 
@@ -489,6 +502,8 @@ export function crNextTasks(s: Patient, now: number = Date.now()): NextTask[] {
           push({
             id: "epi",
             label: `Give Epi ${dose} IV/IO (q 3-5 min)`,
+            labelKey: "task.epi.peds",
+            labelParams: { dose },
             kind: "med",
             medKey: "epi",
           });
@@ -496,6 +511,7 @@ export function crNextTasks(s: Patient, now: number = Date.now()): NextTask[] {
           push({
             id: "epi",
             label: "Give Epi 1mg IV/IO (q 3-5 min)",
+            labelKey: "task.epi.adult",
             kind: "med",
             medKey: "epi",
           });
@@ -518,6 +534,8 @@ export function crNextTasks(s: Patient, now: number = Date.now()): NextTask[] {
             push({
               id: "amio",
               label: `Give Amiodarone ${dose} IV/IO`,
+              labelKey: "task.amio.peds",
+              labelParams: { dose },
               kind: "med",
               medKey: "amio",
             });
@@ -526,7 +544,13 @@ export function crNextTasks(s: Patient, now: number = Date.now()): NextTask[] {
               amioGiven === 0
                 ? "Give Amiodarone 300mg"
                 : "Give Amiodarone 150mg";
-            push({ id: "amio", label: amioLabel, kind: "med", medKey: "amio" });
+            push({
+              id: "amio",
+              label: amioLabel,
+              labelKey: amioGiven === 0 ? "task.amio.300" : "task.amio.150",
+              kind: "med",
+              medKey: "amio",
+            });
           }
         }
 
@@ -546,17 +570,27 @@ export function crNextTasks(s: Patient, now: number = Date.now()): NextTask[] {
               s.weightKg != null
                 ? `${Math.min(s.weightKg * 0.5, maxFirst).toFixed(1)}mg`
                 : `0.5mg/kg`;
-            const lidoLabel =
-              lidoGiven === 0
-                ? `Give Lidocaine ${doseFirst} IV/IO`
-                : `Give Lidocaine ${doseRepeat} IV/IO`;
-            push({ id: "lido", label: lidoLabel, kind: "med", medKey: "lido" });
+            const dose = lidoGiven === 0 ? doseFirst : doseRepeat;
+            push({
+              id: "lido",
+              label: `Give Lidocaine ${dose} IV/IO`,
+              labelKey: "task.lido.peds",
+              labelParams: { dose },
+              kind: "med",
+              medKey: "lido",
+            });
           } else {
             const lidoLabel =
               lidoGiven === 0
                 ? "Give Lidocaine 1–1.5 mg/kg"
                 : "Give Lidocaine 0.5–0.75 mg/kg";
-            push({ id: "lido", label: lidoLabel, kind: "med", medKey: "lido" });
+            push({
+              id: "lido",
+              label: lidoLabel,
+              labelKey: lidoGiven === 0 ? "task.lido.adult1st" : "task.lido.adultRepeat",
+              kind: "med",
+              medKey: "lido",
+            });
           }
         }
       }
@@ -567,12 +601,14 @@ export function crNextTasks(s: Patient, now: number = Date.now()): NextTask[] {
       if (shockable && aedDone) {
         push({ id: "shock", label: "Shock", kind: "shock", popup: "shock" });
       }
+      const startCprKey = s.rescuers === "Two" && !aedDone ? "task.start-cpr.rescuer1" : "task.start-cpr";
       push({
         id: "start-cpr",
         label:
           s.rescuers === "Two" && !aedDone
             ? "Start CPR (Rescuer 1)"
             : "Start CPR",
+        labelKey: startCprKey,
         kind: "critical",
       });
     } else if (s.cpr.pausedAt) {
@@ -640,12 +676,14 @@ export function crNextTasks(s: Patient, now: number = Date.now()): NextTask[] {
           s.alert === "Yes"
             ? "Pause CPR (Patient responsive)"
             : "Pause CPR (Pulse detected)";
-        push({ id: "pause-pulse-check", label, kind: "critical" });
+        const lKey = s.alert === "Yes" ? "task.pause-pulse-check.responsive" : "task.pause-pulse-check.pulse";
+        push({ id: "pause-pulse-check", label, labelKey: lKey, kind: "critical" });
       }
       if (s.rhythm === "NSR" && s.pulse !== "Yes") {
         push({
           id: "pause-pulse-check",
           label: "Pause for Pulse Check",
+          labelKey: "task.pause-pulse-check.nsr",
           kind: "critical",
         });
       }
@@ -706,6 +744,7 @@ export function crNextTasks(s: Patient, now: number = Date.now()): NextTask[] {
         push({
           id: "adenosine",
           label: adenoLabel,
+          labelKey: adenoGiven === 0 ? "task.adenosine.6mg" : "task.adenosine.12mg",
           kind: "med",
           medKey: "adenosine",
         });
@@ -722,7 +761,13 @@ export function crNextTasks(s: Patient, now: number = Date.now()): NextTask[] {
           amioGiven === 0
             ? "Amiodarone 150mg over 10 min"
             : "Amiodarone 150mg (repeat)";
-        push({ id: "amio", label: amioLabel, kind: "med", medKey: "amio" });
+        push({
+          id: "amio",
+          label: amioLabel,
+          labelKey: amioGiven === 0 ? "task.amio.stable1st" : "task.amio.stableRepeat",
+          kind: "med",
+          medKey: "amio",
+        });
       }
     }
     if (s.rhythm === "TdP") {
@@ -736,6 +781,7 @@ export function crNextTasks(s: Patient, now: number = Date.now()): NextTask[] {
         push({
           id: "magnesium",
           label: magLabel,
+          labelKey: magGiven === 0 ? "task.magnesium.1st" : "task.magnesium.repeat",
           kind: "med",
           medKey: "magnesium",
         });
@@ -811,6 +857,7 @@ export function crNextTasks(s: Patient, now: number = Date.now()): NextTask[] {
       label: isPeds
         ? "5 back blows → 5 abdominal/chest thrusts"
         : "5 back blows then 5 abdominal thrusts",
+      labelKey: isPeds ? "task.choking-cycles" : "task.choking-cycles.adult",
       recurring: true,
       popup: "choking",
     });

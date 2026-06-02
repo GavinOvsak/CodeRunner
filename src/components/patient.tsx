@@ -5,6 +5,8 @@ import React, {
   useCallback,
   useMemo,
 } from "react";
+import { useTranslation } from "react-i18next";
+import { SUPPORTED_LANGUAGES } from "../i18n/config";
 import type {
   Patient,
   CPRState,
@@ -37,68 +39,73 @@ import { crFmt, crSince } from "../utils";
 import { CRIcon, CRDropdown, CRSection, CRStatusRow } from "./ui";
 
 // ─────────────────────────────────────────────────────────────
-// Status dropdown option sets
+// Status dropdown option sets — built dynamically from translations
 // ─────────────────────────────────────────────────────────────
-const CR_OPTS_YN = [
-  { value: "Yes", label: "Yes" },
-  { value: "No", label: "No" },
-];
-const CR_OPTS_ALERT = [
-  { value: "Yes", label: "Yes" },
-  { value: "No", label: "No" },
-  { value: "Altered", label: "Altered" },
-  { value: "Sedated", label: "Sedated" },
-];
-const CR_OPTS_BREATH = [
-  { value: "Yes", label: "Yes" },
-  { value: "No", label: "No" },
-  { value: "Choking", label: "Choking" },
-  { value: "ETT", label: "ETT" },
-];
-const CR_OPTS_RESCUERS = [
-  { value: "One", label: "One" },
-  { value: "Two", label: "Two" },
-  { value: "Team", label: "Code Team" },
-];
-const CR_OPTS_GLUCOSE = [
-  { value: "Low", label: "Low" },
-  { value: "Normal", label: "Normal" },
-  { value: "High", label: "High" },
-];
-const CR_OPTS_STROKESX = [
-  { value: "Yes", label: "Yes" },
-  { value: "No", label: "No" },
-];
-const CR_OPTS_RATE = [
-  { value: "Fast", label: "Fast" },
-  { value: "Normal", label: "Normal" },
-  { value: "Slow", label: "Slow" },
-];
-const boltIcon = <CRIcon name="bolt" size={14} color="var(--shock)" />;
-const CR_OPTS_RHYTHM_ARREST = [
-  { value: "VF", label: "VF", icon: boltIcon },
-  { value: "VT", label: "pVT", icon: boltIcon },
-  { value: "TdP", label: "TdP", icon: boltIcon },
-  { value: "PEA", label: "PEA" },
-  { value: "Asystole", label: "Asys" },
-  { value: "NSR", label: "NSR" },
-];
-const CR_OPTS_RHYTHM_TACH = [
-  { value: "SVT", label: "SVT" },
-  { value: "AF", label: "AF" },
-  { value: "WideTach", label: "Wide VT" },
-  { value: "TdP", label: "TdP" },
-];
-const CR_OPTS_RHYTHM_BRADY = [
-  { value: "SinusBrady", label: "Sinus Brady" },
-  { value: "AVB1", label: "1°" },
-  { value: "AVB2", label: "2°" },
-  { value: "AVB3", label: "3° AVB" },
-];
-const CR_OPTS_RHYTHM_NORMAL = [
-  { value: "NSR", label: "NSR" },
-  { value: "AF", label: "AF" },
-];
+function useCROptions() {
+  const { t } = useTranslation();
+  const boltIcon = <CRIcon name="bolt" size={14} color="var(--shock)" />;
+  return {
+    CR_OPTS_YN: [
+      { value: "Yes", label: t("common.yes") },
+      { value: "No", label: t("common.no") },
+    ],
+    CR_OPTS_ALERT: [
+      { value: "Yes", label: t("common.yes") },
+      { value: "No", label: t("common.no") },
+      { value: "Altered", label: t("opt.altered") },
+      { value: "Sedated", label: t("opt.sedated") },
+    ],
+    CR_OPTS_BREATH: [
+      { value: "Yes", label: t("common.yes") },
+      { value: "No", label: t("common.no") },
+      { value: "Choking", label: t("opt.choking") },
+      { value: "ETT", label: "ETT" },
+    ],
+    CR_OPTS_RESCUERS: [
+      { value: "One", label: t("opt.one") },
+      { value: "Two", label: t("opt.two") },
+      { value: "Team", label: t("opt.codeTeam") },
+    ],
+    CR_OPTS_GLUCOSE: [
+      { value: "Low", label: t("opt.low") },
+      { value: "Normal", label: t("opt.normal") },
+      { value: "High", label: t("opt.high") },
+    ],
+    CR_OPTS_STROKESX: [
+      { value: "Yes", label: t("common.yes") },
+      { value: "No", label: t("common.no") },
+    ],
+    CR_OPTS_RATE: [
+      { value: "Fast", label: t("opt.fast") },
+      { value: "Normal", label: t("opt.normal") },
+      { value: "Slow", label: t("opt.slow") },
+    ],
+    CR_OPTS_RHYTHM_ARREST: [
+      { value: "VF", label: "VF", icon: boltIcon },
+      { value: "VT", label: t("opt.pvt"), icon: boltIcon },
+      { value: "TdP", label: "TdP", icon: boltIcon },
+      { value: "PEA", label: "PEA" },
+      { value: "Asystole", label: t("opt.asys") },
+      { value: "NSR", label: "NSR" },
+    ],
+    CR_OPTS_RHYTHM_TACH: [
+      { value: "SVT", label: "SVT" },
+      { value: "AF", label: "AF" },
+      { value: "WideTach", label: t("opt.wideVT") },
+      { value: "TdP", label: "TdP" },
+    ],
+    CR_OPTS_RHYTHM_BRADY: [
+      { value: "SinusBrady", label: t("opt.sinusBrady") },
+      { value: "AVB1", label: "1°" },
+      { value: "AVB2", label: "2°" },
+      { value: "AVB3", label: "3° AVB" },
+    ],
+    CR_OPTS_RHYTHM_NORMAL: [
+      { value: "NSR", label: "NSR" },
+      { value: "AF", label: "AF" },
+    ],
+  };
+}
 
 // ─────────────────────────────────────────────────────────────
 // Prop interfaces
@@ -182,6 +189,58 @@ function crCprBtn(invertOnDark: boolean): React.CSSProperties {
 }
 
 // ─────────────────────────────────────────────────────────────
+// Language flags (shared with home screen)
+// ─────────────────────────────────────────────────────────────
+const LANG_FLAGS: Record<string, string> = {
+  en: "🇺🇸", fr: "🇫🇷", es: "🇪🇸", id: "🇮🇩", vi: "🇻🇳", zh: "🇨🇳", de: "🇩🇪",
+};
+
+function CRPatientLangSwitcher() {
+  const { t, i18n } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const current = i18n.resolvedLanguage ?? "en";
+  return (
+    <div style={{ position: "relative" }}>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        style={{ ...crIconBtn(), fontSize: 18 }}
+        aria-label="Language"
+        title={t(`lang.${current}`)}
+      >
+        {LANG_FLAGS[current] ?? "🌐"}
+      </button>
+      {open && (
+        <>
+          <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 149 }} />
+          <div style={{
+            position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 150,
+            background: "var(--surface)", border: "1px solid var(--line-strong)",
+            borderRadius: 12, boxShadow: "0 12px 32px rgba(0,0,0,0.14)",
+            minWidth: 190, overflow: "hidden", padding: "4px 0",
+          }}>
+            {SUPPORTED_LANGUAGES.map((lang) => (
+              <button key={lang} onClick={() => { i18n.changeLanguage(lang); setOpen(false); }}
+                style={{
+                  display: "flex", alignItems: "center", gap: 10, width: "100%",
+                  padding: "9px 14px",
+                  background: lang === current ? "var(--accent-soft)" : "transparent",
+                  border: "none", textAlign: "left", fontSize: 14,
+                  fontWeight: lang === current ? 700 : 400,
+                  color: lang === current ? "var(--accent)" : "var(--ink)", cursor: "pointer",
+                }}>
+                <span style={{ fontSize: 20, lineHeight: 1, flexShrink: 0 }}>{LANG_FLAGS[lang]}</span>
+                <span>{t(`lang.${lang}`)}</span>
+                {lang === current && <CRIcon name="check" size={14} color="var(--accent)" />}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
 // CRPatientScreen
 // ─────────────────────────────────────────────────────────────
 export function CRPatientScreen({
@@ -190,6 +249,20 @@ export function CRPatientScreen({
   onBack,
   onOpenLog,
 }: CRPatientScreenProps) {
+  const { t } = useTranslation();
+  const {
+    CR_OPTS_YN,
+    CR_OPTS_ALERT,
+    CR_OPTS_BREATH,
+    CR_OPTS_RESCUERS,
+    CR_OPTS_GLUCOSE,
+    CR_OPTS_STROKESX,
+    CR_OPTS_RATE,
+    CR_OPTS_RHYTHM_ARREST,
+    CR_OPTS_RHYTHM_TACH,
+    CR_OPTS_RHYTHM_BRADY,
+    CR_OPTS_RHYTHM_NORMAL,
+  } = useCROptions();
   const s = patient;
   const dispatch = onChange;
   const [infoOpen, setInfoOpen] = useState(false);
@@ -555,10 +628,10 @@ export function CRPatientScreen({
   // CPR compression:breath guidance based on rescuers, ETT, and patient type
   function getCprGuidance(): string {
     const hasETT = s.breathing === "ETT";
-    if (hasETT) return "Continuous · 1 breath/6s"; // ETT: 10/min for all ages
+    if (hasETT) return t("cpr.guidanceETT");
     if (s.rescuers === "Team") return "";
-    if (s.type === "pediatric" && s.rescuers === "Two") return "Ratio = 15:2";
-    return "Ratio = 30:2";
+    if (s.type === "pediatric" && s.rescuers === "Two") return t("cpr.guidancePedsTwo");
+    return t("cpr.guidanceDefault");
   }
 
   return (
@@ -603,9 +676,9 @@ export function CRPatientScreen({
         }}
       >
         <div className="cr-patient-grid">
-          <CRSection className="cr-s-status" title="Patient Status">
+          <CRSection className="cr-s-status" title={t("patient.status.section")}>
             <CRStatusRow
-              label="Alert"
+              label={t("field.alert")}
               disabled={s.breathing === "ETT"}
               uncertain={s.alert === "?"}
               flashKey={flashTargets.has("alert") ? flashKey : null}
@@ -621,7 +694,7 @@ export function CRPatientScreen({
               />
             </CRStatusRow>
             <CRStatusRow
-              label="Breathing"
+              label={t("field.breathing")}
               uncertain={s.breathing === "?"}
               flashKey={flashTargets.has("breathing") ? flashKey : null}
             >
@@ -667,7 +740,7 @@ export function CRPatientScreen({
             </CRStatusRow>
             {s.alert !== "Yes" && (
               <CRStatusRow
-                label="Pulse"
+                label={t("field.pulse")}
                 disabled={cpr.active && !cpr.pausedAt}
                 uncertain={s.pulse === "?"}
                 flashKey={flashTargets.has("pulse") ? flashKey : null}
@@ -685,7 +758,7 @@ export function CRPatientScreen({
             )}
             {s.pulse === "Yes" && (
               <CRStatusRow
-                label="Heart Rate"
+                label={t("field.heartRate")}
                 uncertain={s.rate === "?"}
                 flashKey={flashTargets.has("rate") ? flashKey : null}
               >
@@ -703,7 +776,7 @@ export function CRPatientScreen({
               s.alert !== "No" &&
               s.alert !== "Altered" && (
                 <CRStatusRow
-                  label="Symptomatic"
+                  label={t("field.symptomatic")}
                   uncertain={s.symptomatic === "?"}
                   onInfo={() => setPopup("symptomatic")}
                   flashKey={flashTargets.has("symptomatic") ? flashKey : null}
@@ -723,7 +796,7 @@ export function CRPatientScreen({
             (s.pulse === "No" || cpr.active) &&
             (s.doneTasks["get-aed"] === true || cpr.active) ? (
               <CRStatusRow
-                label="Rhythm"
+                label={t("field.rhythm")}
                 uncertain={s.rhythm === "?"}
                 onInfo={() => setPopup("rhythm")}
                 flashKey={flashTargets.has("rhythm") ? flashKey : null}
@@ -742,7 +815,7 @@ export function CRPatientScreen({
               s.rate !== "?" &&
               s.rate !== "Normal" && (
                 <CRStatusRow
-                  label="Rhythm"
+                  label={t("field.rhythm")}
                   uncertain={s.rhythm === "?"}
                   onInfo={() => setPopup("rhythm")}
                   flashKey={flashTargets.has("rhythm") ? flashKey : null}
@@ -770,7 +843,7 @@ export function CRPatientScreen({
               (s.gave.find((g) => g.key === "epi")?.doses.length ?? 0) ===
                 0 && (
                 <CRStatusRow
-                  label="Rescuers"
+                  label={t("field.rescuers")}
                   uncertain={s.rescuers === "?"}
                   flashKey={flashTargets.has("rescuers") ? flashKey : null}
                 >
@@ -786,7 +859,7 @@ export function CRPatientScreen({
             {/* Weight — pediatric patients only */}
             {s.type === "pediatric" && (
               <CRStatusRow
-                label="Weight"
+                label={t("field.weight")}
                 uncertain={s.weightKg == null}
                 flashKey={flashTargets.has("weightKg") ? flashKey : null}
               >
@@ -821,7 +894,7 @@ export function CRPatientScreen({
                     }}
                   />
                   <span style={{ fontSize: 13, color: "var(--ink-3)" }}>
-                    kg
+                    {t("common.kg")}
                   </span>
                 </div>
               </CRStatusRow>
@@ -830,7 +903,7 @@ export function CRPatientScreen({
             {s.alert === "Altered" && s.pulse !== "No" && (
               <>
                 <CRStatusRow
-                  label="Glucose"
+                  label={t("field.glucose")}
                   uncertain={s.glucose === "?"}
                   flashKey={flashTargets.has("glucose") ? flashKey : null}
                 >
@@ -844,7 +917,7 @@ export function CRPatientScreen({
                   />
                 </CRStatusRow>
                 <CRStatusRow
-                  label="Stroke Sx"
+                  label={t("field.strokeSx")}
                   uncertain={s.strokeSx === "?"}
                   onInfo={() => setPopup("strokeSx")}
                   flashKey={flashTargets.has("strokeSx") ? flashKey : null}
@@ -862,7 +935,7 @@ export function CRPatientScreen({
             )}
           </CRSection>
 
-          <CRSection className="cr-s-next" title="Your Next Steps">
+          <CRSection className="cr-s-next" title={t("nextSteps.section")}>
             <CRNextList
               tasks={tasks}
               fading={fadingTasks}
@@ -913,7 +986,7 @@ export function CRPatientScreen({
                   color: isPillGave ? "var(--ink-3)" : "var(--accent)",
                 }}
               >
-                Interventions
+                {t("interventions.section")}
               </h2>
               <CRGaveSearch onPick={(k) => giveMed(k)} />
             </div>
@@ -957,6 +1030,7 @@ export function CRPatientHeader({
   onInfo,
   onStopCode,
 }: CRPatientHeaderProps) {
+  const { t } = useTranslation();
   // Self-managed 1 s tick — keeps the case-elapsed clock ticking
   const [, setTick] = useState(0);
   useEffect(() => {
@@ -1032,7 +1106,7 @@ export function CRPatientHeader({
               whiteSpace: "nowrap",
             }}
           >
-            {patient.type === "pediatric" ? "PEDS" : "ADULT"} · {crFmt(elapsed)}
+            {patient.type === "pediatric" ? t("home.peds") : t("home.adult")} · {crFmt(elapsed)}
           </div>
         </div>
         <div style={{ display: "flex", gap: 2 }}>
@@ -1041,7 +1115,7 @@ export function CRPatientHeader({
               onClick={onStopCode}
               className="cr-btn-stop"
               style={{ ...crIconBtn(), color: "var(--red)" }}
-              aria-label="Stop Resuscitation"
+              aria-label={t("header.stopResuscitation")}
             >
               <CRIcon name="stop-sign" size={20} color="var(--red)" />
             </button>
@@ -1052,6 +1126,7 @@ export function CRPatientHeader({
           <button onClick={onInfo} style={crIconBtn()}>
             <CRIcon name="info" size={20} />
           </button>
+          <CRPatientLangSwitcher />
         </div>
       </div>
     </header>
@@ -1081,6 +1156,7 @@ export function CRCprPill({
   patientType,
   onRescuers,
 }: CRCprPillProps) {
+  const { t } = useTranslation();
   const paused = !!cpr.pausedAt;
 
   // Self-managed 250ms tick — only runs while CPR is active and not paused
@@ -1218,8 +1294,8 @@ export function CRCprPill({
       ? "rgba(255,255,255,0.9)"
       : "color-mix(in srgb, var(--red) 80%, white)";
   const badgeLabel = paused
-    ? `PAUSED · #${cpr.cycleNumber}`
-    : `CPR #${cpr.cycleNumber}`;
+    ? t("cpr.pausedBadge", { cycle: cpr.cycleNumber })
+    : t("cpr.badge", { cycle: cpr.cycleNumber });
 
   // ── metronome ─────────────────────────────────────────────
   const period = 500;
@@ -1231,33 +1307,30 @@ export function CRCprPill({
   const isInfant = isPeds && pedAge === "infant";
 
   function depthLabel(): string {
-    return isInfant ? "~1.5 in (4 cm)" : "~2 in (5 cm)";
+    return isInfant ? t("cpr.depthInfant") : t("cpr.depthChild");
   }
 
   function ratioLabel(): string {
-    if (rescuers === "Team") return "Continuous";
-    if (isPeds && rescuers === "Two") return "15 : 2";
-    return "30 : 2";
+    if (rescuers === "Team") return t("cpr.ratioTeam");
+    if (isPeds && rescuers === "Two") return t("cpr.ratio15_2");
+    return t("cpr.ratio30_2");
   }
 
   function techniqueLabel(): string {
-    if (rescuers === "Team") {
-      return "Continuous compressions · 1 breath every 6 s";
-    }
+    if (rescuers === "Team") return t("cpr.techniqueTeam");
     if (isInfant) {
       return rescuers === "Two"
-        ? "Two-thumb encircling — fingers wrap around back"
-        : "Two fingers · center of chest, just below nipple line";
+        ? t("cpr.techniqueInfantTwo")
+        : t("cpr.techniqueInfantOne");
     }
-    if (isPeds) return "One or two hands · lower half of sternum";
-    return "Heel of dominant hand · center of chest · other hand on top";
+    if (isPeds) return t("cpr.techniquePeds");
+    return t("cpr.techniqueAdult");
   }
 
   function breathLabel(): string {
-    if (rescuers === "Team") return "Continuous — see above";
-    if (isPeds && rescuers === "Two")
-      return "15 compressions → 2 breaths · switch every 2 min";
-    return "30 compressions → 2 breaths";
+    if (rescuers === "Team") return t("cpr.breathsTeam");
+    if (isPeds && rescuers === "Two") return t("cpr.breathsPedsTwo");
+    return t("cpr.breathsDefault");
   }
 
   const rateColor =
@@ -1275,7 +1348,7 @@ export function CRCprPill({
         onPause();
         if (!paused) closeOverlay();
       }}
-      aria-label={paused ? "resume" : "pause"}
+      aria-label={paused ? t("cpr.resume") : t("cpr.pause")}
       style={{
         ...crCprBtn(past),
         width: "auto",
@@ -1297,7 +1370,7 @@ export function CRCprPill({
       />
       {showLabel && (
         <span style={{ whiteSpace: "nowrap" }}>
-          {paused ? "Resume" : "Pause"}
+          {paused ? t("cpr.resume") : t("cpr.pause")}
         </span>
       )}
     </button>
@@ -1408,7 +1481,7 @@ export function CRCprPill({
               textOverflow: "ellipsis",
             }}
           >
-            Tap to expand
+            {t("cpr.tapToExpand")}
           </span>
         </div>
 
@@ -1533,14 +1606,14 @@ export function CRCprPill({
                   color: "var(--ink-3)",
                 }}
               >
-                Rescuers
+                {t("cpr.rescuers")}
               </p>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {(["One", "Two", "Team"] as RescuersValue[]).map((v) => {
                   const labels: Record<string, string> = {
-                    One: "1 Rescuer",
-                    Two: "2 Rescuers",
-                    Team: "Code Team",
+                    One: t("cpr.rescuerOne"),
+                    Two: t("cpr.rescuerTwo"),
+                    Team: t("opt.codeTeam"),
                   };
                   const active = rescuers === v;
                   return (
@@ -1580,10 +1653,10 @@ export function CRCprPill({
                       color: "var(--ink-3)",
                     }}
                   >
-                    Age Group
+                    {t("cpr.ageGroup")}
                   </p>
                   <div style={{ display: "flex", gap: 8 }}>
-                    {(["child", "infant"] as const).map((age) => {
+                    {(["child", "infant"] as const).map((age: "child" | "infant") => {
                       const active = pedAge === age;
                       return (
                         <button
@@ -1604,7 +1677,7 @@ export function CRCprPill({
                             textTransform: "capitalize",
                           }}
                         >
-                          {age}
+                          {t(`cpr.${age}`)}
                         </button>
                       );
                     })}
@@ -1638,14 +1711,14 @@ export function CRCprPill({
                     color: "var(--ink-3)",
                   }}
                 >
-                  Good Compressions
+                  {t("cpr.goodCompressions")}
                 </p>
                 {[
-                  "Rate: 100–120 / min",
-                  `Depth: ${depthLabel()}`,
-                  "Full chest recoil between compressions",
-                  "Minimize interruptions ( <10 s )",
-                  "Firm surface under patient",
+                  t("cpr.rateItem"),
+                  depthLabel(),
+                  t("cpr.recoil"),
+                  t("cpr.interruptions"),
+                  t("cpr.firmSurface"),
                 ].map((item) => (
                   <div
                     key={item}
@@ -1693,10 +1766,14 @@ export function CRCprPill({
                   }}
                 >
                   {rescuers === "?"
-                    ? "Select Rescuers Above"
+                    ? t("cpr.selectRescuers")
                     : rescuers === "Team"
-                      ? "Code Team Protocol"
-                      : `${rescuers}-Rescuer Protocol${isInfant ? " · Infant" : isPeds ? " · Child" : ""}`}
+                      ? t("cpr.codeTeamProtocol")
+                      : isInfant
+                        ? t("cpr.protocolInfant", { rescuers })
+                        : isPeds
+                          ? t("cpr.protocolChild", { rescuers })
+                          : t("cpr.protocol", { rescuers })}
                 </p>
                 {rescuers !== "?" && (
                   <div
@@ -1707,9 +1784,9 @@ export function CRCprPill({
                     }}
                   >
                     {[
-                      { label: "Ratio", value: ratioLabel() },
-                      { label: "Technique", value: techniqueLabel() },
-                      { label: "Breaths", value: breathLabel() },
+                      { label: t("cpr.ratio"), value: ratioLabel() },
+                      { label: t("cpr.technique"), value: techniqueLabel() },
+                      { label: t("cpr.breaths"), value: breathLabel() },
                     ].map(({ label, value }) => (
                       <div
                         key={label}
@@ -1761,7 +1838,7 @@ export function CRCprPill({
                     color: "var(--ink-3)",
                   }}
                 >
-                  Compression Rate
+                  {t("cpr.compressionRate")}
                 </p>
                 <button
                   onClick={handleComprTap}
@@ -1805,10 +1882,10 @@ export function CRCprPill({
                       >
                         / min ·{" "}
                         {comprRate >= 100 && comprRate <= 120
-                          ? "✓ Good rate"
+                          ? t("cpr.goodRate")
                           : comprRate < 100
-                            ? "↑ Too slow"
-                            : "↓ Too fast"}
+                            ? t("cpr.tooSlow")
+                            : t("cpr.tooFast")}
                       </span>
                     </>
                   ) : (
@@ -1822,8 +1899,8 @@ export function CRCprPill({
                         }}
                       >
                         {lastTap !== null
-                          ? "Tap again to count"
-                          : "Tap to Count Rate"}
+                          ? t("cpr.tapAgain")
+                          : t("cpr.tapToCount")}
                       </span>
                     </>
                   )}
@@ -1846,6 +1923,7 @@ export function CRNextList({
   onCheck,
   patient,
 }: CRNextListProps) {
+  const { t: tr } = useTranslation();
   const [activeTask, setActiveTask] = useState<NextTask | null>(null);
 
   const isFirstRender = useRef(true);
@@ -1868,7 +1946,7 @@ export function CRNextList({
       <div
         style={{ padding: "18px 14px", color: "var(--ink-3)", fontSize: 14 }}
       >
-        No actions pending. Reassess.
+        {tr("nextSteps.empty")}
       </div>
     );
   }
@@ -1958,7 +2036,9 @@ export function CRNextList({
                 letterSpacing: "-0.005em",
               }}
             >
-              {t.label}
+              {t.labelKey
+                ? tr(t.labelKey, { ...t.labelParams, defaultValue: t.label })
+                : tr(`task.${t.id}`, { defaultValue: t.label })}
             </div>
             {(t.popup ||
               t.medKey ||
@@ -2002,7 +2082,7 @@ export function CRNextList({
                     textTransform: "uppercase",
                   }}
                 >
-                  now
+                  {tr("common.now")}
                 </span>
               )}
           </div>
@@ -2062,9 +2142,9 @@ export function CRNextList({
             triggerLabel={
               !activeTask.recurring
                 ? activeTask.id === "shock"
-                  ? "⚡️ Shock"
+                  ? tr("action.shock")
                   : activeTask.id === "cardiovert"
-                    ? "⚡️ Cardiovert"
+                    ? tr("action.cardiovert")
                     : activeTask.label
                 : undefined
             }
@@ -2093,6 +2173,7 @@ export function CRGaveList({
   onLayoutChange,
   lastAction,
 }: CRGaveListProps) {
+  const { t } = useTranslation();
   // Self-managed 1 s tick — keeps "time since last dose" counters updating
   const [, setTick] = useState(0);
   useEffect(() => {
@@ -2177,7 +2258,7 @@ export function CRGaveList({
           fontSize: 14,
         }}
       >
-        Nothing given yet. Add from search.
+        {t("interventions.empty")}
       </div>
     );
   }
@@ -2367,7 +2448,7 @@ export function CRGaveList({
                     e.stopPropagation();
                     setDetailMed(k);
                   }}
-                  title="Dosing info"
+                  title={t("interventions.dosingInfo")}
                   style={{
                     width: 18,
                     height: 18,
@@ -2459,6 +2540,7 @@ export function CRGaveList({
 // CRGaveSearch
 // ─────────────────────────────────────────────────────────────
 export function CRGaveSearch({ onPick }: CRGaveSearchProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const [highlightedIndex, setHighlightedIndex] = useState(0);
@@ -2532,7 +2614,7 @@ export function CRGaveSearch({ onPick }: CRGaveSearchProps) {
             fontWeight: 600,
           }}
         >
-          <CRIcon name="plus" size={14} /> Add
+          <CRIcon name="plus" size={14} /> {t("common.add")}
         </button>
       ) : (
         <>
@@ -2541,7 +2623,7 @@ export function CRGaveSearch({ onPick }: CRGaveSearchProps) {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Search meds / blood"
+            placeholder={t("interventions.search")}
             style={{
               height: 28,
               padding: "0 8px",
@@ -2572,7 +2654,7 @@ export function CRGaveSearch({ onPick }: CRGaveSearchProps) {
           >
             {results.length === 0 && (
               <div style={{ padding: 10, color: "var(--ink-3)", fontSize: 13 }}>
-                No match.
+                {t("interventions.noMatch")}
               </div>
             )}
             {results.map((m, idx) => {
@@ -2643,6 +2725,7 @@ function CRMedDetailModal({
   onTrigger?: () => void;
   triggerLabel?: string;
 }) {
+  const { t } = useTranslation();
   const med = CR_MED_BY_KEY[medKey];
   const detail = MED_DETAILS[medKey];
   if (!detail) return null;
@@ -2652,7 +2735,6 @@ function CRMedDetailModal({
 
   const primaryDose =
     detail.sharedDose ?? (isPeds ? detail.pedsDose : detail.adultDose);
-  const secondaryLabel = isPeds ? "Adult" : "Peds";
   const secondaryDose = isPeds ? detail.adultDose : detail.pedsDose;
   const weightCalc =
     isPeds && wt != null && detail.pedsDoseCalc
@@ -2664,7 +2746,7 @@ function CRMedDetailModal({
       {primaryDose && (
         <div style={{ marginBottom: 8 }}>
           <span style={{ fontWeight: 700 }}>
-            {detail.sharedDose ? "Dose" : isPeds ? "Peds" : "Adult"}:
+            {detail.sharedDose ? t("medDetail.dose") : isPeds ? t("medDetail.peds") : t("medDetail.adult")}:
           </span>{" "}
           {primaryDose}
         </div>
@@ -2680,23 +2762,23 @@ function CRMedDetailModal({
             fontWeight: 600,
           }}
         >
-          For {wt} kg: {weightCalc}
+          {t("medDetail.for", { wt: wt ?? 0, dose: weightCalc ?? "" })}
         </div>
       )}
       {!detail.sharedDose && secondaryDose && (
         <div style={{ marginBottom: 8, color: "var(--ink-3)", fontSize: 12 }}>
-          <span style={{ fontWeight: 600 }}>{secondaryLabel}:</span>{" "}
+          <span style={{ fontWeight: 600 }}>{isPeds ? t("medDetail.adult") : t("medDetail.peds")}:</span>{" "}
           {secondaryDose}
         </div>
       )}
       {detail.freq && (
         <div style={{ marginBottom: 6 }}>
-          <span style={{ fontWeight: 600 }}>Frequency:</span> {detail.freq}
+          <span style={{ fontWeight: 600 }}>{t("medDetail.frequency")}:</span> {detail.freq}
         </div>
       )}
       {detail.route && (
         <div style={{ marginBottom: 6 }}>
-          <span style={{ fontWeight: 600 }}>Route:</span> {detail.route}
+          <span style={{ fontWeight: 600 }}>{t("medDetail.route")}:</span> {detail.route}
         </div>
       )}
       {detail.notes && detail.notes.length > 0 && (
@@ -2825,12 +2907,13 @@ export function CRPopupModal({
   onTrigger?: () => void;
   triggerLabel?: string;
 }) {
+  const { t } = useTranslation();
   const isPeds = patient.type === "pediatric";
   const wt = patient.weightKg;
 
   if (type === "shock") {
     return (
-      <CRModalShell title="Shock Energy" onClose={onClose}>
+      <CRModalShell title={t("modal.shock.title")} onClose={onClose}>
         {isPeds && wt != null && (
           <div
             style={{
@@ -2842,57 +2925,49 @@ export function CRPopupModal({
               fontWeight: 600,
             }}
           >
-            For {wt} kg: 1st: {(wt * 2).toFixed(0)} J · 2nd:{" "}
-            {(wt * 4).toFixed(0)} J
+            {t("modal.shock.pedsFor", { wt, first: (wt * 2).toFixed(0), second: (wt * 4).toFixed(0) })}
           </div>
         )}
         {isPeds ? (
           <>
             <p style={{ marginTop: 0, fontWeight: 600 }}>
-              Pediatric Defibrillation
+              {t("modal.shock.pedsDefib")}
             </p>
             <ul style={{ margin: "0 0 10px", paddingLeft: 18 }}>
               <li>
-                1st shock: <strong>2 J/kg</strong>
+                {t("modal.shock.peds1st", { value: "2" })}
                 {wt ? ` = ${(wt * 2).toFixed(0)} J` : ""}
               </li>
               <li>
-                2nd shock: <strong>4 J/kg</strong>
+                {t("modal.shock.peds2nd", { value: "4" })}
                 {wt ? ` = ${(wt * 4).toFixed(0)} J` : ""}
               </li>
-              <li>
-                Subsequent: <strong>≥4 J/kg</strong> (max 10 J/kg or adult dose)
-              </li>
+              <li>{t("modal.shock.pedsSubseq")}</li>
             </ul>
             <p style={{ fontWeight: 600, marginBottom: 4 }}>
-              Synchronized Cardioversion (peds)
+              {t("modal.shock.pedsCV")}
             </p>
             <ul style={{ margin: 0, paddingLeft: 18 }}>
-              <li>SVT: 0.5–1 J/kg → 2 J/kg</li>
-              <li>VT with pulse: 0.5–1 J/kg</li>
+              <li>{t("modal.shock.pedsSvt")}</li>
+              <li>{t("modal.shock.pedsVT")}</li>
             </ul>
           </>
         ) : (
           <>
             <p style={{ marginTop: 0, fontWeight: 600 }}>
-              Adult Defibrillation
+              {t("modal.shock.adultDefib")}
             </p>
             <ul style={{ margin: "0 0 10px", paddingLeft: 18 }}>
-              <li>
-                <strong>Biphasic:</strong> Manufacturer rec. (120–200 J); if
-                unknown use max available
-              </li>
-              <li>
-                <strong>Monophasic:</strong> 360 J
-              </li>
-              <li>2nd+ doses: equivalent or higher</li>
+              <li><strong>{t("modal.shock.adultBiphasic").split(":")[0]}:</strong> {t("modal.shock.adultBiphasic").split(":").slice(1).join(":")}</li>
+              <li><strong>{t("modal.shock.adultMono").split(":")[0]}:</strong> {t("modal.shock.adultMono").split(":").slice(1).join(":")}</li>
+              <li>{t("modal.shock.adult2nd")}</li>
             </ul>
             <p style={{ fontWeight: 600, marginBottom: 4 }}>
-              Synchronized Cardioversion
+              {t("modal.shock.adultCV")}
             </p>
             <ul style={{ margin: 0, paddingLeft: 18 }}>
-              <li>AF / SVT: 50–200 J biphasic</li>
-              <li>VT (with pulse): 100 J</li>
+              <li>{t("modal.shock.adultAFSVT")}</li>
+              <li>{t("modal.shock.adultVT")}</li>
             </ul>
           </>
         )}
@@ -2922,7 +2997,7 @@ export function CRPopupModal({
 
   if (type === "ht") {
     return (
-      <CRModalShell title="Reversible Causes (H's & T's)" onClose={onClose}>
+      <CRModalShell title={t("modal.ht.title")} onClose={onClose}>
         {isPeds && (
           <div
             style={{
@@ -2937,7 +3012,7 @@ export function CRPopupModal({
               textAlign: "center",
             }}
           >
-            Hypoxia: Most Common Cause of Arrest in Children
+            {t("modal.ht.hypoxiaWarning")}
           </div>
         )}
         <div
@@ -2948,24 +3023,24 @@ export function CRPopupModal({
           }}
         >
           <div>
-            <p style={{ marginTop: 0, fontWeight: 600 }}>H's</p>
+            <p style={{ marginTop: 0, fontWeight: 600 }}>{t("modal.ht.h")}</p>
             <ul style={{ margin: 0, paddingLeft: 16 }}>
-              <li>Hypovolemia</li>
-              <li>Hypoxia</li>
-              <li>Hydrogen ion (acidosis)</li>
-              <li>Hypo/hyperkalemia</li>
-              {isPeds && <li>Hypoglycemia</li>}
-              <li>Hypothermia</li>
+              <li>{t("modal.ht.hypovolemia")}</li>
+              <li>{t("modal.ht.hypoxia")}</li>
+              <li>{t("modal.ht.hydrogen")}</li>
+              <li>{t("modal.ht.kalemia")}</li>
+              {isPeds && <li>{t("modal.ht.hypoglycemia")}</li>}
+              <li>{t("modal.ht.hypothermia")}</li>
             </ul>
           </div>
           <div>
-            <p style={{ marginTop: 0, fontWeight: 600 }}>T's</p>
+            <p style={{ marginTop: 0, fontWeight: 600 }}>{t("modal.ht.t")}</p>
             <ul style={{ margin: 0, paddingLeft: 16 }}>
-              <li>Tension pneumothorax</li>
-              <li>Tamponade, cardiac</li>
-              <li>Toxins</li>
-              <li>Thrombosis, pulmonary</li>
-              <li>Thrombosis, coronary</li>
+              <li>{t("modal.ht.tension")}</li>
+              <li>{t("modal.ht.tamponade")}</li>
+              <li>{t("modal.ht.toxins")}</li>
+              <li>{t("modal.ht.pulmonary")}</li>
+              <li>{t("modal.ht.coronary")}</li>
             </ul>
           </div>
         </div>
@@ -2975,36 +3050,23 @@ export function CRPopupModal({
 
   if (type === "strokeSx") {
     return (
-      <CRModalShell title="Stroke Symptoms" onClose={onClose}>
+      <CRModalShell title={t("modal.strokeSx.title")} onClose={onClose}>
         <p style={{ marginTop: 0, fontWeight: 600 }}>
-          Cincinnati Prehospital Stroke Scale
+          {t("modal.strokeSx.cpss")}
         </p>
         <ul style={{ margin: "0 0 10px", paddingLeft: 18 }}>
-          <li>
-            <strong>Facial droop</strong> — ask to smile; one side droops?
-          </li>
-          <li>
-            <strong>Arm drift</strong> — eyes closed, arms out 10s; one drifts?
-          </li>
-          <li>
-            <strong>Speech</strong> — slurred, wrong words, or unable to speak?
-          </li>
+          <li>{t("modal.strokeSx.facial")}</li>
+          <li>{t("modal.strokeSx.arm")}</li>
+          <li>{t("modal.strokeSx.speech")}</li>
         </ul>
-        <p style={{ fontWeight: 600, marginBottom: 4 }}>Other signs</p>
+        <p style={{ fontWeight: 600, marginBottom: 4 }}>{t("modal.strokeSx.other")}</p>
         <ul style={{ margin: 0, paddingLeft: 18 }}>
-          <li>Sudden vision changes (one or both eyes)</li>
-          <li>Sudden severe headache ("worst of my life")</li>
-          <li>Sudden loss of balance or coordination</li>
+          <li>{t("modal.strokeSx.vision")}</li>
+          <li>{t("modal.strokeSx.headache")}</li>
+          <li>{t("modal.strokeSx.balance")}</li>
         </ul>
-        <p
-          style={{
-            marginTop: 10,
-            marginBottom: 0,
-            color: "var(--ink-3)",
-            fontSize: 12,
-          }}
-        >
-          Document <strong>Last Known Well</strong> time immediately.
+        <p style={{ marginTop: 10, marginBottom: 0, color: "var(--ink-3)", fontSize: 12 }}>
+          {t("modal.strokeSx.note")}
         </p>
       </CRModalShell>
     );
@@ -3012,96 +3074,52 @@ export function CRPopupModal({
 
   if (type === "strokeScale") {
     return (
-      <CRModalShell title="NIHSS / FAST Stroke Scale" onClose={onClose}>
-        <p style={{ marginTop: 0, fontWeight: 600 }}>FAST</p>
+      <CRModalShell title={t("modal.strokeScale.title")} onClose={onClose}>
+        <p style={{ marginTop: 0, fontWeight: 600 }}>{t("modal.strokeScale.fast")}</p>
         <ul style={{ margin: "0 0 10px", paddingLeft: 18 }}>
-          <li>
-            <strong>F</strong>ace — facial droop
-          </li>
-          <li>
-            <strong>A</strong>rms — arm weakness / drift
-          </li>
-          <li>
-            <strong>S</strong>peech — slurred or absent
-          </li>
-          <li>
-            <strong>T</strong>ime — note onset, activate stroke team NOW
-          </li>
+          <li>{t("modal.strokeScale.face")}</li>
+          <li>{t("modal.strokeScale.arms")}</li>
+          <li>{t("modal.strokeScale.speechItem")}</li>
+          <li>{t("modal.strokeScale.time")}</li>
         </ul>
-        <p style={{ fontWeight: 600, marginBottom: 4 }}>Key NIHSS domains</p>
+        <p style={{ fontWeight: 600, marginBottom: 4 }}>{t("modal.strokeScale.nihss")}</p>
         <ul style={{ margin: "0 0 10px", paddingLeft: 18 }}>
-          <li>Level of consciousness (0–3)</li>
-          <li>Gaze (0–2), Visual (0–3)</li>
-          <li>Facial palsy (0–3)</li>
-          <li>Motor arm & leg (0–4 each)</li>
-          <li>Limb ataxia, sensory, language, dysarthria, extinction</li>
+          <li>{t("modal.strokeScale.loc")}</li>
+          <li>{t("modal.strokeScale.gaze")}</li>
+          <li>{t("modal.strokeScale.facial")}</li>
+          <li>{t("modal.strokeScale.motor")}</li>
+          <li>{t("modal.strokeScale.other")}</li>
         </ul>
         <p style={{ marginBottom: 0, color: "var(--ink-3)", fontSize: 12 }}>
-          Mild ≤5 · Moderate 6–15 · Severe ≥16. Score &gt;25 may preclude
-          thrombolytics.
+          {t("modal.strokeScale.score")}
         </p>
       </CRModalShell>
     );
   }
 
   if (type === "rhythm") {
+    const rhythmEntries = [
+      { name: "VF", descKey: "modal.rhythm.vf" },
+      { name: "pVT", descKey: "modal.rhythm.pvt" },
+      { name: "Torsades (TdP)", descKey: "modal.rhythm.tdp" },
+      { name: "PEA", descKey: "modal.rhythm.pea" },
+      { name: "Asystole", descKey: "modal.rhythm.asystole" },
+      { name: "NSR", descKey: "modal.rhythm.nsr" },
+      { name: "SVT", descKey: "modal.rhythm.svt" },
+      { name: "AF", descKey: "modal.rhythm.af" },
+      { name: "Wide VT", descKey: "modal.rhythm.wideVT" },
+      { name: "Sinus Brady", descKey: "modal.rhythm.sinusBrady" },
+      { name: "1° AVB", descKey: "modal.rhythm.avb1" },
+      { name: "2° AVB", descKey: "modal.rhythm.avb2" },
+      { name: "3° AVB", descKey: "modal.rhythm.avb3" },
+    ];
     return (
-      <CRModalShell title="Rhythm Guide" onClose={onClose}>
-        {[
-          {
-            name: "VF",
-            desc: "Ventricular Fibrillation — chaotic irregular baseline, no QRS. Coarse or fine.",
-          },
-          {
-            name: "pVT",
-            desc: "Pulseless VT — wide QRS (>0.12s), fast (~150–250 bpm), regular, but no detectable pulse.",
-          },
-          {
-            name: "Torsades (TdP)",
-            desc: "Polymorphic VT — QRS twists around the baseline, associated with prolonged QT. Treat with Mg 2g IV push; avoid amiodarone.",
-          },
-          {
-            name: "PEA",
-            desc: "Organized rhythm on monitor, but no detectable pulse.",
-          },
-          {
-            name: "Asystole",
-            desc: "Flat line or near-flat — confirm in 2 leads.",
-          },
-          {
-            name: "NSR",
-            desc: "Regular, 60–100 bpm, narrow QRS, P before each QRS.",
-          },
-          {
-            name: "SVT",
-            desc: "Narrow QRS, very fast (>150 bpm), regular, P waves may be hidden.",
-          },
-          {
-            name: "AF",
-            desc: "A-Fib: irregularly irregular, no P waves. A-Flutter: sawtooth F waves ~300 bpm, ventricular rate often ~150.",
-          },
-          {
-            name: "Wide VT",
-            desc: "Wide QRS tachycardia (>0.12s). Treat as VT until proven otherwise.",
-          },
-          {
-            name: "Sinus Brady",
-            desc: "Regular, <60 bpm, normal P-QRS relationship.",
-          },
-          { name: "1° AVB", desc: "PR >200ms, all P waves conduct normally." },
-          {
-            name: "2° AVB",
-            desc: "Type 1 (Wenckebach): PR lengthens then drops. Type 2: sudden drop.",
-          },
-          {
-            name: "3° AVB",
-            desc: "Complete block — P and QRS independent, escape rhythm present.",
-          },
-        ].map(({ name, desc }) => (
+      <CRModalShell title={t("modal.rhythm.title")} onClose={onClose}>
+        {rhythmEntries.map(({ name, descKey }) => (
           <div key={name} style={{ marginBottom: 8 }}>
             <span style={{ fontWeight: 700, fontSize: 13 }}>{name}</span>
             <span style={{ color: "var(--ink-3)", marginLeft: 6 }}>—</span>
-            <span style={{ marginLeft: 6 }}>{desc}</span>
+            <span style={{ marginLeft: 6 }}>{t(descKey)}</span>
           </div>
         ))}
       </CRModalShell>
@@ -3110,43 +3128,32 @@ export function CRPopupModal({
 
   if (type === "rescueBreaths") {
     return (
-      <CRModalShell title="Rescue Breath Technique" onClose={onClose}>
+      <CRModalShell title={t("modal.rescueBreaths.title")} onClose={onClose}>
         <p style={{ marginTop: 0, fontWeight: 600 }}>
-          {isPeds ? "Pediatric" : "Adult"} Rate
+          {isPeds ? t("modal.rescueBreaths.pedsRate") : t("modal.rescueBreaths.adultRate")}
         </p>
         <p style={{ margin: "0 0 10px" }}>
           {isPeds
-            ? "1 breath every 3–5 seconds (12–20 breaths/min)"
-            : "1 breath every 5–6 seconds (10–12 breaths/min)"}
+            ? t("modal.rescueBreaths.pedsRateValue")
+            : t("modal.rescueBreaths.adultRateValue")}
         </p>
-        <p style={{ fontWeight: 600, marginBottom: 4 }}>Technique</p>
+        <p style={{ fontWeight: 600, marginBottom: 4 }}>{t("modal.rescueBreaths.technique")}</p>
         <ul style={{ margin: "0 0 10px", paddingLeft: 18 }}>
-          <li>
-            Open airway — <strong>head-tilt chin-lift</strong> (jaw thrust if
-            trauma suspected)
-          </li>
-          <li>
-            Create a seal over{" "}
-            {isPeds ? "mouth and nose" : "mouth (pinch nose)"}
-          </li>
-          <li>
-            Deliver over <strong>1 second</strong> — enough to see{" "}
-            <strong>visible chest rise</strong>
-          </li>
-          <li>Allow full passive exhalation before next breath</li>
-          {isPeds && (
-            <li>Use gentle puffs for infants — do not over-inflate</li>
-          )}
+          <li>{t("modal.rescueBreaths.openAirway")}</li>
+          <li>{isPeds ? t("modal.rescueBreaths.sealMouthNose") : t("modal.rescueBreaths.sealMouth")}</li>
+          <li>{t("modal.rescueBreaths.deliver")}</li>
+          <li>{t("modal.rescueBreaths.exhale")}</li>
+          {isPeds && <li>{t("modal.rescueBreaths.gentle")}</li>}
         </ul>
         <p style={{ fontWeight: 600, marginBottom: 4 }}>
-          With Advanced Airway (ETT / SGA)
+          {t("modal.rescueBreaths.advanced")}
         </p>
         <ul style={{ margin: "0 0 10px", paddingLeft: 18 }}>
-          <li>1 breath every 6 seconds (10 breaths/min)</li>
-          <li>Do not pause compressions (if ongoing CPR)</li>
+          <li>{t("modal.rescueBreaths.advancedRate")}</li>
+          <li>{t("modal.rescueBreaths.noPause")}</li>
         </ul>
         <p style={{ margin: 0, fontSize: 12, color: "var(--ink-3)" }}>
-          Reassess pulse every 2 minutes. If pulse is lost, begin CPR.
+          {t("modal.rescueBreaths.reassess")}
         </p>
       </CRModalShell>
     );
@@ -3154,23 +3161,20 @@ export function CRPopupModal({
 
   if (type === "symptomatic") {
     const isBrady = patient.rate === "Slow";
-    const arrhythmiaLabel = isBrady ? "bradycardia" : "tachyarrhythmia";
     return (
-      <CRModalShell title="Symptomatic Arrhythmia?" onClose={onClose}>
+      <CRModalShell title={t("modal.symptomatic.title")} onClose={onClose}>
         <p style={{ marginTop: 0, fontWeight: 600, marginBottom: 8 }}>
-          Persistent {arrhythmiaLabel} causing any of:
+          {isBrady ? t("modal.symptomatic.bradyHeading") : t("modal.symptomatic.tachyHeading")}
         </p>
         <ul style={{ margin: "0 0 10px", paddingLeft: 18 }}>
-          <li>Hypotension</li>
-          <li>Acutely altered mental status</li>
-          <li>Signs of shock</li>
-          <li>Ischemic chest discomfort</li>
-          <li>Acute heart failure</li>
+          <li>{t("modal.symptomatic.hypotension")}</li>
+          <li>{t("modal.symptomatic.mental")}</li>
+          <li>{t("modal.symptomatic.shock")}</li>
+          <li>{t("modal.symptomatic.chest")}</li>
+          <li>{t("modal.symptomatic.heartFailure")}</li>
         </ul>
         <p style={{ margin: 0, fontSize: 12, color: "var(--ink-3)" }}>
-          {isBrady
-            ? "If any are present, consider atropine, pacing, or dopamine/epinephrine infusion."
-            : "If any are present, consider urgent synchronized cardioversion."}
+          {isBrady ? t("modal.symptomatic.bradyNote") : t("modal.symptomatic.tachyNote")}
         </p>
       </CRModalShell>
     );
@@ -3178,18 +3182,13 @@ export function CRPopupModal({
 
   if (type === "choking") {
     return (
-      <CRModalShell title="Choking Relief Technique" onClose={onClose}>
+      <CRModalShell title={t("modal.choking.title")} onClose={onClose}>
         <p style={{ marginTop: 0, fontWeight: 600 }}>
-          Cycle (repeat until cleared)
+          {t("modal.choking.cycle")}
         </p>
         <ol style={{ margin: "0 0 12px", paddingLeft: 18 }}>
-          <li>5 firm back blows between shoulder blades</li>
-          <li>
-            5 abdominal thrusts (Heimlich){" "}
-            {isPeds && (
-              <strong>— use chest thrusts for infants under 1 year</strong>
-            )}
-          </li>
+          <li>{t("modal.choking.backBlows")}</li>
+          <li>{isPeds ? t("modal.choking.abdominalPeds") : t("modal.choking.abdominalAdult")}</li>
         </ol>
         {isPeds && (
           <div
@@ -3203,23 +3202,18 @@ export function CRPopupModal({
               color: "#92400e",
             }}
           >
-            <strong>Infants (&lt;1 yr):</strong> 5 back blows face-down on
-            forearm → 5 chest thrusts with 2 fingers on lower sternum. Do{" "}
-            <em>not</em> use abdominal thrusts.
+            {t("modal.choking.infantNote")}
           </div>
         )}
         <p style={{ fontWeight: 600, marginBottom: 4 }}>
-          If patient becomes unresponsive
+          {t("modal.choking.unresponsive")}
         </p>
         <ul style={{ margin: "0 0 10px", paddingLeft: 18 }}>
-          <li>Lower to ground and begin CPR</li>
-          <li>
-            Each time airway is opened for rescue breath, look for visible
-            object and remove if seen
-          </li>
+          <li>{t("modal.choking.lowerToGround")}</li>
+          <li>{t("modal.choking.lookForObject")}</li>
         </ul>
         <p style={{ margin: 0, fontSize: 12, color: "var(--ink-3)" }}>
-          Reassess responsiveness after each cycle.
+          {t("modal.choking.reassess")}
         </p>
       </CRModalShell>
     );
@@ -3232,6 +3226,7 @@ export function CRPopupModal({
 // CRRoscModal — shown when ROSC is obtained
 // ─────────────────────────────────────────────────────────────
 function CRRoscModal({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation();
   return (
     <div
       onClick={onClose}
@@ -3275,7 +3270,7 @@ function CRRoscModal({ onClose }: { onClose: () => void }) {
               color: "var(--green)",
             }}
           >
-            ROSC Obtained!
+            {t("modal.rosc.title")}
           </h3>
           <button
             onClick={onClose}
@@ -3303,8 +3298,7 @@ function CRRoscModal({ onClose }: { onClose: () => void }) {
             lineHeight: 1.5,
           }}
         >
-          Great work. Transition to post-cardiac arrest care per the ACLS
-          algorithm below.
+          {t("modal.rosc.body")}
         </p>
         <img
           src={`${import.meta.env.BASE_URL}guidelines/pcac-Figure-1-Adult-PCAC-Algorithm.jpg`}
@@ -3320,6 +3314,7 @@ function CRRoscModal({ onClose }: { onClose: () => void }) {
 // CRInfoModal
 // ─────────────────────────────────────────────────────────────
 export function CRInfoModal({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation();
   return (
     <div
       onClick={onClose}
@@ -3340,7 +3335,7 @@ export function CRInfoModal({ onClose }: { onClose: () => void }) {
           background: "var(--surface)",
           borderRadius: 16,
           padding: 18,
-          maxWidth: 320,
+          maxWidth: 480,
           width: "100%",
           boxShadow: "0 20px 50px rgba(0,0,0,0.25)",
         }}
@@ -3354,31 +3349,36 @@ export function CRInfoModal({ onClose }: { onClose: () => void }) {
           }}
         >
           <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>
-            About CodeRunner
+            {t("modal.info.title")}
           </h3>
           <button onClick={onClose} style={crIconBtn()}>
             <CRIcon name="close" size={20} />
           </button>
         </div>
         <div
-          style={{ fontSize: 13.5, lineHeight: 1.55, color: "var(--ink-2)" }}
+          style={{ fontSize: 13.5, lineHeight: 1.6, color: "var(--ink-2)" }}
         >
-          <p style={{ marginTop: 0 }}>
+          <p style={{ marginTop: 0, marginBottom: "1em" }}>
             <strong style={{ color: "var(--red)" }}>
-              Not a medical device.
+              {t("modal.info.notDevice")}
             </strong>{" "}
-            CodeRunner is an unofficial study/teamwork aid for trained providers
-            running resuscitations. It is
-            <em> not</em> a substitute for clinical judgement, an institutional
-            protocol, or current published guidelines.
+            {t("modal.info.body1")}
           </p>
-          <p>
-            All times, dose suggestions, and pathways are simplified for
-            prototype use. Verify everything against your facility's reference
-            before administering.
+          <p style={{ marginBottom: "1em" }}>{t("modal.info.body2")}</p>
+          <p style={{ marginBottom: "1em" }}>
+            {t("home.disclaimer.before")}{" "}
+            <a
+              href="https://cpr.heart.org/en/"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: "var(--accent)", fontWeight: 600, textDecoration: "underline" }}
+            >
+              {t("home.disclaimer.ahaName")}
+            </a>
+            {t("home.disclaimer.after")}
           </p>
           <p style={{ marginBottom: 0, color: "var(--ink-3)", fontSize: 12 }}>
-            v0.1 · prototype · no patient data leaves this device.
+            {t("modal.info.version")}
           </p>
         </div>
       </div>
@@ -3396,6 +3396,7 @@ function CRStopConfirmationModal({
   onConfirm: () => void;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <div
       onClick={onClose}
@@ -3452,7 +3453,7 @@ function CRStopConfirmationModal({
                 color: "var(--ink)",
               }}
             >
-              Stop Resuscitation?
+              {t("modal.stop.title")}
             </h3>
             <p
               style={{
@@ -3462,7 +3463,7 @@ function CRStopConfirmationModal({
                 lineHeight: 1.4,
               }}
             >
-              This will stop CPR and all timers.
+              {t("modal.stop.body")}
             </p>
           </div>
         </div>
@@ -3488,7 +3489,7 @@ function CRStopConfirmationModal({
               cursor: "pointer",
             }}
           >
-            Cancel
+            {t("common.cancel")}
           </button>
           <button
             onClick={onConfirm}
@@ -3503,7 +3504,7 @@ function CRStopConfirmationModal({
               cursor: "pointer",
             }}
           >
-            Yes, Stop Code
+            {t("modal.stop.confirm")}
           </button>
         </div>
       </div>
