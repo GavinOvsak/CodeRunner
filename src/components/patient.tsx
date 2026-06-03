@@ -2248,7 +2248,6 @@ export function CRGaveList({
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [isPills, setIsPills] = useState(false);
 
-  const [detailMed, setDetailMed] = useState<MedKey | null>(null);
   const [historyMed, setHistoryMed] = useState<MedKey | null>(null);
 
   // Per-key animation counter — bumped on each give to restart count animation
@@ -2441,36 +2440,6 @@ export function CRGaveList({
               >
                 {med?.name || k}
               </span>
-              {/* Info button — stopPropagation opens detail modal, not history */}
-              {MED_DETAILS[k] && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setDetailMed(k);
-                  }}
-                  title={t("interventions.dosingInfo")}
-                  style={{
-                    width: 18,
-                    height: 18,
-                    borderRadius: "50%",
-                    background: "transparent",
-                    border: "1.5px solid var(--ink-3)",
-                    color: "var(--ink-3)",
-                    fontSize: 10,
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flexShrink: 0,
-                    padding: 0,
-                    lineHeight: 1,
-                    marginLeft: 2,
-                  }}
-                >
-                  ?
-                </button>
-              )}
             </div>
             {/* Right side: elapsed timer for continuous (when active), or time-since-last-dose */}
             {isContinuous ? (
@@ -2518,20 +2487,6 @@ export function CRGaveList({
           </div>
         );
       })}
-      {detailMed &&
-        (detailMed === "shock" ? (
-          <CRPopupModal
-            type="shock"
-            patient={state}
-            onClose={() => setDetailMed(null)}
-          />
-        ) : (
-          <CRMedDetailModal
-            medKey={detailMed}
-            patient={state}
-            onClose={() => setDetailMed(null)}
-          />
-        ))}
       {historyMed && (
         <CRMedHistoryModal
           medKey={historyMed}
@@ -2545,7 +2500,7 @@ export function CRGaveList({
 }
 
 // ─────────────────────────────────────────────────────────────
-// CRMedHistoryModal
+// CRMedHistoryModal — dosing info + editable dose history
 // ─────────────────────────────────────────────────────────────
 function CRMedHistoryModal({
   medKey,
@@ -2558,8 +2513,13 @@ function CRMedHistoryModal({
   onClose: () => void;
   onUpdatePatient: (mut: (p: Patient) => Patient) => void;
 }) {
+  const { t } = useTranslation();
   const isContinuous = CR_CONTINUOUS_KEYS.has(medKey);
+  const isShock = medKey === "shock";
   const med = CR_MED_BY_KEY[medKey];
+  const detail = MED_DETAILS[medKey];
+  const isPeds = patient.type === "pediatric";
+  const wt = patient.weightKg;
 
   const medEntries = patient.log.filter(
     (e): e is MedLogEntry => e.type === "med" && e.key === medKey,
@@ -2629,8 +2589,169 @@ function CRMedHistoryModal({
     fontFamily: "inherit",
   };
 
+  const title = isShock
+    ? t("modal.shock.title")
+    : med?.name ?? String(medKey);
+
+  // Build dosing detail content (shown above history)
+  let dosingSection: React.ReactNode = null;
+  if (isShock) {
+    dosingSection = (
+      <>
+        {isPeds && wt != null && (
+          <div
+            style={{
+              background: "var(--accent-soft)",
+              borderRadius: 8,
+              padding: "5px 10px",
+              marginBottom: 12,
+              fontSize: 13,
+              fontWeight: 600,
+            }}
+          >
+            {t("modal.shock.pedsFor", {
+              wt,
+              first: (wt * 2).toFixed(0),
+              second: (wt * 4).toFixed(0),
+            })}
+          </div>
+        )}
+        {isPeds ? (
+          <>
+            <p style={{ marginTop: 0, fontWeight: 600 }}>
+              {t("modal.shock.pedsDefib")}
+            </p>
+            <ul style={{ margin: "0 0 10px", paddingLeft: 18 }}>
+              <li>
+                {t("modal.shock.peds1st", { value: "2" })}
+                {wt ? ` = ${(wt * 2).toFixed(0)} J` : ""}
+              </li>
+              <li>
+                {t("modal.shock.peds2nd", { value: "4" })}
+                {wt ? ` = ${(wt * 4).toFixed(0)} J` : ""}
+              </li>
+              <li>{t("modal.shock.pedsSubseq")}</li>
+            </ul>
+            <p style={{ fontWeight: 600, marginBottom: 4 }}>
+              {t("modal.shock.pedsCV")}
+            </p>
+            <ul style={{ margin: 0, paddingLeft: 18 }}>
+              <li>{t("modal.shock.pedsSvt")}</li>
+              <li>{t("modal.shock.pedsVT")}</li>
+            </ul>
+          </>
+        ) : (
+          <>
+            <p style={{ marginTop: 0, fontWeight: 600 }}>
+              {t("modal.shock.adultDefib")}
+            </p>
+            <ul style={{ margin: "0 0 10px", paddingLeft: 18 }}>
+              <li>
+                <strong>{t("modal.shock.adultBiphasic").split(":")[0]}:</strong>{" "}
+                {t("modal.shock.adultBiphasic").split(":").slice(1).join(":")}
+              </li>
+              <li>
+                <strong>{t("modal.shock.adultMono").split(":")[0]}:</strong>{" "}
+                {t("modal.shock.adultMono").split(":").slice(1).join(":")}
+              </li>
+              <li>{t("modal.shock.adult2nd")}</li>
+            </ul>
+            <p style={{ fontWeight: 600, marginBottom: 4 }}>
+              {t("modal.shock.adultCV")}
+            </p>
+            <ul style={{ margin: 0, paddingLeft: 18 }}>
+              <li>{t("modal.shock.adultAFSVT")}</li>
+              <li>{t("modal.shock.adultVT")}</li>
+            </ul>
+          </>
+        )}
+      </>
+    );
+  } else if (detail) {
+    const primaryDose =
+      detail.sharedDose ?? (isPeds ? detail.pedsDose : detail.adultDose);
+    const secondaryDose = isPeds ? detail.adultDose : detail.pedsDose;
+    const weightCalc =
+      isPeds && wt != null && detail.pedsDoseCalc
+        ? detail.pedsDoseCalc(wt)
+        : null;
+
+    dosingSection = (
+      <>
+        {primaryDose && (
+          <div style={{ marginBottom: 8 }}>
+            <span style={{ fontWeight: 700 }}>
+              {detail.sharedDose
+                ? t("medDetail.dose")
+                : isPeds
+                  ? t("medDetail.peds")
+                  : t("medDetail.adult")}
+              :
+            </span>{" "}
+            {primaryDose}
+          </div>
+        )}
+        {weightCalc && (
+          <div
+            style={{
+              background: "var(--accent-soft)",
+              borderRadius: 8,
+              padding: "5px 10px",
+              marginBottom: 8,
+              fontSize: 13,
+              fontWeight: 600,
+            }}
+          >
+            {t("medDetail.for", { wt: wt ?? 0, dose: weightCalc ?? "" })}
+          </div>
+        )}
+        {!detail.sharedDose && secondaryDose && (
+          <div style={{ marginBottom: 8, color: "var(--ink-3)", fontSize: 12 }}>
+            <span style={{ fontWeight: 600 }}>
+              {isPeds ? t("medDetail.adult") : t("medDetail.peds")}:
+            </span>{" "}
+            {secondaryDose}
+          </div>
+        )}
+        {detail.freq && (
+          <div style={{ marginBottom: 6 }}>
+            <span style={{ fontWeight: 600 }}>{t("medDetail.frequency")}:</span>{" "}
+            {detail.freq}
+          </div>
+        )}
+        {detail.route && (
+          <div style={{ marginBottom: 6 }}>
+            <span style={{ fontWeight: 600 }}>{t("medDetail.route")}:</span>{" "}
+            {detail.route}
+          </div>
+        )}
+        {detail.notes && detail.notes.length > 0 && (
+          <ul style={{ margin: "8px 0 0", paddingLeft: 16, lineHeight: 1.6 }}>
+            {detail.notes.map((note, i) => (
+              <li key={i}>{note}</li>
+            ))}
+          </ul>
+        )}
+      </>
+    );
+  }
+
   return (
-    <CRModalShell title={med?.name ?? String(medKey)} onClose={onClose}>
+    <CRModalShell title={title} onClose={onClose}>
+      {/* Dosing info */}
+      {dosingSection && (
+        <>
+          {dosingSection}
+          <hr
+            style={{
+              border: "none",
+              borderTop: "1px solid var(--line)",
+              margin: "14px 0 12px",
+            }}
+          />
+        </>
+      )}
+
       {/* Entry list */}
       <div style={{ marginBottom: 16 }}>
         {medEntries.length === 0 ? (
