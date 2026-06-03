@@ -13,6 +13,7 @@ import type {
   NextTask,
   LogEntry,
   LogPayload,
+  MedLogEntry,
   AlertValue,
   BreathingValue,
   PulseValue,
@@ -148,6 +149,7 @@ interface CRGaveListProps {
   /** Called whenever the layout mode switches between list rows and pill grid. */
   onLayoutChange?: (isPills: boolean) => void;
   lastAction?: { key: MedKey; time: number } | null;
+  onUpdatePatient: (mut: (p: Patient) => Patient) => void;
 }
 
 interface CRGaveSearchProps {
@@ -1014,6 +1016,7 @@ export function CRPatientScreen({
                 state={s}
                 recKeys={recKeys}
                 onGive={giveMed}
+                onUpdatePatient={update}
                 onLayoutChange={setIsPillGave}
                 lastAction={lastAction}
               />
@@ -2183,12 +2186,27 @@ export function CRNextList({
 /** Minimum container width (px) to switch to pill grid layout. */
 const PILL_BREAKPOINT = 480;
 
+function tsToTimeInput(ts: number): string {
+  const d = new Date(ts);
+  return [d.getHours(), d.getMinutes(), d.getSeconds()]
+    .map((n) => n.toString().padStart(2, "0"))
+    .join(":");
+}
+
+function timeInputToTs(timeStr: string, refTs: number): number {
+  const [h = 0, m = 0, s = 0] = timeStr.split(":").map(Number);
+  const d = new Date(refTs);
+  d.setHours(h, m, s, 0);
+  return d.getTime();
+}
+
 export function CRGaveList({
   state,
   recKeys,
   onGive,
   onLayoutChange,
   lastAction,
+  onUpdatePatient,
 }: CRGaveListProps) {
   const { t } = useTranslation();
   // Self-managed 1 s tick — keeps "time since last dose" counters updating
@@ -2231,15 +2249,14 @@ export function CRGaveList({
   const [isPills, setIsPills] = useState(false);
 
   const [detailMed, setDetailMed] = useState<MedKey | null>(null);
+  const [historyMed, setHistoryMed] = useState<MedKey | null>(null);
 
-  // Per-key animation counters — bumped on each trigger to restart animations
-  const [rippleKeys, setRippleKeys] = useState<Record<string, number>>({});
+  // Per-key animation counter — bumped on each give to restart count animation
   const [countKeys, setCountKeys] = useState<Record<string, number>>({});
 
   useEffect(() => {
     if (lastAction) {
       const { key } = lastAction;
-      setRippleKeys((prev) => ({ ...prev, [key]: (prev[key] ?? 0) + 1 }));
       setCountKeys((prev) => ({ ...prev, [key]: (prev[key] ?? 0) + 1 }));
     }
   }, [lastAction]);
@@ -2316,6 +2333,7 @@ export function CRGaveList({
         return (
           <div
             key={k}
+            onClick={() => setHistoryMed(k)}
             style={
               isPills
                 ? {
@@ -2327,6 +2345,7 @@ export function CRGaveList({
                     background: "var(--surface)",
                     border: "1px solid var(--line)",
                     boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+                    cursor: "pointer",
                   }
                 : {
                     display: "flex",
@@ -2335,13 +2354,14 @@ export function CRGaveList({
                     padding: "10px 10px 10px 12px",
                     borderBottom:
                       i === keys.length - 1 ? "none" : "1px solid var(--line)",
+                    cursor: "pointer",
                   }
             }
           >
             {isContinuous ? (
-              /* Play / Pause button for continuous actions */
+              /* Play / Pause button — stopPropagation keeps row click from opening modal */
               <button
-                onClick={() => handleGive(k)}
+                onClick={(e) => { e.stopPropagation(); handleGive(k); }}
                 style={{
                   minWidth: 44,
                   height: 30,
@@ -2365,12 +2385,11 @@ export function CRGaveList({
                 />
               </button>
             ) : (
-              /* +1 button with ripple overlay */
-              <button
-                onClick={() => handleGive(k)}
+              /* Dose count badge — same coloring as the old +1 button */
+              <span
+                key={countKeys[k]}
+                className={countKeys[k] ? "mono cr-count-wipe" : "mono"}
                 style={{
-                  position: "relative",
-                  overflow: "hidden",
                   minWidth: 44,
                   height: 30,
                   padding: "0 9px",
@@ -2390,31 +2409,14 @@ export function CRGaveList({
                         : "var(--accent)",
                   fontSize: 13,
                   fontWeight: 700,
-                  cursor: "pointer",
                   display: "inline-flex",
                   alignItems: "center",
                   justifyContent: "center",
+                  flexShrink: 0,
                 }}
               >
-                +1
-                {rippleKeys[k] > 0 && (
-                  <span
-                    key={rippleKeys[k]}
-                    style={{
-                      position: "absolute",
-                      inset: 0,
-                      margin: "auto",
-                      width: 20,
-                      height: 20,
-                      borderRadius: "50%",
-                      background: isShock ? "var(--shock)" : "var(--accent)",
-                      opacity: 0,
-                      pointerEvents: "none",
-                      animation: "crRipple 500ms ease-out forwards",
-                    }}
-                  />
-                )}
-              </button>
+                {count > 0 ? `${count}x` : "—"}
+              </span>
             )}
             <div
               style={{
@@ -2439,26 +2441,7 @@ export function CRGaveList({
               >
                 {med?.name || k}
               </span>
-              {/* Count badge — only for non-continuous items */}
-              {!isContinuous && (
-                <span
-                  key={countKeys[k]}
-                  className={countKeys[k] ? "mono cr-count-wipe" : "mono"}
-                  style={{
-                    display: "inline-block",
-                    fontSize: 12,
-                    fontWeight: 600,
-                    padding: "2px 6px",
-                    borderRadius: 5,
-                    background: "var(--surface-2)",
-                    color: "var(--ink-2)",
-                    textWrap: "nowrap",
-                  }}
-                >
-                  x {count}
-                </span>
-              )}
-              {/* Info button — shown for meds with clinical detail */}
+              {/* Info button — stopPropagation opens detail modal, not history */}
               {MED_DETAILS[k] && (
                 <button
                   onClick={(e) => {
@@ -2489,7 +2472,7 @@ export function CRGaveList({
                 </button>
               )}
             </div>
-            {/* Right side: timer for continuous (when active), or time-since-last-dose for countable */}
+            {/* Right side: elapsed timer for continuous (when active), or time-since-last-dose */}
             {isContinuous ? (
               isActive ? (
                 <span
@@ -2549,7 +2532,237 @@ export function CRGaveList({
             onClose={() => setDetailMed(null)}
           />
         ))}
+      {historyMed && (
+        <CRMedHistoryModal
+          medKey={historyMed}
+          patient={state}
+          onClose={() => setHistoryMed(null)}
+          onUpdatePatient={onUpdatePatient}
+        />
+      )}
     </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// CRMedHistoryModal
+// ─────────────────────────────────────────────────────────────
+function CRMedHistoryModal({
+  medKey,
+  patient,
+  onClose,
+  onUpdatePatient,
+}: {
+  medKey: MedKey;
+  patient: Patient;
+  onClose: () => void;
+  onUpdatePatient: (mut: (p: Patient) => Patient) => void;
+}) {
+  const isContinuous = CR_CONTINUOUS_KEYS.has(medKey);
+  const med = CR_MED_BY_KEY[medKey];
+
+  const medEntries = patient.log.filter(
+    (e): e is MedLogEntry => e.type === "med" && e.key === medKey,
+  );
+
+  const doseRow = patient.gave.find((g) => g.key === medKey);
+  const isCurrentlyActive = isContinuous && (doseRow?.doses.length ?? 0) % 2 === 1;
+
+  const [newDoseTime, setNewDoseTime] = useState(() => tsToTimeInput(Date.now()));
+
+  function deleteEntry(at: number) {
+    onUpdatePatient((p) => ({
+      ...p,
+      log: p.log.filter(
+        (e) => !(e.type === "med" && e.key === medKey && e.at === at),
+      ),
+    }));
+  }
+
+  function updateEntryTime(oldAt: number, newTimeStr: string) {
+    const newAt = timeInputToTs(newTimeStr, oldAt);
+    if (!newAt || newAt === oldAt) return;
+    onUpdatePatient((p) => {
+      const newLog = p.log.map((e) =>
+        e.type === "med" && e.key === medKey && e.at === oldAt
+          ? { ...e, at: newAt }
+          : e,
+      );
+      return { ...p, log: [...newLog].sort((a, b) => a.at - b.at) };
+    });
+  }
+
+  function addDiscreteEntry(at: number) {
+    onUpdatePatient((p) => {
+      const entry: LogEntry = {
+        type: "med",
+        action: "give",
+        key: medKey as DiscreteMedKey,
+        at,
+      };
+      return { ...p, log: [...p.log, entry].sort((a, b) => a.at - b.at) };
+    });
+    setNewDoseTime(tsToTimeInput(Date.now()));
+  }
+
+  function addContinuousEntry(action: "start" | "stop") {
+    const at = Date.now();
+    onUpdatePatient((p) => {
+      const entry: LogEntry = {
+        type: "med",
+        action,
+        key: medKey as ContinuousMedKey,
+        at,
+      };
+      return { ...p, log: [...p.log, entry].sort((a, b) => a.at - b.at) };
+    });
+  }
+
+  const inputStyle: React.CSSProperties = {
+    flex: 1,
+    padding: "4px 8px",
+    borderRadius: 6,
+    border: "1px solid var(--line)",
+    fontSize: 13,
+    background: "var(--surface)",
+    color: "var(--ink)",
+    fontFamily: "inherit",
+  };
+
+  return (
+    <CRModalShell title={med?.name ?? String(medKey)} onClose={onClose}>
+      {/* Entry list */}
+      <div style={{ marginBottom: 16 }}>
+        {medEntries.length === 0 ? (
+          <div style={{ color: "var(--ink-3)", fontSize: 13, padding: "8px 0" }}>
+            No doses recorded yet.
+          </div>
+        ) : (
+          medEntries.map((entry, i) => (
+            <div
+              key={entry.at}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "6px 0",
+                borderBottom:
+                  i < medEntries.length - 1 ? "1px solid var(--line)" : "none",
+              }}
+            >
+              <span
+                style={{
+                  fontSize: 12,
+                  color: "var(--ink-3)",
+                  minWidth: 54,
+                  flexShrink: 0,
+                }}
+              >
+                {isContinuous
+                  ? (i % 2 === 0 ? "Start" : "Stop") +
+                    " " +
+                    (Math.floor(i / 2) + 1)
+                  : `Dose ${i + 1}`}
+              </span>
+              <input
+                key={entry.at}
+                type="time"
+                step="1"
+                defaultValue={tsToTimeInput(entry.at)}
+                onBlur={(e) => {
+                  if (e.target.value) updateEntryTime(entry.at, e.target.value);
+                }}
+                style={inputStyle}
+              />
+              <button
+                onClick={() => deleteEntry(entry.at)}
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: 6,
+                  background: "transparent",
+                  border: "1px solid var(--line)",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "var(--ink-3)",
+                  fontSize: 16,
+                  flexShrink: 0,
+                }}
+              >
+                ×
+              </button>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Add controls */}
+      {isContinuous ? (
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            onClick={() => addContinuousEntry("start")}
+            style={{
+              flex: 1,
+              padding: "9px 12px",
+              borderRadius: 8,
+              border: "1.5px solid var(--accent)",
+              background: isCurrentlyActive ? "transparent" : "var(--accent)",
+              color: isCurrentlyActive ? "var(--accent)" : "#fff",
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            ▶ Start now
+          </button>
+          <button
+            onClick={() => addContinuousEntry("stop")}
+            style={{
+              flex: 1,
+              padding: "9px 12px",
+              borderRadius: 8,
+              border: "1.5px solid var(--accent)",
+              background: isCurrentlyActive ? "var(--accent)" : "transparent",
+              color: isCurrentlyActive ? "#fff" : "var(--accent)",
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            ◼ Stop now
+          </button>
+        </div>
+      ) : (
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <input
+            type="time"
+            step="1"
+            value={newDoseTime}
+            onChange={(e) => e.target.value && setNewDoseTime(e.target.value)}
+            style={inputStyle}
+          />
+          <button
+            onClick={() => addDiscreteEntry(timeInputToTs(newDoseTime, Date.now()))}
+            style={{
+              padding: "6px 14px",
+              borderRadius: 8,
+              border: "1.5px solid var(--accent)",
+              background: "var(--accent)",
+              color: "#fff",
+              fontSize: 13,
+              fontWeight: 700,
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+              flexShrink: 0,
+            }}
+          >
+            + Add
+          </button>
+        </div>
+      )}
+    </CRModalShell>
   );
 }
 
