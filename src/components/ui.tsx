@@ -8,7 +8,7 @@
  * (e.g. collapsing button groups into dropdowns when space is limited).
  */
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import type { DropdownOption } from "../types";
 
 // ─────────────────────────────────────────────────────────────
@@ -643,6 +643,58 @@ export function CRDropdown({
         </div>
       )}
     </span>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// AnimatedReveal
+// ─────────────────────────────────────────────────────────────
+type RevealPhase = "idle" | "entering" | "exiting" | "hidden";
+
+export function AnimatedReveal({
+  visible,
+  children,
+  enterClass = "cr-row-enter",
+  exitClass = "cr-row-exit",
+  style,
+}: {
+  visible: boolean;
+  children: React.ReactNode;
+  enterClass?: string;
+  exitClass?: string;
+  style?: React.CSSProperties;
+}) {
+  const [phase, setPhase] = useState<RevealPhase>(visible ? "idle" : "hidden");
+  const phaseRef = useRef<RevealPhase>(phase);
+  phaseRef.current = phase;
+
+  useEffect(() => {
+    if (visible) {
+      if (phaseRef.current === "hidden" || phaseRef.current === "exiting") {
+        setPhase("entering");
+      }
+    } else {
+      if (phaseRef.current === "idle" || phaseRef.current === "entering") {
+        setPhase("exiting");
+      }
+    }
+  }, [visible]);
+
+  if (phase === "hidden") return null;
+
+  const cls =
+    phase === "entering" ? enterClass : phase === "exiting" ? exitClass : "";
+  return (
+    <div
+      className={cls}
+      style={style}
+      onAnimationEnd={() => {
+        if (phase === "exiting") setPhase("hidden");
+        else if (phase === "entering") setPhase("idle");
+      }}
+    >
+      {children}
+    </div>
   );
 }
 
