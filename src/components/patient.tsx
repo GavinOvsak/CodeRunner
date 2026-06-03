@@ -37,6 +37,7 @@ import {
 } from "../data";
 import { crFmt, crSince } from "../utils";
 import { CRIcon, CRDropdown, CRSection, CRStatusRow, AnimatedReveal } from "./ui";
+import { CRAlgorithmModal } from "./algorithms";
 
 // ─────────────────────────────────────────────────────────────
 // Status dropdown option sets — built dynamically from translations
@@ -122,6 +123,7 @@ interface CRPatientHeaderProps {
   onBack: () => void;
   onOpenLog: () => void;
   onInfo: () => void;
+  onAlgo: () => void;
   onStopCode: () => void;
 }
 
@@ -189,56 +191,11 @@ function crCprBtn(invertOnDark: boolean): React.CSSProperties {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Language flags (shared with home screen)
+// Language flags (used in info modal)
 // ─────────────────────────────────────────────────────────────
 const LANG_FLAGS: Record<string, string> = {
   en: "🇺🇸", fr: "🇫🇷", es: "🇪🇸", id: "🇮🇩", vi: "🇻🇳", zh: "🇨🇳", de: "🇩🇪",
 };
-
-function CRPatientLangSwitcher() {
-  const { t, i18n } = useTranslation();
-  const [open, setOpen] = useState(false);
-  const current = i18n.resolvedLanguage ?? "en";
-  return (
-    <div style={{ position: "relative" }}>
-      <button
-        onClick={() => setOpen((o) => !o)}
-        style={{ ...crIconBtn(), fontSize: 18 }}
-        aria-label="Language"
-        title={t(`lang.${current}`)}
-      >
-        {LANG_FLAGS[current] ?? "🌐"}
-      </button>
-      {open && (
-        <>
-          <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 149 }} />
-          <div style={{
-            position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 150,
-            background: "var(--surface)", border: "1px solid var(--line-strong)",
-            borderRadius: 12, boxShadow: "0 12px 32px rgba(0,0,0,0.14)",
-            minWidth: 190, overflow: "hidden", padding: "4px 0",
-          }}>
-            {SUPPORTED_LANGUAGES.map((lang) => (
-              <button key={lang} onClick={() => { i18n.changeLanguage(lang); setOpen(false); }}
-                style={{
-                  display: "flex", alignItems: "center", gap: 10, width: "100%",
-                  padding: "9px 14px",
-                  background: lang === current ? "var(--accent-soft)" : "transparent",
-                  border: "none", textAlign: "left", fontSize: 14,
-                  fontWeight: lang === current ? 700 : 400,
-                  color: lang === current ? "var(--accent)" : "var(--ink)", cursor: "pointer",
-                }}>
-                <span style={{ fontSize: 20, lineHeight: 1, flexShrink: 0 }}>{LANG_FLAGS[lang]}</span>
-                <span>{t(`lang.${lang}`)}</span>
-                {lang === current && <CRIcon name="check" size={14} color="var(--accent)" />}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
 
 // ─────────────────────────────────────────────────────────────
 // CRPatientScreen
@@ -266,6 +223,7 @@ export function CRPatientScreen({
   const s = patient;
   const dispatch = onChange;
   const [infoOpen, setInfoOpen] = useState(false);
+  const [algoOpen, setAlgoOpen] = useState(false);
   const [roscPopup, setRoscPopup] = useState(false);
   const [popup, setPopup] = useState<
     | "shock"
@@ -648,6 +606,7 @@ export function CRPatientScreen({
         onBack={onBack}
         onOpenLog={onOpenLog}
         onInfo={() => setInfoOpen(true)}
+        onAlgo={() => setAlgoOpen(true)}
         onStopCode={() => setConfirmStopOpen(true)}
       />
 
@@ -1027,6 +986,7 @@ export function CRPatientScreen({
         <CRPopupModal type={popup} patient={s} onClose={() => setPopup(null)} />
       )}
       {infoOpen && <CRInfoModal onClose={() => setInfoOpen(false)} />}
+      {algoOpen && <CRAlgorithmModal patient={s} onClose={() => setAlgoOpen(false)} />}
       {confirmStopOpen && (
         <CRStopConfirmationModal
           onConfirm={stopCode}
@@ -1045,6 +1005,7 @@ export function CRPatientHeader({
   onBack,
   onOpenLog,
   onInfo,
+  onAlgo,
   onStopCode,
 }: CRPatientHeaderProps) {
   const { t } = useTranslation();
@@ -1140,10 +1101,12 @@ export function CRPatientHeader({
           <button onClick={onOpenLog} style={crIconBtn()}>
             <CRIcon name="list" size={20} />
           </button>
+          <button onClick={onAlgo} style={crIconBtn()} aria-label="Algorithm flowcharts">
+            <CRIcon name="flow-chart" size={20} />
+          </button>
           <button onClick={onInfo} style={crIconBtn()}>
             <CRIcon name="info" size={20} />
           </button>
-          <CRPatientLangSwitcher />
         </div>
       </div>
     </header>
@@ -3331,7 +3294,8 @@ function CRRoscModal({ onClose }: { onClose: () => void }) {
 // CRInfoModal
 // ─────────────────────────────────────────────────────────────
 export function CRInfoModal({ onClose }: { onClose: () => void }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const current = i18n.resolvedLanguage ?? "en";
   return (
     <div
       onClick={onClose}
@@ -3397,6 +3361,34 @@ export function CRInfoModal({ onClose }: { onClose: () => void }) {
           <p style={{ marginBottom: 0, color: "var(--ink-3)", fontSize: 12 }}>
             {t("modal.info.version")}
           </p>
+        </div>
+
+        {/* Language selector */}
+        <div style={{ marginTop: 16, borderTop: "1px solid var(--line)", paddingTop: 14 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--ink-3)", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            Language
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {SUPPORTED_LANGUAGES.map((lang) => (
+              <button
+                key={lang}
+                onClick={() => i18n.changeLanguage(lang)}
+                style={{
+                  display: "flex", alignItems: "center", gap: 6,
+                  padding: "6px 10px", borderRadius: 8,
+                  border: lang === current ? "2px solid var(--accent)" : "1px solid var(--line-strong)",
+                  background: lang === current ? "var(--accent-soft)" : "transparent",
+                  cursor: "pointer", fontSize: 13,
+                  fontWeight: lang === current ? 700 : 400,
+                  color: lang === current ? "var(--accent)" : "var(--ink)",
+                }}
+              >
+                <span style={{ fontSize: 17, lineHeight: 1 }}>{LANG_FLAGS[lang]}</span>
+                <span>{t(`lang.${lang}`)}</span>
+                {lang === current && <CRIcon name="check" size={12} color="var(--accent)" />}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </div>

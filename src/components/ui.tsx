@@ -190,6 +190,18 @@ export function CRIcon({
           <path d="M3.6 8h16.8M3.6 16h16.8" />
         </svg>
       );
+    case "flow-chart":
+      return (
+        <svg {...props}>
+          <rect x="8" y="1" width="8" height="5" rx="1.5" />
+          <rect x="1" y="15" width="8" height="5" rx="1.5" />
+          <rect x="15" y="15" width="8" height="5" rx="1.5" />
+          <line x1="12" y1="6" x2="12" y2="11" />
+          <line x1="5" y1="11" x2="19" y2="11" />
+          <line x1="5" y1="11" x2="5" y2="15" />
+          <line x1="19" y1="11" x2="19" y2="15" />
+        </svg>
+      );
     default:
       return null;
   }
