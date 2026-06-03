@@ -36,7 +36,7 @@ import {
   crRecommendedMedKeys,
 } from "../data";
 import { crFmt, crSince } from "../utils";
-import { CRIcon, CRDropdown, CRSection, CRStatusRow } from "./ui";
+import { CRIcon, CRDropdown, CRSection, CRStatusRow, AnimatedReveal } from "./ui";
 
 // ─────────────────────────────────────────────────────────────
 // Status dropdown option sets — built dynamically from translations
@@ -651,18 +651,21 @@ export function CRPatientScreen({
         onStopCode={() => setConfirmStopOpen(true)}
       />
 
-      {cpr.active && (
-        <div style={{ padding: "8px 12px 0" }}>
-          <CRCprPill
-            cpr={cpr}
-            onPause={toggleCprPause}
-            guidance={getCprGuidance()}
-            rescuers={s.rescuers}
-            patientType={s.type}
-            onRescuers={(v) => setRescuers(v)}
-          />
-        </div>
-      )}
+      <AnimatedReveal
+        visible={cpr.active}
+        enterClass="cr-cpr-enter"
+        exitClass="cr-cpr-exit"
+        style={{ padding: "8px 12px 0" }}
+      >
+        <CRCprPill
+          cpr={cpr}
+          onPause={toggleCprPause}
+          guidance={getCprGuidance()}
+          rescuers={s.rescuers}
+          patientType={s.type}
+          onRescuers={(v) => setRescuers(v)}
+        />
+      </AnimatedReveal>
 
       <div
         className="cr-scroll"
@@ -738,7 +741,7 @@ export function CRPatientScreen({
                 />
               )}
             </CRStatusRow>
-            {s.alert !== "Yes" && (
+            <AnimatedReveal visible={s.alert !== "Yes"}>
               <CRStatusRow
                 label={t("field.pulse")}
                 disabled={cpr.active && !cpr.pausedAt}
@@ -755,8 +758,8 @@ export function CRPatientScreen({
                   buttonGroup
                 />
               </CRStatusRow>
-            )}
-            {s.pulse === "Yes" && (
+            </AnimatedReveal>
+            <AnimatedReveal visible={s.pulse === "Yes"}>
               <CRStatusRow
                 label={t("field.heartRate")}
                 uncertain={s.rate === "?"}
@@ -770,31 +773,38 @@ export function CRPatientScreen({
                   buttonGroup
                 />
               </CRStatusRow>
-            )}
-            {s.pulse === "Yes" &&
-              (s.rate === "Fast" || s.rate === "Slow") &&
-              s.alert !== "No" &&
-              s.alert !== "Altered" && (
-                <CRStatusRow
-                  label={t("field.symptomatic")}
-                  uncertain={s.symptomatic === "?"}
-                  onInfo={() => setPopup("symptomatic")}
-                  flashKey={flashTargets.has("symptomatic") ? flashKey : null}
-                >
-                  <CRDropdown
-                    value={s.symptomatic}
-                    options={CR_OPTS_YN}
-                    onChange={setSymptomatic}
-                    tone="symptomatic"
-                    buttonGroup
-                  />
-                </CRStatusRow>
-              )}
-            {/* Rhythm row — exactly one variant renders at a time.
-                  Pulse:Yes always wins (rate-gated); arrest set only when pulse is No/unknown. */}
-            {s.pulse !== "Yes" &&
-            (s.pulse === "No" || cpr.active) &&
-            (s.doneTasks["get-aed"] === true || cpr.active) ? (
+            </AnimatedReveal>
+            <AnimatedReveal
+              visible={
+                s.pulse === "Yes" &&
+                (s.rate === "Fast" || s.rate === "Slow") &&
+                s.alert !== "No" &&
+                s.alert !== "Altered"
+              }
+            >
+              <CRStatusRow
+                label={t("field.symptomatic")}
+                uncertain={s.symptomatic === "?"}
+                onInfo={() => setPopup("symptomatic")}
+                flashKey={flashTargets.has("symptomatic") ? flashKey : null}
+              >
+                <CRDropdown
+                  value={s.symptomatic}
+                  options={CR_OPTS_YN}
+                  onChange={setSymptomatic}
+                  tone="symptomatic"
+                  buttonGroup
+                />
+              </CRStatusRow>
+            </AnimatedReveal>
+            {/* Rhythm row — two AnimatedReveal blocks, at most one visible at a time. */}
+            <AnimatedReveal
+              visible={
+                s.pulse !== "Yes" &&
+                (s.pulse === "No" || cpr.active) &&
+                (s.doneTasks["get-aed"] === true || cpr.active)
+              }
+            >
               <CRStatusRow
                 label={t("field.rhythm")}
                 uncertain={s.rhythm === "?"}
@@ -810,52 +820,59 @@ export function CRPatientScreen({
                   wrapGroup
                 />
               </CRStatusRow>
-            ) : (
-              s.pulse === "Yes" &&
-              s.rate !== "?" &&
-              s.rate !== "Normal" && (
-                <CRStatusRow
-                  label={t("field.rhythm")}
-                  uncertain={s.rhythm === "?"}
-                  onInfo={() => setPopup("rhythm")}
-                  flashKey={flashTargets.has("rhythm") ? flashKey : null}
-                >
-                  <CRDropdown
-                    value={s.rhythm}
-                    options={
-                      s.rate === "Fast"
-                        ? CR_OPTS_RHYTHM_TACH
-                        : s.rate === "Slow"
-                          ? CR_OPTS_RHYTHM_BRADY
-                          : CR_OPTS_RHYTHM_NORMAL
-                    }
-                    onChange={setRhythm}
-                    tone="auto"
-                    flashRedKey={flashTargets.has("rhythm") ? flashKey : null}
-                    wrapGroup
-                  />
-                </CRStatusRow>
-              )
-            )}
+            </AnimatedReveal>
+            <AnimatedReveal
+              visible={
+                s.pulse === "Yes" &&
+                s.rate !== "?" &&
+                s.rate !== "Normal"
+              }
+            >
+              <CRStatusRow
+                label={t("field.rhythm")}
+                uncertain={s.rhythm === "?"}
+                onInfo={() => setPopup("rhythm")}
+                flashKey={flashTargets.has("rhythm") ? flashKey : null}
+              >
+                <CRDropdown
+                  key={s.rate === "Fast" ? "tach" : "brady"}
+                  value={s.rhythm}
+                  options={
+                    s.rate === "Fast"
+                      ? CR_OPTS_RHYTHM_TACH
+                      : s.rate === "Slow"
+                        ? CR_OPTS_RHYTHM_BRADY
+                        : CR_OPTS_RHYTHM_NORMAL
+                  }
+                  onChange={setRhythm}
+                  tone="auto"
+                  flashRedKey={flashTargets.has("rhythm") ? flashKey : null}
+                  wrapGroup
+                />
+              </CRStatusRow>
+            </AnimatedReveal>
             {/* Rescuers — shown during cardiac arrest for CPR guidance */}
-            {(s.pulse === "No" || cpr.active) &&
-              s.breathing !== "ETT" &&
-              (s.gave.find((g) => g.key === "epi")?.doses.length ?? 0) ===
-                0 && (
-                <CRStatusRow
-                  label={t("field.rescuers")}
-                  uncertain={s.rescuers === "?"}
-                  flashKey={flashTargets.has("rescuers") ? flashKey : null}
-                >
-                  <CRDropdown
-                    value={s.rescuers}
-                    options={CR_OPTS_RESCUERS}
-                    onChange={setRescuers}
-                    tone="accent"
-                    buttonGroup
-                  />
-                </CRStatusRow>
-              )}
+            <AnimatedReveal
+              visible={
+                (s.pulse === "No" || cpr.active) &&
+                s.breathing !== "ETT" &&
+                (s.gave.find((g) => g.key === "epi")?.doses.length ?? 0) === 0
+              }
+            >
+              <CRStatusRow
+                label={t("field.rescuers")}
+                uncertain={s.rescuers === "?"}
+                flashKey={flashTargets.has("rescuers") ? flashKey : null}
+              >
+                <CRDropdown
+                  value={s.rescuers}
+                  options={CR_OPTS_RESCUERS}
+                  onChange={setRescuers}
+                  tone="accent"
+                  buttonGroup
+                />
+              </CRStatusRow>
+            </AnimatedReveal>
             {/* Weight — pediatric patients only */}
             {s.type === "pediatric" && (
               <CRStatusRow
@@ -900,39 +917,39 @@ export function CRPatientScreen({
               </CRStatusRow>
             )}
             {/* Glucose + Stroke Sx — shown when alert is Altered and patient has a pulse */}
-            {s.alert === "Altered" && s.pulse !== "No" && (
-              <>
-                <CRStatusRow
-                  label={t("field.glucose")}
-                  uncertain={s.glucose === "?"}
-                  flashKey={flashTargets.has("glucose") ? flashKey : null}
-                >
-                  <CRDropdown
-                    value={s.glucose}
-                    options={CR_OPTS_GLUCOSE}
-                    onChange={setGlucose}
-                    tone="auto"
-                    buttonGroup
-                    flashRedKey={flashTargets.has("glucose") ? flashKey : null}
-                  />
-                </CRStatusRow>
-                <CRStatusRow
-                  label={t("field.strokeSx")}
-                  uncertain={s.strokeSx === "?"}
-                  onInfo={() => setPopup("strokeSx")}
-                  flashKey={flashTargets.has("strokeSx") ? flashKey : null}
-                >
-                  <CRDropdown
-                    value={s.strokeSx}
-                    options={CR_OPTS_STROKESX}
-                    onChange={setStrokeSx}
-                    tone="auto"
-                    buttonGroup
-                    flashRedKey={flashTargets.has("strokeSx") ? flashKey : null}
-                  />
-                </CRStatusRow>
-              </>
-            )}
+            <AnimatedReveal visible={s.alert === "Altered" && s.pulse !== "No"}>
+              <CRStatusRow
+                label={t("field.glucose")}
+                uncertain={s.glucose === "?"}
+                flashKey={flashTargets.has("glucose") ? flashKey : null}
+              >
+                <CRDropdown
+                  value={s.glucose}
+                  options={CR_OPTS_GLUCOSE}
+                  onChange={setGlucose}
+                  tone="auto"
+                  buttonGroup
+                  flashRedKey={flashTargets.has("glucose") ? flashKey : null}
+                />
+              </CRStatusRow>
+            </AnimatedReveal>
+            <AnimatedReveal visible={s.alert === "Altered" && s.pulse !== "No"}>
+              <CRStatusRow
+                label={t("field.strokeSx")}
+                uncertain={s.strokeSx === "?"}
+                onInfo={() => setPopup("strokeSx")}
+                flashKey={flashTargets.has("strokeSx") ? flashKey : null}
+              >
+                <CRDropdown
+                  value={s.strokeSx}
+                  options={CR_OPTS_STROKESX}
+                  onChange={setStrokeSx}
+                  tone="auto"
+                  buttonGroup
+                  flashRedKey={flashTargets.has("strokeSx") ? flashKey : null}
+                />
+              </CRStatusRow>
+            </AnimatedReveal>
           </CRSection>
 
           <CRSection className="cr-s-next" title={t("nextSteps.section")}>
