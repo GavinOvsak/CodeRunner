@@ -59,6 +59,14 @@ export function CRIcon({
           <path d="M4 6h16M4 12h16M4 18h16" />
         </svg>
       );
+    case "clock-history":
+      return (
+        <svg {...props}>
+          <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+          <path d="M3 3v5h5" />
+          <path d="M12 7v5l3 3" />
+        </svg>
+      );
     case "plus":
       return (
         <svg {...props}>

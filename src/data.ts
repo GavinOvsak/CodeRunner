@@ -52,11 +52,11 @@ export const CR_MEDS: Med[] = [
   { key: "albumin", name: "Albumin", cat: "Blood", short: "Albumin" },
   { key: "tranex", name: "TXA", cat: "Blood", short: "TXA" },
   // Actions
-  { key: "shock", name: "Shock", cat: "Action", short: "Shock" },
+  { key: "shock", name: "Shock", cat: "Electrical", short: "Shock" },
   {
     key: "pace",
     name: "Transcutaneous Pacing",
-    cat: "Action",
+    cat: "Electrical",
     short: "Pacing",
   },
 ];
@@ -465,16 +465,11 @@ export function crNextTasks(s: Patient, now: number = Date.now()): NextTask[] {
     }
 
     if (s.rhythm === "TdP") {
-      const magGiven = given("magnesium");
-      if (magGiven < 2) {
-        const magLabel =
-          magGiven === 0
-            ? "Magnesium 2g IV push (1–2 min)"
-            : "Magnesium 2g IV (repeat)";
+      if (given("magnesium") === 0) {
         push({
           id: "magnesium",
-          label: magLabel,
-          labelKey: magGiven === 0 ? "task.magnesium.1st" : "task.magnesium.repeat",
+          label: "Magnesium 2g IV push (1–2 min)",
+          labelKey: "task.magnesium.1st",
           kind: "med",
           medKey: "magnesium",
         });
@@ -772,16 +767,11 @@ export function crNextTasks(s: Patient, now: number = Date.now()): NextTask[] {
     }
     if (s.rhythm === "TdP") {
       // Torsades: magnesium is first-line; amiodarone is contraindicated (prolongs QT)
-      const magGiven = given("magnesium");
-      if (magGiven < 2) {
-        const magLabel =
-          magGiven === 0
-            ? "Magnesium 2g IV push (1–2 min)"
-            : "Magnesium 2g IV (repeat)";
+      if (given("magnesium") === 0) {
         push({
           id: "magnesium",
-          label: magLabel,
-          labelKey: magGiven === 0 ? "task.magnesium.1st" : "task.magnesium.repeat",
+          label: "Magnesium 2g IV push (1–2 min)",
+          labelKey: "task.magnesium.1st",
           kind: "med",
           medKey: "magnesium",
         });

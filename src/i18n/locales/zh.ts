@@ -158,6 +158,21 @@ const zh = {
   "interventions.search": "搜索药物 / 血液制品",
   "interventions.noMatch": "无结果。",
   "interventions.dosingInfo": "剂量信息",
+  "interventions.searchPlaceholder": "搜索干预措施...",
+  "interventions.noDoses": "尚未记录任何剂量。",
+  "interventions.indicated": "已指示",
+  "interventions.startNow": "▶ 开始",
+  "interventions.stopNow": "◼ 停止",
+  "interventions.doseLabel": "剂量 {{n}}",
+  "interventions.startLabel": "开始 {{n}}",
+  "interventions.stopLabel": "停止 {{n}}",
+  "addIntervention.electrical": "电疗",
+  "addIntervention.meds": "药物",
+  "addIntervention.infusions": "输液",
+  "addIntervention.blood": "血液制品",
+  "addIntervention.notIndicated.title": "当前未指示",
+  "addIntervention.notIndicated.body": "{{name}} 不建议用于当前临床情况。仍然给药？",
+  "addIntervention.giveAnyway": "仍然给药",
 
   "medDetail.dose": "剂量",
   "medDetail.peds": "儿科",
@@ -389,6 +404,103 @@ const zh = {
   "logEntry.cprSync": "节拍器已同步",
   "logEntry.cprRosc": "ROSC — 急救结束",
   "logEntry.cprEnd": "急救结束",
+
+  // ── Med names ──────────────────────────────────────────────
+  "med.epi": "肾上腺素",
+  "med.amio": "胺碘酮",
+  "med.lido": "利多卡因",
+  "med.atropine": "阿托品",
+  "med.adenosine": "腺苷",
+  "med.bicarb": "碳酸氢钠",
+  "med.calcium": "钙剂",
+  "med.magnesium": "镁剂",
+  "med.naloxone": "纳洛酮",
+  "med.dopamine": "多巴胺输注",
+  "med.norepi": "去甲肾上腺素",
+  "med.vaso": "血管加压素",
+  "med.procain": "普鲁卡因胺",
+  "med.d50": "D50",
+  "med.prbc": "pRBC",
+  "med.prbc.full": "浓缩红细胞",
+  "med.ffp.full": "新鲜冰冻血浆",
+  "med.tranex.full": "氨甲环酸",
+  "med.ffp": "FFP",
+  "med.plt": "血小板",
+  "med.cryo": "冷沉淀",
+  "med.albumin": "白蛋白",
+  "med.tranex": "TXA",
+  "med.shock": "电击除颤",
+  "med.pace": "经皮起搏",
+
+  // ── Med detail content ──────────────────────────────────────
+  "medDetail.epi.note0": "每次推注后用20 mL生理盐水冲管",
+
+  "medDetail.amio.note0": "VF/无脉VT中≥2次电击后给予",
+  "medDetail.amio.note1": "稳定VT：150 mg静注10分钟",
+
+  "medDetail.lido.note0": "≥2次电击后VF/无脉VT的胺碘酮替代药",
+
+  "medDetail.adenosine.route": "静脉（肘前或中心静脉）",
+  "medDetail.adenosine.note0": "立即用20 mL生理盐水冲管",
+  "medDetail.adenosine.note1": "半衰期极短——需快速推注",
+
+  "medDetail.bicarb.note0": "用于三环类药物过量、严重代谢性酸中毒、高钾血症",
+
+  "medDetail.calcium.route": "静脉（氯化钙优先中心静脉）",
+  "medDetail.calcium.note0": "适应证：高钾血症、低钙血症、CCB或镁剂过量",
+
+  "medDetail.magnesium.note0": "尖端扭转型室速的一线治疗",
+
+  "medDetail.naloxone.route": "静脉、肌注或鼻腔给药",
+  "medDetail.naloxone.note0": "作用持续45–90分钟——可能需要重复给药",
+  "medDetail.naloxone.note1": "可诱发急性戒断综合征",
+
+  "medDetail.d50.note0": "先确认低血糖",
+  "medDetail.d50.note1": "给药后冲洗静脉通路",
+
+  "medDetail.dopamine.route": "静脉输注",
+  "medDetail.dopamine.sharedDose": "5–20 mcg/kg/min IV infusion",
+  "medDetail.dopamine.note0": "低剂量（1–5 mcg/kg/min）：多巴胺能作用",
+  "medDetail.dopamine.note1": "中剂量（5–10）：β₁正性肌力/变时效应",
+  "medDetail.dopamine.note2": "高剂量（>10）：α血管收缩",
+  "medDetail.dopamine.note3": "调整至MAP ≥65 mmHg",
+
+  "medDetail.norepi.route": "静脉输注（优先中心静脉）",
+  "medDetail.norepi.note0": "脓毒症休克的一线升压药",
+
+  "medDetail.vaso.route": "静脉输注",
+  "medDetail.vaso.note0": "固定剂量，不需调整",
+  "medDetail.vaso.note1": "作为去甲肾上腺素的辅助用药",
+
+  "medDetail.procain.route": "静脉输注",
+  "medDetail.procain.note0": "停药指征：QRS增宽>50%、低血压或心律失常终止",
+  "medDetail.procain.note1": "不得与胺碘酮联用",
+
+  "medDetail.prbc.note0": "每单位可提升Hb约1 g/dL",
+  "medDetail.prbc.note1": "Hb<7时考虑输血（ACS/心脏病患者Hb<8）",
+
+  "medDetail.ffp.note0": "逆转华法林及凝血因子缺乏",
+  "medDetail.ffp.note1": "大量输血时采用1:1:1比例（pRBC:FFP:PLT）",
+
+  "medDetail.plt.note0": "每单位可提升血小板约25–50 k/μL",
+  "medDetail.plt.note1": "活动性出血时血小板<50 k/μL输注；预防性<10 k/μL",
+
+  "medDetail.cryo.note0": "目标纤维蛋白原>150–200 mg/dL",
+  "medDetail.cryo.note1": "含有：纤维蛋白原、FVIII、vWF、FXIII",
+
+  "medDetail.albumin.note0": "用于扩容、自发性腹膜炎、肝肾综合征",
+
+  "medDetail.tranex.note0": "创伤后3小时内给药效果最佳",
+  "medDetail.tranex.note1": "抑制纤溶（抗纤溶药）",
+
+  "medDetail.shock.note0": "放电前确认可除颤心律",
+  "medDetail.shock.note1": "清除所有人员——放电前喊话提醒",
+  "medDetail.shock.note2": "电击后立即恢复CPR",
+
+  "medDetail.pace.sharedDose": "频率60–80 bpm；从0 mA开始，每次增加10 mA直至夺获",
+  "medDetail.pace.note0": "夺获阈值通常为50–90 mA",
+  "medDetail.pace.note1": "通过触诊脉搏确认机械夺获",
+  "medDetail.pace.note2": "强烈推荐镇静/镇痛",
 } as const;
 
 export default zh;

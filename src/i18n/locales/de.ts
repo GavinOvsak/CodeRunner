@@ -158,6 +158,21 @@ const de = {
   "interventions.search": "Medikamente / Blut suchen",
   "interventions.noMatch": "Kein Treffer.",
   "interventions.dosingInfo": "Dosierungsinfo",
+  "interventions.searchPlaceholder": "Maßnahmen suchen...",
+  "interventions.noDoses": "Noch keine Dosen erfasst.",
+  "interventions.indicated": "indiziert",
+  "interventions.startNow": "▶ Starten",
+  "interventions.stopNow": "◼ Stoppen",
+  "interventions.doseLabel": "Dosis {{n}}",
+  "interventions.startLabel": "Start {{n}}",
+  "interventions.stopLabel": "Stopp {{n}}",
+  "addIntervention.electrical": "Elektrotherapie",
+  "addIntervention.meds": "Medikamente",
+  "addIntervention.infusions": "Infusionen",
+  "addIntervention.blood": "Blutprodukte",
+  "addIntervention.notIndicated.title": "Derzeit nicht indiziert",
+  "addIntervention.notIndicated.body": "{{name}} ist für das aktuelle klinische Szenario nicht empfohlen. Trotzdem verabreichen?",
+  "addIntervention.giveAnyway": "Trotzdem verabreichen",
 
   "medDetail.dose": "Dosis",
   "medDetail.peds": "Päds",
@@ -389,6 +404,103 @@ const de = {
   "logEntry.cprSync": "Metronom synchronisiert",
   "logEntry.cprRosc": "ROSC — Code beendet",
   "logEntry.cprEnd": "Code beendet",
+
+  // ── Med names ──────────────────────────────────────────────
+  "med.epi": "Epinephrin",
+  "med.amio": "Amiodaron",
+  "med.lido": "Lidocain",
+  "med.atropine": "Atropin",
+  "med.adenosine": "Adenosin",
+  "med.bicarb": "Natriumbikarbonat",
+  "med.calcium": "Calcium",
+  "med.magnesium": "Magnesium",
+  "med.naloxone": "Naloxon",
+  "med.dopamine": "Dopamin-Infusion",
+  "med.norepi": "Norepinephrin",
+  "med.vaso": "Vasopressin",
+  "med.procain": "Procainamid",
+  "med.d50": "D50",
+  "med.prbc": "pRBC",
+  "med.prbc.full": "Erythrozytenkonzentrat",
+  "med.ffp.full": "Frischplasma",
+  "med.tranex.full": "Tranexamsäure",
+  "med.ffp": "FFP",
+  "med.plt": "Thrombozyten",
+  "med.cryo": "Kryopräzipitat",
+  "med.albumin": "Albumin",
+  "med.tranex": "TXA",
+  "med.shock": "Schock",
+  "med.pace": "Transkutanes Pacing",
+
+  // ── Med detail content ──────────────────────────────────────
+  "medDetail.epi.note0": "Mit 20 mL NaCl 0,9% nach jedem Bolus nachspülen",
+
+  "medDetail.amio.note0": "Nach ≥2 Schocks bei Kammerflimmern/pulsloser VT geben",
+  "medDetail.amio.note1": "Stabile VT: 150 mg über 10 min",
+
+  "medDetail.lido.note0": "Alternative zu Amiodaron bei Kammerflimmern/pulsloser VT nach ≥2 Schocks",
+
+  "medDetail.adenosine.route": "IV (Antekubital oder Zentralvene)",
+  "medDetail.adenosine.note0": "Sofort mit 20 mL NaCl 0,9% nachspülen",
+  "medDetail.adenosine.note1": "Kurze Halbwertszeit — schnell injizieren",
+
+  "medDetail.bicarb.note0": "Anwendung bei trizyklischer Überdosierung, schwerer metabolischer Azidose, Hyperkaliämie",
+
+  "medDetail.calcium.route": "IV (CaCl bevorzugt über Zentralvene)",
+  "medDetail.calcium.note0": "Indikationen: Hyperkaliämie, Hypokalzämie, CCB- oder Mg-Überdosierung",
+
+  "medDetail.magnesium.note0": "Erstlinientherapie bei Torsades de pointes",
+
+  "medDetail.naloxone.route": "IV, IM oder IN",
+  "medDetail.naloxone.note0": "Wirkdauer 45–90 min — wiederholte Dosen möglich",
+  "medDetail.naloxone.note1": "Kann akutes Entzugssyndrom auslösen",
+
+  "medDetail.d50.note0": "Zuerst Hypoglykämie bestätigen",
+  "medDetail.d50.note1": "IV-Zugang nach Gabe spülen",
+
+  "medDetail.dopamine.route": "IV-Infusion",
+  "medDetail.dopamine.sharedDose": "5–20 mcg/kg/min IV infusion",
+  "medDetail.dopamine.note0": "Niedrig (1–5 mcg/kg/min): dopaminerg",
+  "medDetail.dopamine.note1": "Mittel (5–10): β₁-Inotropikum/Chronotropikum",
+  "medDetail.dopamine.note2": "Hoch (>10): α-Vasokonstriktion",
+  "medDetail.dopamine.note3": "Auf MAP ≥65 mmHg titrieren",
+
+  "medDetail.norepi.route": "IV-Infusion (Zentralvene bevorzugt)",
+  "medDetail.norepi.note0": "Erstlinien-Vasopressor bei septischem Schock",
+
+  "medDetail.vaso.route": "IV-Infusion",
+  "medDetail.vaso.note0": "Keine Dosissteigerung",
+  "medDetail.vaso.note1": "Als Ergänzung zu Norepinephrin einsetzen",
+
+  "medDetail.procain.route": "IV-Infusion",
+  "medDetail.procain.note0": "Stopp bei: QRS-Verbreiterung >50%, Hypotonie oder Arrhythmieauflösung",
+  "medDetail.procain.note1": "Nicht mit Amiodaron kombinieren",
+
+  "medDetail.prbc.note0": "Erhöht Hb ≈1 g/dL pro Einheit",
+  "medDetail.prbc.note1": "Erwägen bei Hb <7 (oder <8 bei ACS/Herzpatienten)",
+
+  "medDetail.ffp.note0": "Antagonisiert Warfarin und Gerinnungsfaktorenmangel",
+  "medDetail.ffp.note1": "Verhältnis 1:1:1 (EK:FFP:TK) bei Massentransfusion",
+
+  "medDetail.plt.note0": "Erhöht Thrombozyten ≈25–50 k/μL pro Einheit",
+  "medDetail.plt.note1": "Transfundieren bei <50 k/μL mit aktiver Blutung; <10 k/μL prophylaktisch",
+
+  "medDetail.cryo.note0": "Ziel Fibrinogen >150–200 mg/dL",
+  "medDetail.cryo.note1": "Enthält: Fibrinogen, FVIII, vWF, FXIII",
+
+  "medDetail.albumin.note0": "Einsatz zur Volumenexpansion, SBP, hepatorenalem Syndrom",
+
+  "medDetail.tranex.note0": "Innerhalb von 3 h nach Trauma für besten Effekt geben",
+  "medDetail.tranex.note1": "Hemmt Fibrinolyse (Antifibrinolytikum)",
+
+  "medDetail.shock.note0": "Schockbares Rhythmus vor Defibrillation bestätigen",
+  "medDetail.shock.note1": "Alle zurücktreten — Ankündigung vor Schock",
+  "medDetail.shock.note2": "HLW sofort nach Schock wieder aufnehmen",
+
+  "medDetail.pace.sharedDose": "Rate 60–80 bpm; Start bei 0 mA, Erhöhung um 10 mA bis zur Stimulation",
+  "medDetail.pace.note0": "Reizschwelle typischerweise 50–90 mA",
+  "medDetail.pace.note1": "Mechanische Stimulation durch Pulspalpation bestätigen",
+  "medDetail.pace.note2": "Sedierung/Analgesie dringend empfohlen",
 } as const;
 
 export default de;

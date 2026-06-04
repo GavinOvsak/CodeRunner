@@ -145,7 +145,7 @@ export interface Patient {
 export interface Med {
   key: MedKey;
   name: string;
-  cat: "Code" | "Drip" | "Blood" | "Action";
+  cat: "Code" | "Drip" | "Blood" | "Electrical";
   short: string;
 }
 

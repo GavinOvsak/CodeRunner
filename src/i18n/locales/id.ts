@@ -158,6 +158,21 @@ const id = {
   "interventions.search": "Cari obat / darah",
   "interventions.noMatch": "Tidak ada hasil.",
   "interventions.dosingInfo": "Info dosis",
+  "interventions.searchPlaceholder": "Cari intervensi...",
+  "interventions.noDoses": "Belum ada dosis tercatat.",
+  "interventions.indicated": "diindikasikan",
+  "interventions.startNow": "▶ Mulai",
+  "interventions.stopNow": "◼ Hentikan",
+  "interventions.doseLabel": "Dosis {{n}}",
+  "interventions.startLabel": "Mulai {{n}}",
+  "interventions.stopLabel": "Berhenti {{n}}",
+  "addIntervention.electrical": "Terapi Elektrik",
+  "addIntervention.meds": "Obat-obatan",
+  "addIntervention.infusions": "Infus",
+  "addIntervention.blood": "Produk Darah",
+  "addIntervention.notIndicated.title": "Saat ini tidak diindikasikan",
+  "addIntervention.notIndicated.body": "{{name}} tidak direkomendasikan untuk skenario klinis saat ini. Berikan tetap saja?",
+  "addIntervention.giveAnyway": "Berikan tetap saja",
 
   "medDetail.dose": "Dosis",
   "medDetail.peds": "Anak",
@@ -389,6 +404,103 @@ const id = {
   "logEntry.cprSync": "Metronom disinkronkan",
   "logEntry.cprRosc": "ROSC — kode selesai",
   "logEntry.cprEnd": "Kode selesai",
+
+  // ── Med names ──────────────────────────────────────────────
+  "med.epi": "Epinefrin",
+  "med.amio": "Amiodaron",
+  "med.lido": "Lidokain",
+  "med.atropine": "Atropin",
+  "med.adenosine": "Adenosin",
+  "med.bicarb": "Natrium Bikarbonat",
+  "med.calcium": "Calcium",
+  "med.magnesium": "Magnesium",
+  "med.naloxone": "Nalokson",
+  "med.dopamine": "Infus Dopamin",
+  "med.norepi": "Norepinefrin",
+  "med.vaso": "Vasopressin",
+  "med.procain": "Prokainamid",
+  "med.d50": "D50",
+  "med.prbc": "pRBC",
+  "med.prbc.full": "Sel Darah Merah",
+  "med.ffp.full": "Plasma Segar Beku",
+  "med.tranex.full": "Asam Traneksamat",
+  "med.ffp": "FFP",
+  "med.plt": "Trombosit",
+  "med.cryo": "Kriopresipitat",
+  "med.albumin": "Albumin",
+  "med.tranex": "TXA",
+  "med.shock": "Syok",
+  "med.pace": "Pacu jantung transkutan",
+
+  // ── Med detail content ──────────────────────────────────────
+  "medDetail.epi.note0": "Bilas dengan 20 mL NaCl setelah setiap injeksi",
+
+  "medDetail.amio.note0": "Berikan setelah ≥2 shock pada VF/TV pulseless",
+  "medDetail.amio.note1": "VT stabil: 150 mg selama 10 menit",
+
+  "medDetail.lido.note0": "Alternatif amiodaron untuk VF/TV pulseless setelah ≥2 shock",
+
+  "medDetail.adenosine.route": "IV (antekubital atau sentral)",
+  "medDetail.adenosine.note0": "Segera bilas dengan 20 mL NaCl",
+  "medDetail.adenosine.note1": "Waktu paruh pendek — injeksi cepat",
+
+  "medDetail.bicarb.note0": "Gunakan untuk overdosis trisiklik, asidosis metabolik berat, hiperkalemia",
+
+  "medDetail.calcium.route": "IV (CaCl lewat vena sentral)",
+  "medDetail.calcium.note0": "Indikasi: hiperkalemia, hipokalsemia, overdosis CCB atau Mg",
+
+  "medDetail.magnesium.note0": "Terapi lini pertama untuk torsades de pointes",
+
+  "medDetail.naloxone.route": "IV, IM atau IN",
+  "medDetail.naloxone.note0": "Durasi 45–90 menit — mungkin perlu dosis ulang",
+  "medDetail.naloxone.note1": "Dapat memicu gejala putus zat akut",
+
+  "medDetail.d50.note0": "Konfirmasi hipoglikemia terlebih dahulu",
+  "medDetail.d50.note1": "Bilas jalur IV setelah pemberian",
+
+  "medDetail.dopamine.route": "Infus IV",
+  "medDetail.dopamine.sharedDose": "5–20 mcg/kg/min IV infusion",
+  "medDetail.dopamine.note0": "Rendah (1–5 mcg/kg/min): dopaminergik",
+  "medDetail.dopamine.note1": "Sedang (5–10): inotropik/kronotropik β₁",
+  "medDetail.dopamine.note2": "Tinggi (>10): vasokonstriksi α",
+  "medDetail.dopamine.note3": "Titrasi hingga MAP ≥65 mmHg",
+
+  "medDetail.norepi.route": "Infus IV (vena sentral diutamakan)",
+  "medDetail.norepi.note0": "Vasopressor lini pertama untuk syok septik",
+
+  "medDetail.vaso.route": "Infus IV",
+  "medDetail.vaso.note0": "Tidak ada eskalasi dosis",
+  "medDetail.vaso.note1": "Gunakan sebagai adjuvan norepinefrin",
+
+  "medDetail.procain.route": "Infus IV",
+  "medDetail.procain.note0": "Hentikan jika: QRS melebar >50%, hipotensi, atau aritmia teratasi",
+  "medDetail.procain.note1": "Jangan dikombinasikan dengan amiodaron",
+
+  "medDetail.prbc.note0": "Meningkatkan Hb ≈1 g/dL per unit",
+  "medDetail.prbc.note1": "Pertimbangkan untuk Hb <7 (atau <8 pada pasien ACS/jantung)",
+
+  "medDetail.ffp.note0": "Membalikkan efek warfarin dan defisiensi faktor pembekuan",
+  "medDetail.ffp.note1": "Gunakan rasio 1:1:1 (pRBC:FFP:PLT) pada transfusi masif",
+
+  "medDetail.plt.note0": "Meningkatkan trombosit ≈25–50 k/μL per unit",
+  "medDetail.plt.note1": "Transfusi jika <50 k/μL dengan perdarahan aktif; <10 k/μL profilaksis",
+
+  "medDetail.cryo.note0": "Target fibrinogen >150–200 mg/dL",
+  "medDetail.cryo.note1": "Mengandung: fibrinogen, FVIII, vWF, FXIII",
+
+  "medDetail.albumin.note0": "Gunakan untuk ekspansi volume, SBP, sindrom hepatorenal",
+
+  "medDetail.tranex.note0": "Berikan dalam 3 jam setelah cedera traumatik untuk efek terbaik",
+  "medDetail.tranex.note1": "Menghambat fibrinolisis (antifibrinolitik)",
+
+  "medDetail.shock.note0": "Konfirmasi irama yang dapat di-shock sebelum defibrilasi",
+  "medDetail.shock.note1": "Semua personel menjauh — umumkan sebelum shock",
+  "medDetail.shock.note2": "Lanjutkan CPR segera setelah shock",
+
+  "medDetail.pace.sharedDose": "Rate 60–80 bpm; mulai dari 0 mA, naik 10 mA hingga capture",
+  "medDetail.pace.note0": "Ambang batas capture biasanya 50–90 mA",
+  "medDetail.pace.note1": "Konfirmasi capture mekanis dengan palpasi nadi",
+  "medDetail.pace.note2": "Sedasi/analgesia sangat dianjurkan",
 } as const;
 
 export default id;

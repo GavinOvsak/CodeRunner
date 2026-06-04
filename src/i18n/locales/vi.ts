@@ -158,6 +158,21 @@ const vi = {
   "interventions.search": "Tìm thuốc / máu",
   "interventions.noMatch": "Không tìm thấy.",
   "interventions.dosingInfo": "Thông tin liều",
+  "interventions.searchPlaceholder": "Tìm kiếm can thiệp...",
+  "interventions.noDoses": "Chưa có liều nào được ghi.",
+  "interventions.indicated": "được chỉ định",
+  "interventions.startNow": "▶ Bắt đầu",
+  "interventions.stopNow": "◼ Dừng",
+  "interventions.doseLabel": "Liều {{n}}",
+  "interventions.startLabel": "Bắt đầu {{n}}",
+  "interventions.stopLabel": "Dừng {{n}}",
+  "addIntervention.electrical": "Liệu pháp điện",
+  "addIntervention.meds": "Thuốc",
+  "addIntervention.infusions": "Truyền dịch",
+  "addIntervention.blood": "Sản phẩm máu",
+  "addIntervention.notIndicated.title": "Hiện không được chỉ định",
+  "addIntervention.notIndicated.body": "{{name}} không được khuyến nghị cho tình huống lâm sàng hiện tại. Vẫn dùng?",
+  "addIntervention.giveAnyway": "Vẫn dùng",
 
   "medDetail.dose": "Liều",
   "medDetail.peds": "Trẻ em",
@@ -389,6 +404,103 @@ const vi = {
   "logEntry.cprSync": "Đồng bộ máy đếm nhịp",
   "logEntry.cprRosc": "ROSC — kết thúc mã",
   "logEntry.cprEnd": "Kết thúc mã",
+
+  // ── Med names ──────────────────────────────────────────────
+  "med.epi": "Epinephrine",
+  "med.amio": "Amiodaron",
+  "med.lido": "Lidokain",
+  "med.atropine": "Atropine",
+  "med.adenosine": "Adenosin",
+  "med.bicarb": "Natri Bicarbonate",
+  "med.calcium": "Calcium",
+  "med.magnesium": "Magie",
+  "med.naloxone": "Naloxon",
+  "med.dopamine": "Truyền Dopamine",
+  "med.norepi": "Norepinephrine",
+  "med.vaso": "Vasopressin",
+  "med.procain": "Procainamid",
+  "med.d50": "D50",
+  "med.prbc": "pRBC",
+  "med.prbc.full": "Hồng cầu khối",
+  "med.ffp.full": "Huyết tương tươi đông lạnh",
+  "med.tranex.full": "Axit tranexamic",
+  "med.ffp": "FFP",
+  "med.plt": "Tiểu cầu",
+  "med.cryo": "Kết tủa lạnh",
+  "med.albumin": "Albumin",
+  "med.tranex": "TXA",
+  "med.shock": "Sốc điện",
+  "med.pace": "Tạo nhịp qua da",
+
+  // ── Med detail content ──────────────────────────────────────
+  "medDetail.epi.note0": "Bơm rửa bằng 20 mL NaCl sau mỗi lần tiêm",
+
+  "medDetail.amio.note0": "Cho sau ≥2 lần sốc điện trong VF/TV vô mạch",
+  "medDetail.amio.note1": "VT ổn định: 150 mg trong 10 phút",
+
+  "medDetail.lido.note0": "Thay thế amiodarone cho VF/TV vô mạch sau ≥2 lần sốc điện",
+
+  "medDetail.adenosine.route": "IV (tĩnh mạch khuỷu hoặc trung tâm)",
+  "medDetail.adenosine.note0": "Bơm rửa ngay bằng 20 mL NaCl",
+  "medDetail.adenosine.note1": "Thời gian bán thải ngắn — tiêm nhanh",
+
+  "medDetail.bicarb.note0": "Dùng cho ngộ độc thuốc chống trầm cảm 3 vòng, toan chuyển hóa nặng, tăng kali máu",
+
+  "medDetail.calcium.route": "IV (CaCl qua đường tĩnh mạch trung tâm)",
+  "medDetail.calcium.note0": "Chỉ định: tăng kali máu, hạ canxi máu, ngộ độc CCB hoặc Mg",
+
+  "medDetail.magnesium.note0": "Điều trị hàng đầu cho torsades de pointes",
+
+  "medDetail.naloxone.route": "IV, IM hoặc xịt mũi",
+  "medDetail.naloxone.note0": "Thời gian tác dụng 45–90 phút — có thể cần lặp lại liều",
+  "medDetail.naloxone.note1": "Có thể gây hội chứng cai nghiện cấp tính",
+
+  "medDetail.d50.note0": "Xác nhận hạ đường huyết trước",
+  "medDetail.d50.note1": "Bơm rửa đường truyền IV sau khi dùng",
+
+  "medDetail.dopamine.route": "Truyền IV",
+  "medDetail.dopamine.sharedDose": "5–20 mcg/kg/min IV infusion",
+  "medDetail.dopamine.note0": "Thấp (1–5 mcg/kg/min): tác dụng dopaminergic",
+  "medDetail.dopamine.note1": "Trung bình (5–10): tăng co bóp/tăng nhịp β₁",
+  "medDetail.dopamine.note2": "Cao (>10): co mạch α",
+  "medDetail.dopamine.note3": "Chỉnh liều đến MAP ≥65 mmHg",
+
+  "medDetail.norepi.route": "Truyền IV (đường tĩnh mạch trung tâm)",
+  "medDetail.norepi.note0": "Thuốc vận mạch hàng đầu cho sốc nhiễm khuẩn",
+
+  "medDetail.vaso.route": "Truyền IV",
+  "medDetail.vaso.note0": "Không tăng liều",
+  "medDetail.vaso.note1": "Dùng phối hợp với norepinephrine",
+
+  "medDetail.procain.route": "Truyền IV",
+  "medDetail.procain.note0": "Dừng nếu: QRS rộng >50%, tụt huyết áp hoặc hết loạn nhịp",
+  "medDetail.procain.note1": "Không phối hợp với amiodarone",
+
+  "medDetail.prbc.note0": "Tăng Hb ≈1 g/dL mỗi đơn vị",
+  "medDetail.prbc.note1": "Cân nhắc khi Hb <7 (hoặc <8 ở bệnh nhân ACS/tim mạch)",
+
+  "medDetail.ffp.note0": "Đảo ngược tác dụng warfarin và thiếu hụt yếu tố đông máu",
+  "medDetail.ffp.note1": "Dùng tỉ lệ 1:1:1 (pRBC:FFP:TC) trong truyền máu ồ ạt",
+
+  "medDetail.plt.note0": "Tăng tiểu cầu ≈25–50 k/μL mỗi đơn vị",
+  "medDetail.plt.note1": "Truyền nếu <50 k/μL có chảy máu hoạt động; <10 k/μL dự phòng",
+
+  "medDetail.cryo.note0": "Mục tiêu fibrinogen >150–200 mg/dL",
+  "medDetail.cryo.note1": "Chứa: fibrinogen, FVIII, vWF, FXIII",
+
+  "medDetail.albumin.note0": "Dùng để mở rộng thể tích, SBP, hội chứng gan thận",
+
+  "medDetail.tranex.note0": "Cho trong vòng 3 giờ sau chấn thương để đạt hiệu quả tốt nhất",
+  "medDetail.tranex.note1": "Ức chế tiêu sợi huyết (kháng tiêu sợi huyết)",
+
+  "medDetail.shock.note0": "Xác nhận nhịp có thể sốc điện trước khi phóng điện",
+  "medDetail.shock.note1": "Yêu cầu mọi người đứng xa — thông báo trước khi sốc",
+  "medDetail.shock.note2": "Tiếp tục CPR ngay sau sốc điện",
+
+  "medDetail.pace.sharedDose": "Nhịp 60–80 bpm; bắt đầu 0 mA, tăng 10 mA cho đến khi bắt nhịp",
+  "medDetail.pace.note0": "Ngưỡng bắt nhịp thường 50–90 mA",
+  "medDetail.pace.note1": "Xác nhận bắt nhịp cơ học bằng cách bắt mạch",
+  "medDetail.pace.note2": "Khuyến cáo mạnh mẽ dùng an thần/giảm đau",
 } as const;
 
 export default vi;

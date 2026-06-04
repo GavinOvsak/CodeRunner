@@ -154,6 +154,9 @@ interface CRGaveListProps {
 
 interface CRGaveSearchProps {
   onPick: (key: MedKey) => void;
+  recKeys: Set<MedKey>;
+  patient: Patient;
+  onUpdatePatient: (mut: (p: Patient) => Patient) => void;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -1007,7 +1010,7 @@ export function CRPatientScreen({
               >
                 {t("interventions.section")}
               </h2>
-              <CRGaveSearch onPick={(k) => giveMed(k)} />
+              <CRGaveSearch onPick={(k) => giveMed(k)} recKeys={recKeys} patient={s} onUpdatePatient={update} />
             </div>
 
             {/* List/Grid Container */}
@@ -1141,7 +1144,7 @@ export function CRPatientHeader({
             </button>
           )}
           <button onClick={onOpenLog} style={crIconBtn()}>
-            <CRIcon name="list" size={20} />
+            <CRIcon name="clock-history" size={20} />
           </button>
           <button onClick={onInfo} style={crIconBtn()}>
             <CRIcon name="info" size={20} />
@@ -2186,19 +2189,6 @@ export function CRNextList({
 /** Minimum container width (px) to switch to pill grid layout. */
 const PILL_BREAKPOINT = 480;
 
-function tsToTimeInput(ts: number): string {
-  const d = new Date(ts);
-  return [d.getHours(), d.getMinutes(), d.getSeconds()]
-    .map((n) => n.toString().padStart(2, "0"))
-    .join(":");
-}
-
-function timeInputToTs(timeStr: string, refTs: number): number {
-  const [h = 0, m = 0, s = 0] = timeStr.split(":").map(Number);
-  const d = new Date(refTs);
-  d.setHours(h, m, s, 0);
-  return d.getTime();
-}
 
 export function CRGaveList({
   state,
@@ -2238,12 +2228,7 @@ export function CRGaveList({
     .filter((g) => g.doses.length > 0)
     .sort((a, b) => Math.min(...a.doses) - Math.min(...b.doses))
     .map((g) => g.key);
-  const givenSet = new Set(givenKeys);
-  const recList = [...recKeys].filter((k) => !givenSet.has(k));
-  const stagedKeys = state.gave
-    .filter((g) => g.doses.length === 0 && !recKeys.has(g.key))
-    .map((g) => g.key);
-  const keys = [...givenKeys, ...recList, ...stagedKeys];
+  const keys = givenKeys;
 
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [isPills, setIsPills] = useState(false);
@@ -2438,9 +2423,29 @@ export function CRGaveList({
                   whiteSpace: "nowrap",
                 }}
               >
-                {med?.name || k}
+                {t(`med.${k}`, { defaultValue: med?.name ?? String(k) })}
               </span>
             </div>
+            {/* (?) info button */}
+            <button
+              onClick={(e) => { e.stopPropagation(); setHistoryMed(k); }}
+              style={{
+                width: 26,
+                height: 26,
+                borderRadius: 6,
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "var(--ink-3)",
+                flexShrink: 0,
+                padding: 0,
+              }}
+            >
+              <CRIcon name="question" size={15} color="var(--ink-3)" />
+            </button>
             {/* Right side: elapsed timer for continuous (when active), or time-since-last-dose */}
             {isContinuous ? (
               isActive ? (
@@ -2528,8 +2533,6 @@ function CRMedHistoryModal({
   const doseRow = patient.gave.find((g) => g.key === medKey);
   const isCurrentlyActive = isContinuous && (doseRow?.doses.length ?? 0) % 2 === 1;
 
-  const [newDoseTime, setNewDoseTime] = useState(() => tsToTimeInput(Date.now()));
-
   function deleteEntry(at: number) {
     onUpdatePatient((p) => ({
       ...p,
@@ -2537,19 +2540,6 @@ function CRMedHistoryModal({
         (e) => !(e.type === "med" && e.key === medKey && e.at === at),
       ),
     }));
-  }
-
-  function updateEntryTime(oldAt: number, newTimeStr: string) {
-    const newAt = timeInputToTs(newTimeStr, oldAt);
-    if (!newAt || newAt === oldAt) return;
-    onUpdatePatient((p) => {
-      const newLog = p.log.map((e) =>
-        e.type === "med" && e.key === medKey && e.at === oldAt
-          ? { ...e, at: newAt }
-          : e,
-      );
-      return { ...p, log: [...newLog].sort((a, b) => a.at - b.at) };
-    });
   }
 
   function addDiscreteEntry(at: number) {
@@ -2562,7 +2552,6 @@ function CRMedHistoryModal({
       };
       return { ...p, log: [...p.log, entry].sort((a, b) => a.at - b.at) };
     });
-    setNewDoseTime(tsToTimeInput(Date.now()));
   }
 
   function addContinuousEntry(action: "start" | "stop") {
@@ -2578,20 +2567,9 @@ function CRMedHistoryModal({
     });
   }
 
-  const inputStyle: React.CSSProperties = {
-    flex: 1,
-    padding: "4px 8px",
-    borderRadius: 6,
-    border: "1px solid var(--line)",
-    fontSize: 13,
-    background: "var(--surface)",
-    color: "var(--ink)",
-    fontFamily: "inherit",
-  };
-
   const title = isShock
     ? t("modal.shock.title")
-    : med?.name ?? String(medKey);
+    : t(`med.${medKey}`, { defaultValue: med?.name ?? String(medKey) });
 
   // Build dosing detail content (shown above history)
   let dosingSection: React.ReactNode = null;
@@ -2670,7 +2648,21 @@ function CRMedHistoryModal({
   } else if (detail) {
     const primaryDose =
       detail.sharedDose ?? (isPeds ? detail.pedsDose : detail.adultDose);
+    const primaryDoseKey = detail.sharedDose
+      ? `medDetail.${medKey}.sharedDose`
+      : isPeds
+        ? `medDetail.${medKey}.pedsDose`
+        : `medDetail.${medKey}.adultDose`;
+    const displayDose = primaryDose
+      ? t(primaryDoseKey, { defaultValue: primaryDose })
+      : primaryDose;
     const secondaryDose = isPeds ? detail.adultDose : detail.pedsDose;
+    const secondaryDoseKey = isPeds
+      ? `medDetail.${medKey}.adultDose`
+      : `medDetail.${medKey}.pedsDose`;
+    const displaySecondaryDose = secondaryDose
+      ? t(secondaryDoseKey, { defaultValue: secondaryDose })
+      : secondaryDose;
     const weightCalc =
       isPeds && wt != null && detail.pedsDoseCalc
         ? detail.pedsDoseCalc(wt)
@@ -2678,7 +2670,7 @@ function CRMedHistoryModal({
 
     dosingSection = (
       <>
-        {primaryDose && (
+        {displayDose && (
           <div style={{ marginBottom: 8 }}>
             <span style={{ fontWeight: 700 }}>
               {detail.sharedDose
@@ -2688,7 +2680,7 @@ function CRMedHistoryModal({
                   : t("medDetail.adult")}
               :
             </span>{" "}
-            {primaryDose}
+            {displayDose}
           </div>
         )}
         {weightCalc && (
@@ -2705,12 +2697,12 @@ function CRMedHistoryModal({
             {t("medDetail.for", { wt: wt ?? 0, dose: weightCalc ?? "" })}
           </div>
         )}
-        {!detail.sharedDose && secondaryDose && (
+        {!detail.sharedDose && displaySecondaryDose && (
           <div style={{ marginBottom: 8, color: "var(--ink-3)", fontSize: 12 }}>
             <span style={{ fontWeight: 600 }}>
               {isPeds ? t("medDetail.adult") : t("medDetail.peds")}:
             </span>{" "}
-            {secondaryDose}
+            {displaySecondaryDose}
           </div>
         )}
         {detail.freq && (
@@ -2722,13 +2714,13 @@ function CRMedHistoryModal({
         {detail.route && (
           <div style={{ marginBottom: 6 }}>
             <span style={{ fontWeight: 600 }}>{t("medDetail.route")}:</span>{" "}
-            {detail.route}
+            {t(`medDetail.${medKey}.route`, { defaultValue: detail.route })}
           </div>
         )}
         {detail.notes && detail.notes.length > 0 && (
           <ul style={{ margin: "8px 0 0", paddingLeft: 16, lineHeight: 1.6 }}>
             {detail.notes.map((note, i) => (
-              <li key={i}>{note}</li>
+              <li key={i}>{t(`medDetail.${medKey}.note${i}`, { defaultValue: note })}</li>
             ))}
           </ul>
         )}
@@ -2736,8 +2728,93 @@ function CRMedHistoryModal({
     );
   }
 
+  const count = medEntries.length;
+
+  function addNow() {
+    if (isContinuous) return;
+    addDiscreteEntry(Date.now());
+  }
+
+  function deleteLast() {
+    if (medEntries.length === 0) return;
+    deleteEntry(medEntries[medEntries.length - 1].at);
+  }
+
+  const titleRight = !isContinuous ? (
+    <div style={{ display: "flex", alignItems: "center", gap: 6, marginRight: 6 }}>
+      {count > 0 && (
+        <span
+          className="mono"
+          style={{
+            minWidth: 36,
+            height: 26,
+            padding: "0 8px",
+            borderRadius: 7,
+            background: "#fff",
+            border: `1.5px solid ${isShock ? "var(--shock)" : "var(--accent)"}`,
+            color: isShock ? "var(--shock)" : "var(--accent)",
+            fontSize: 13,
+            fontWeight: 700,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          {count}x
+        </span>
+      )}
+      <div
+        style={{
+          display: "inline-flex",
+          border: "1px solid var(--line-strong)",
+          borderRadius: 7,
+          overflow: "hidden",
+        }}
+      >
+        <button
+          onClick={deleteLast}
+          disabled={count === 0}
+          style={{
+            width: 30,
+            height: 26,
+            background: "transparent",
+            border: "none",
+            borderRight: "1px solid var(--line-strong)",
+            cursor: count === 0 ? "default" : "pointer",
+            fontSize: 16,
+            color: count === 0 ? "var(--ink-3)" : "var(--ink-2)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontWeight: 600,
+          }}
+        >
+          −
+        </button>
+        <button
+          onClick={addNow}
+          style={{
+            width: 30,
+            height: 26,
+            background: "transparent",
+            border: "none",
+            cursor: "pointer",
+            fontSize: 16,
+            color: "var(--accent)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontWeight: 600,
+          }}
+        >
+          +
+        </button>
+      </div>
+    </div>
+  ) : null;
+
   return (
-    <CRModalShell title={title} onClose={onClose}>
+    <CRModalShell title={title} onClose={onClose} titleRight={titleRight}>
       {/* Dosing info */}
       {dosingSection && (
         <>
@@ -2753,79 +2830,76 @@ function CRMedHistoryModal({
       )}
 
       {/* Entry list */}
-      <div style={{ marginBottom: 16 }}>
+      <div>
         {medEntries.length === 0 ? (
           <div style={{ color: "var(--ink-3)", fontSize: 13, padding: "8px 0" }}>
-            No doses recorded yet.
+            {t("interventions.noDoses")}
           </div>
         ) : (
-          medEntries.map((entry, i) => (
-            <div
-              key={entry.at}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                padding: "6px 0",
-                borderBottom:
-                  i < medEntries.length - 1 ? "1px solid var(--line)" : "none",
-              }}
-            >
-              <span
-                style={{
-                  fontSize: 12,
-                  color: "var(--ink-3)",
-                  minWidth: 54,
-                  flexShrink: 0,
-                }}
-              >
-                {isContinuous
-                  ? (i % 2 === 0 ? "Start" : "Stop") +
-                    " " +
-                    (Math.floor(i / 2) + 1)
-                  : `Dose ${i + 1}`}
-              </span>
-              <input
+          medEntries.map((entry, i) => {
+            const n = isContinuous ? Math.floor(i / 2) + 1 : i + 1;
+            const label = isContinuous
+              ? t(i % 2 === 0 ? "interventions.startLabel" : "interventions.stopLabel", { n })
+              : t("interventions.doseLabel", { n });
+            const d = new Date(entry.at);
+            const h = d.getHours();
+            const m = d.getMinutes().toString().padStart(2, "0");
+            const ampm = h >= 12 ? "PM" : "AM";
+            const h12 = h % 12 || 12;
+            const timeLabel = `${h12}:${m} ${ampm}`;
+            return (
+              <div
                 key={entry.at}
-                type="time"
-                step="1"
-                defaultValue={tsToTimeInput(entry.at)}
-                onBlur={(e) => {
-                  if (e.target.value) updateEntryTime(entry.at, e.target.value);
-                }}
-                style={inputStyle}
-              />
-              <button
-                onClick={() => deleteEntry(entry.at)}
                 style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: 6,
-                  background: "transparent",
-                  border: "1px solid var(--line)",
-                  cursor: "pointer",
                   display: "flex",
                   alignItems: "center",
-                  justifyContent: "center",
-                  color: "var(--ink-3)",
-                  fontSize: 16,
-                  flexShrink: 0,
+                  gap: 10,
+                  padding: "7px 0",
+                  borderBottom:
+                    i < medEntries.length - 1 ? "1px solid var(--line)" : "none",
                 }}
               >
-                ×
-              </button>
-            </div>
-          ))
+                <span
+                  className="mono"
+                  style={{ fontSize: 13, color: "var(--ink-2)", flex: 1 }}
+                >
+                  {timeLabel}
+                  <span style={{ color: "var(--ink-3)", marginLeft: 8, fontSize: 12 }}>
+                    {label}
+                  </span>
+                </span>
+                <button
+                  onClick={() => deleteEntry(entry.at)}
+                  style={{
+                    width: 26,
+                    height: 26,
+                    borderRadius: 6,
+                    background: "transparent",
+                    border: "1px solid var(--line)",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "var(--ink-3)",
+                    fontSize: 16,
+                    flexShrink: 0,
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+            );
+          })
         )}
       </div>
 
-      {/* Add controls */}
-      {isContinuous ? (
-        <div style={{ display: "flex", gap: 8 }}>
+      {/* Continuous-only controls */}
+      {isContinuous && (
+        <div style={{ marginTop: 14 }}>
           <button
-            onClick={() => addContinuousEntry("start")}
+            onClick={() => addContinuousEntry(isCurrentlyActive ? "stop" : "start")}
             style={{
-              flex: 1,
+              width: "100%",
               padding: "9px 12px",
               borderRadius: 8,
               border: "1.5px solid var(--accent)",
@@ -2836,50 +2910,7 @@ function CRMedHistoryModal({
               cursor: "pointer",
             }}
           >
-            ▶ Start now
-          </button>
-          <button
-            onClick={() => addContinuousEntry("stop")}
-            style={{
-              flex: 1,
-              padding: "9px 12px",
-              borderRadius: 8,
-              border: "1.5px solid var(--accent)",
-              background: isCurrentlyActive ? "var(--accent)" : "transparent",
-              color: isCurrentlyActive ? "#fff" : "var(--accent)",
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: "pointer",
-            }}
-          >
-            ◼ Stop now
-          </button>
-        </div>
-      ) : (
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <input
-            type="time"
-            step="1"
-            value={newDoseTime}
-            onChange={(e) => e.target.value && setNewDoseTime(e.target.value)}
-            style={inputStyle}
-          />
-          <button
-            onClick={() => addDiscreteEntry(timeInputToTs(newDoseTime, Date.now()))}
-            style={{
-              padding: "6px 14px",
-              borderRadius: 8,
-              border: "1.5px solid var(--accent)",
-              background: "var(--accent)",
-              color: "#fff",
-              fontSize: 13,
-              fontWeight: 700,
-              cursor: "pointer",
-              whiteSpace: "nowrap",
-              flexShrink: 0,
-            }}
-          >
-            + Add
+            {isCurrentlyActive ? t("interventions.stopNow") : t("interventions.startNow")}
           </button>
         </div>
       )}
@@ -2888,173 +2919,483 @@ function CRMedHistoryModal({
 }
 
 // ─────────────────────────────────────────────────────────────
-// CRGaveSearch
+// CRAddInterventionModal — searchable full-modal add screen
 // ─────────────────────────────────────────────────────────────
-export function CRGaveSearch({ onPick }: CRGaveSearchProps) {
+const ADD_SECTIONS: { labelKey: string; cat: string }[] = [
+  { labelKey: "addIntervention.electrical", cat: "Electrical" },
+  { labelKey: "addIntervention.meds", cat: "Code" },
+  { labelKey: "addIntervention.infusions", cat: "Drip" },
+  { labelKey: "addIntervention.blood", cat: "Blood" },
+];
+
+function CRAddInterventionModal({
+  recKeys,
+  patient,
+  onPick,
+  onClose,
+  onUpdatePatient,
+}: {
+  recKeys: Set<MedKey>;
+  patient: Patient;
+  onPick: (key: MedKey) => void;
+  onClose: () => void;
+  onUpdatePatient: (mut: (p: Patient) => Patient) => void;
+}) {
   const { t } = useTranslation();
-  const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
-  const [highlightedIndex, setHighlightedIndex] = useState(0);
-  const ref = useRef<HTMLDivElement>(null);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [confirmKey, setConfirmKey] = useState<MedKey | null>(null);
+  const [historyKey, setHistoryKey] = useState<MedKey | null>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (!open) return;
-    const onDoc = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-        setQ("");
-      }
-    };
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, [open]);
+    searchRef.current?.focus();
+  }, []);
 
-  const results = q.trim()
-    ? CR_MEDS.filter(
-        (m) =>
-          m.name.toLowerCase().includes(q.toLowerCase()) ||
-          m.short.toLowerCase().includes(q.toLowerCase()),
-      )
-    : CR_MEDS;
+  const searching = q.trim().length > 0;
 
-  useEffect(() => {
-    setHighlightedIndex(0);
-  }, [q, open]);
+  function toggleSection(label: string) {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(label)) next.delete(label);
+      else next.add(label);
+      return next;
+    });
+  }
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (results.length === 0) return;
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      setHighlightedIndex((prev) => (prev + 1) % results.length);
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      setHighlightedIndex(
-        (prev) => (prev - 1 + results.length) % results.length,
-      );
-    } else if (e.key === "Enter") {
-      e.preventDefault();
-      const selected = results[highlightedIndex];
-      if (selected) {
-        onPick(selected.key);
-        setOpen(false);
-        setQ("");
-      }
-    } else if (e.key === "Escape") {
-      setOpen(false);
-      setQ("");
+  function isSectionOpen(label: string) {
+    return searching || expanded.has(label);
+  }
+
+  function handleAction(key: MedKey) {
+    const isBlood = CR_MED_BY_KEY[key]?.cat === "Blood";
+    const isContinuousMed = CR_CONTINUOUS_KEYS.has(key);
+    const indicated = recKeys.has(key);
+    const gaveRow = gave.find((g) => g.key === key);
+    const isCurrentlyActive = isContinuousMed && (gaveRow?.doses.length ?? 0) % 2 === 1;
+    // No confirmation needed if: indicated, blood, or stopping an active infusion
+    if (!indicated && !isBlood && !isCurrentlyActive) {
+      setConfirmKey(key);
+    } else {
+      onPick(key);
     }
-  };
+  }
+
+  const gave = patient.gave ?? [];
 
   return (
-    <div ref={ref} style={{ position: "relative" }}>
-      {!open ? (
-        <button
-          onClick={() => setOpen(true)}
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 150,
+        background: "rgba(20,18,12,0.55)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 20,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: "var(--surface)",
+          borderRadius: 16,
+          padding: 0,
+          maxWidth: 440,
+          width: "100%",
+          boxShadow: "0 20px 50px rgba(0,0,0,0.28)",
+          maxHeight: "85vh",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+        }}
+      >
+        {/* Header */}
+        <div
           style={{
-            height: 28,
-            padding: "0 8px",
-            borderRadius: 7,
-            background: "#fff",
-            border: "1px solid var(--line-strong)",
-            color: "var(--ink-2)",
-            display: "inline-flex",
+            display: "flex",
             alignItems: "center",
-            gap: 4,
-            cursor: "pointer",
-            fontSize: 12,
-            fontWeight: 600,
+            gap: 10,
+            padding: "14px 16px 10px",
+            borderBottom: "1px solid var(--line)",
           }}
         >
-          <CRIcon name="plus" size={14} /> {t("common.add")}
-        </button>
-      ) : (
-        <>
           <input
-            autoFocus
+            ref={searchRef}
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={t("interventions.search")}
+            onKeyDown={(e) => e.key === "Escape" && onClose()}
+            placeholder={t("interventions.searchPlaceholder")}
             style={{
-              height: 28,
-              padding: "0 8px",
-              borderRadius: 7,
-              background: "#fff",
-              border: "1px solid var(--accent)",
-              fontSize: 13,
-              width: 170,
+              flex: 1,
+              height: 34,
+              padding: "0 10px",
+              borderRadius: 8,
+              border: "1px solid var(--line-strong)",
+              fontSize: 14,
+              background: "var(--surface)",
+              color: "var(--ink)",
               outline: "none",
               fontFamily: "inherit",
             }}
           />
-          <div
+          <button
+            onClick={onClose}
             style={{
-              position: "absolute",
-              top: "calc(100% + 4px)",
-              right: 0,
-              zIndex: 30,
-              background: "#fff",
-              border: "1px solid var(--line-strong)",
-              borderRadius: 10,
-              padding: 4,
-              boxShadow: "0 12px 32px rgba(0,0,0,0.12)",
-              minWidth: 200,
-              maxHeight: 280,
-              overflowY: "auto",
+              width: 30,
+              height: 30,
+              borderRadius: 8,
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "var(--ink-2)",
+              flexShrink: 0,
             }}
           >
-            {results.length === 0 && (
-              <div style={{ padding: 10, color: "var(--ink-3)", fontSize: 13 }}>
-                {t("interventions.noMatch")}
-              </div>
-            )}
-            {results.map((m, idx) => {
-              const isHighlighted = idx === highlightedIndex;
-              return (
+            <CRIcon name="close" size={18} />
+          </button>
+        </div>
+
+        {/* Sections */}
+        <div style={{ overflowY: "auto", flex: 1 }}>
+          {ADD_SECTIONS.map(({ labelKey, cat }) => {
+            const label = t(labelKey);
+            const allMeds = CR_MEDS.filter((m) => m.cat === cat);
+            const filtered = searching
+              ? allMeds.filter(
+                  (m) =>
+                    m.name.toLowerCase().includes(q.toLowerCase()) ||
+                    m.short.toLowerCase().includes(q.toLowerCase()),
+                )
+              : allMeds;
+            if (filtered.length === 0) return null;
+
+            // Sort: indicated first
+            const sorted = [...filtered].sort((a, b) => {
+              const aRec = recKeys.has(a.key) ? 0 : 1;
+              const bRec = recKeys.has(b.key) ? 0 : 1;
+              return aRec - bRec;
+            });
+
+            const isOpen = isSectionOpen(labelKey);
+
+            return (
+              <div key={labelKey} style={{ borderBottom: "1px solid var(--line)" }}>
+                {/* Section header */}
                 <button
-                  key={m.key}
-                  onClick={() => {
-                    onPick(m.key);
-                    setOpen(false);
-                    setQ("");
-                  }}
-                  onMouseEnter={() => setHighlightedIndex(idx)}
+                  onClick={() => !searching && toggleSection(labelKey)}
                   style={{
+                    width: "100%",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
-                    width: "100%",
-                    padding: "8px 10px",
-                    borderRadius: 6,
-                    background: isHighlighted
-                      ? "var(--accent-soft)"
-                      : "transparent",
+                    padding: "10px 16px",
+                    background: "transparent",
                     border: "none",
-                    fontSize: 14,
-                    fontWeight: 500,
-                    color: "var(--ink)",
+                    cursor: searching ? "default" : "pointer",
                     textAlign: "left",
-                    cursor: "pointer",
                   }}
                 >
-                  <span>{m.name}</span>
                   <span
                     style={{
-                      fontSize: 10,
-                      color: "var(--ink-3)",
+                      fontSize: 11,
+                      fontWeight: 700,
+                      letterSpacing: "0.08em",
                       textTransform: "uppercase",
-                      letterSpacing: "0.06em",
+                      color: "var(--ink-3)",
                     }}
                   >
-                    {m.cat}
+                    {label}
                   </span>
+                  {!searching && (
+                    <span style={{ color: "var(--ink-3)", fontSize: 12 }}>
+                      {isOpen ? "▲" : "▼"}
+                    </span>
+                  )}
                 </button>
-              );
-            })}
+
+                {/* Rows */}
+                {isOpen &&
+                  sorted.map((med) => {
+                    const isBlood = cat === "Blood";
+                    const indicated = recKeys.has(med.key);
+                    const dimmed = !indicated && !isBlood;
+                    const isContinuous = CR_CONTINUOUS_KEYS.has(med.key);
+                    const isShockMed = med.key === "shock";
+                    const gaveRow = gave.find((g) => g.key === med.key);
+                    const count = gaveRow?.doses.length ?? 0;
+                    const isActive = isContinuous && count % 2 === 1;
+                    const hasDetail =
+                      !!MED_DETAILS[med.key] || isShockMed || med.key === "pace";
+
+                    return (
+                      <div
+                        key={med.key}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 10,
+                          padding: "9px 16px",
+                          opacity: dimmed ? 0.45 : 1,
+                          borderTop: "1px solid var(--line)",
+                        }}
+                      >
+                        {/* Name */}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <span
+                            style={{
+                              fontSize: 14,
+                              fontWeight: 600,
+                              color: isShockMed ? "var(--shock)" : "var(--ink)",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 5,
+                            }}
+                          >
+                            {isShockMed && (
+                              <CRIcon name="bolt" size={13} color="var(--shock)" />
+                            )}
+                            {t(`med.${med.key}.full`, { defaultValue: t(`med.${med.key}`, { defaultValue: med.name }) })}
+                            {indicated && (
+                              <span
+                                style={{
+                                  fontSize: 10,
+                                  fontWeight: 700,
+                                  color: "var(--accent)",
+                                  background: "var(--accent-soft)",
+                                  borderRadius: 4,
+                                  padding: "1px 5px",
+                                  letterSpacing: "0.05em",
+                                  textTransform: "uppercase",
+                                }}
+                              >
+                                {t("interventions.indicated")}
+                              </span>
+                            )}
+                          </span>
+                        </div>
+
+                        {/* (?) info button */}
+                        {hasDetail && (
+                          <button
+                            onClick={() => setHistoryKey(med.key)}
+                            style={{
+                              width: 28,
+                              height: 28,
+                              borderRadius: 7,
+                              background: "transparent",
+                              border: "1px solid var(--line)",
+                              cursor: "pointer",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              color: "var(--ink-3)",
+                              flexShrink: 0,
+                            }}
+                          >
+                            <CRIcon name="question" size={15} color="var(--ink-3)" />
+                          </button>
+                        )}
+
+                        {/* Action button */}
+                        {isContinuous ? (
+                          <button
+                            onClick={() => handleAction(med.key)}
+                            style={{
+                              minWidth: 44,
+                              height: 30,
+                              padding: "0 9px",
+                              borderRadius: 7,
+                              background: isActive ? "var(--accent)" : "#fff",
+                              border: `1.5px solid var(--accent)`,
+                              color: isActive ? "#fff" : "var(--accent)",
+                              fontSize: 13,
+                              fontWeight: 700,
+                              cursor: "pointer",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              flexShrink: 0,
+                            }}
+                          >
+                            <CRIcon
+                              name={isActive ? "pause" : "play"}
+                              size={13}
+                              color={isActive ? "#fff" : "var(--accent)"}
+                            />
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleAction(med.key)}
+                            style={{
+                              minWidth: 44,
+                              height: 30,
+                              padding: "0 9px",
+                              borderRadius: 7,
+                              background:
+                                count === 0 && indicated
+                                  ? isShockMed
+                                    ? "var(--shock)"
+                                    : "var(--accent)"
+                                  : "#fff",
+                              border: `1.5px solid ${isShockMed ? "var(--shock)" : "var(--accent)"}`,
+                              color:
+                                count === 0 && indicated
+                                  ? "#fff"
+                                  : isShockMed
+                                    ? "var(--shock)"
+                                    : "var(--accent)",
+                              fontSize: 13,
+                              fontWeight: 700,
+                              cursor: "pointer",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              flexShrink: 0,
+                              fontFamily: "inherit",
+                            }}
+                          >
+                            {count > 0 ? `${count}x` : "+"}
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Confirmation overlay for non-indicated pick */}
+      {confirmKey && (
+        <div
+          onClick={(e) => { e.stopPropagation(); setConfirmKey(null); }}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 160,
+            background: "rgba(20,18,12,0.4)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 20,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "var(--surface)",
+              borderRadius: 14,
+              padding: 20,
+              maxWidth: 300,
+              width: "100%",
+              boxShadow: "0 16px 40px rgba(0,0,0,0.28)",
+            }}
+          >
+            <p style={{ margin: "0 0 6px", fontWeight: 700, fontSize: 15 }}>
+              {t("addIntervention.notIndicated.title")}
+            </p>
+            <p style={{ margin: "0 0 16px", color: "var(--ink-2)", fontSize: 13 }}>
+              {t("addIntervention.notIndicated.body", { name: CR_MED_BY_KEY[confirmKey]?.name })}
+            </p>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                onClick={() => setConfirmKey(null)}
+                style={{
+                  flex: 1,
+                  padding: "9px 0",
+                  borderRadius: 8,
+                  border: "1px solid var(--line-strong)",
+                  background: "transparent",
+                  color: "var(--ink-2)",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                {t("common.cancel")}
+              </button>
+              <button
+                onClick={() => {
+                  onPick(confirmKey);
+                  setConfirmKey(null);
+                }}
+                style={{
+                  flex: 1,
+                  padding: "9px 0",
+                  borderRadius: 8,
+                  border: "none",
+                  background: "var(--accent)",
+                  color: "#fff",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                {t("addIntervention.giveAnyway")}
+              </button>
+            </div>
           </div>
-        </>
+        </div>
+      )}
+
+      {/* History modal for (?) button */}
+      {historyKey && (
+        <CRMedHistoryModal
+          medKey={historyKey}
+          patient={patient}
+          onClose={() => setHistoryKey(null)}
+          onUpdatePatient={onUpdatePatient}
+        />
       )}
     </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// CRGaveSearch
+// ─────────────────────────────────────────────────────────────
+export function CRGaveSearch({ onPick, recKeys, patient, onUpdatePatient }: CRGaveSearchProps) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        style={{
+          height: 28,
+          padding: "0 8px",
+          borderRadius: 7,
+          background: "#fff",
+          border: "1px solid var(--line-strong)",
+          color: "var(--ink-2)",
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 4,
+          cursor: "pointer",
+          fontSize: 12,
+          fontWeight: 600,
+        }}
+      >
+        <CRIcon name="plus" size={14} /> {t("common.add")}
+      </button>
+      {open && (
+        <CRAddInterventionModal
+          recKeys={recKeys}
+          patient={patient}
+          onUpdatePatient={onUpdatePatient}
+          onPick={(k) => { onPick(k); }}
+          onClose={() => setOpen(false)}
+        />
+      )}
+    </>
   );
 }
 
@@ -3092,14 +3433,29 @@ function CRMedDetailModal({
       ? detail.pedsDoseCalc(wt)
       : null;
 
+  const primaryDoseKey = detail.sharedDose
+    ? `medDetail.${medKey}.sharedDose`
+    : isPeds
+      ? `medDetail.${medKey}.pedsDose`
+      : `medDetail.${medKey}.adultDose`;
+  const displayDose = primaryDose
+    ? t(primaryDoseKey, { defaultValue: primaryDose })
+    : primaryDose;
+  const secondaryDoseKey = isPeds
+    ? `medDetail.${medKey}.adultDose`
+    : `medDetail.${medKey}.pedsDose`;
+  const displaySecondaryDose = secondaryDose
+    ? t(secondaryDoseKey, { defaultValue: secondaryDose })
+    : secondaryDose;
+
   return (
-    <CRModalShell title={med?.name ?? String(medKey)} onClose={onClose}>
-      {primaryDose && (
+    <CRModalShell title={t(`med.${medKey}`, { defaultValue: med?.name ?? String(medKey) })} onClose={onClose}>
+      {displayDose && (
         <div style={{ marginBottom: 8 }}>
           <span style={{ fontWeight: 700 }}>
             {detail.sharedDose ? t("medDetail.dose") : isPeds ? t("medDetail.peds") : t("medDetail.adult")}:
           </span>{" "}
-          {primaryDose}
+          {displayDose}
         </div>
       )}
       {weightCalc && (
@@ -3116,10 +3472,10 @@ function CRMedDetailModal({
           {t("medDetail.for", { wt: wt ?? 0, dose: weightCalc ?? "" })}
         </div>
       )}
-      {!detail.sharedDose && secondaryDose && (
+      {!detail.sharedDose && displaySecondaryDose && (
         <div style={{ marginBottom: 8, color: "var(--ink-3)", fontSize: 12 }}>
           <span style={{ fontWeight: 600 }}>{isPeds ? t("medDetail.adult") : t("medDetail.peds")}:</span>{" "}
-          {secondaryDose}
+          {displaySecondaryDose}
         </div>
       )}
       {detail.freq && (
@@ -3129,13 +3485,14 @@ function CRMedDetailModal({
       )}
       {detail.route && (
         <div style={{ marginBottom: 6 }}>
-          <span style={{ fontWeight: 600 }}>{t("medDetail.route")}:</span> {detail.route}
+          <span style={{ fontWeight: 600 }}>{t("medDetail.route")}:</span>{" "}
+          {t(`medDetail.${medKey}.route`, { defaultValue: detail.route })}
         </div>
       )}
       {detail.notes && detail.notes.length > 0 && (
         <ul style={{ margin: "8px 0 0", paddingLeft: 16, lineHeight: 1.6 }}>
           {detail.notes.map((note, i) => (
-            <li key={i}>{note}</li>
+            <li key={i}>{t(`medDetail.${medKey}.note${i}`, { defaultValue: note })}</li>
           ))}
         </ul>
       )}
@@ -3168,10 +3525,14 @@ function CRModalShell({
   title,
   onClose,
   children,
+  titleRight,
+  wide,
 }: {
   title: string;
   onClose: () => void;
   children: React.ReactNode;
+  titleRight?: React.ReactNode;
+  wide?: boolean;
 }) {
   return (
     <div
@@ -3193,7 +3554,7 @@ function CRModalShell({
           background: "var(--surface)",
           borderRadius: 16,
           padding: 18,
-          maxWidth: 360,
+          maxWidth: wide ? 480 : 360,
           width: "100%",
           boxShadow: "0 20px 50px rgba(0,0,0,0.28)",
           maxHeight: "85vh",
@@ -3208,7 +3569,8 @@ function CRModalShell({
             marginBottom: 12,
           }}
         >
-          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{title}</h3>
+          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, flex: 1 }}>{title}</h3>
+          {titleRight}
           <button
             onClick={onClose}
             style={{
