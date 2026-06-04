@@ -115,6 +115,50 @@ const cprRunningHtAckLog: LogEntry[] = [
 assertEqual(hasTask(tasks(cprRunningHtAckLog), 'reversible'), true, 'H\'s & T\'s: still shown after acknowledge (recurring)');
 
 // ─────────────────────────────────────────────────────────────
+// 2-minute rhythm check
+// ─────────────────────────────────────────────────────────────
+
+const cprRunningPeaLog: LogEntry[] = [
+  { at: BASE + 1000, type: 'cpr', event: 'start', cycleNumber: 1 },
+  { at: BASE + 2000, type: 'status', field: 'rhythm', value: 'PEA' },
+];
+
+// CPR starts at BASE+1000; 2-min threshold is BASE+1000+120_000 = BASE+121_000
+// Before 2 min: no rhythm check prompt
+assertEqual(
+  hasTask(tasks(cprRunningPeaLog, BASE + 120_999), 'pause-pulse-check'),
+  false,
+  '2-min rhythm check: NOT shown at 1:59 into CPR',
+);
+
+// At 2 min: rhythm check appears
+assertEqual(
+  hasTask(tasks(cprRunningPeaLog, BASE + 121_000), 'pause-pulse-check'),
+  true,
+  '2-min rhythm check: shown at 2:00 into CPR',
+);
+
+// Shockable rhythm with AED done: pause-to-shock takes precedence, rhythm check suppressed
+// cprRunningVfLog has CPR start at BASE+3000; threshold = BASE+3000+120_000 = BASE+123_000
+const cprRunningVfAed2minTasks = tasks(cprRunningVfLog, BASE + 123_000);
+assertEqual(hasTask(cprRunningVfAed2minTasks, 'pause-to-shock'),    true,  '2-min + VF + AED: pause-to-shock shown');
+assertEqual(hasTask(cprRunningVfAed2minTasks, 'pause-pulse-check'), false, '2-min + VF + AED: rhythm check suppressed (pause-to-shock takes over)');
+
+// After shock delivered before CPR resumed: rhythm check should appear (shockBeforeCpr=true suppresses pause-to-shock)
+const cprAfterShockResumedLog: LogEntry[] = [
+  { at: BASE + 1000,  type: 'status', field: 'pulse', value: 'No' },
+  { at: BASE + 2000,  type: 'task',   taskId: 'get-aed' },
+  { at: BASE + 3000,  type: 'cpr',    event: 'start', cycleNumber: 1 },
+  { at: BASE + 4000,  type: 'status', field: 'rhythm', value: 'VF' },
+  { at: BASE + 5000,  type: 'cpr',    event: 'pause', cycleNumber: 1, elapsed: 2000 },
+  { at: BASE + 6000,  type: 'med',    action: 'give', key: 'shock' },
+  { at: BASE + 7000,  type: 'cpr',    event: 'resume', cycleNumber: 2 },
+];
+const cprAfterShock2min = tasks(cprAfterShockResumedLog, BASE + 7000 + 120_000);
+assertEqual(hasTask(cprAfterShock2min, 'pause-to-shock'),    false, 'After shock + CPR resumed 2min: pause-to-shock suppressed');
+assertEqual(hasTask(cprAfterShock2min, 'pause-pulse-check'), true,  'After shock + CPR resumed 2min: rhythm check shown');
+
+// ─────────────────────────────────────────────────────────────
 // Cardiac Arrest — CPR paused, non-shockable
 // ─────────────────────────────────────────────────────────────
 

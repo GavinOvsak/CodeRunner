@@ -156,6 +156,7 @@ shockBeforeCpr = shockDoses.some(d => d < cpr.cycleStartAt)
 | `pause-to-shock` | `shockable && aedDone && !shockBeforeCpr` |
 | `pause-pulse-check` | `pulse === "Yes"` — label: "Pause CPR (Patient responsive)" if `alert === "Yes"`, else "Pause CPR (Pulse detected)" |
 | `pause-pulse-check` | `rhythm === "NSR" && pulse !== "Yes"` — label: "Pause for Pulse Check" (same task ID, different label) |
+| `pause-pulse-check` | `now − cpr.cycleStartAt >= 120 000 ms && pulse !== "Yes" && rhythm !== "NSR" && !(shockable && aedDone && !shockBeforeCpr)` — label: "Pause for Rhythm Check" (2-minute ACLS cycle) |
 | `airway` | `breathing !== "ETT"` |
 | `access` | `!doneTasks["access"]` |
 | `epi` / `amio` / `lido` | `pulse === "No" && rhythm !== "?"` — per medication readiness rules (§ 1.3.2) |
@@ -487,6 +488,7 @@ Rhythm option sets by context:
 | `pause-to-shock` | `cpr.active && !cpr.pausedAt` | `shockable && aedDone && !shockBeforeCpr` | No |
 | `pause-pulse-check` | `cpr.active && !cpr.pausedAt` | `pulse === "Yes"` | No |
 | `pause-pulse-check` (NSR) | `cpr.active && !cpr.pausedAt` | `rhythm === "NSR" && pulse !== "Yes"` — same task ID as above, label: "Pause for Pulse Check" | No |
+| `pause-pulse-check` (2-min) | `cpr.active && !cpr.pausedAt` | `now − cpr.cycleStartAt >= 120 000 ms && pulse !== "Yes" && rhythm !== "NSR" && !(shockable && aedDone && !shockBeforeCpr)` — label: "Pause for Rhythm Check" | No |
 | `resume-cpr` | `cpr.pausedAt` (branch 3 only) | `pulse === "No" && rhythm !== "?"` | No |
 | `rosc` | `cpr.pausedAt` (branch 1) | `pulse === "Yes"` | No |
 | `pulse-rhythm-check` | `cpr.pausedAt` (branch 2) | `pulse === "?" \|\| rhythm === "?"` (suppressed if shock-during-pause with pulse "No") | No |

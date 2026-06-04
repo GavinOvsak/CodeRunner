@@ -682,6 +682,20 @@ export function crNextTasks(s: Patient, now: number = Date.now()): NextTask[] {
           kind: "critical",
         });
       }
+      const cprElapsed = now - s.cpr.cycleStartAt;
+      if (
+        cprElapsed >= 2 * 60 * 1000 &&
+        s.pulse !== "Yes" &&
+        s.rhythm !== "NSR" &&
+        !(shockable && aedDone && !shockBeforeCpr)
+      ) {
+        push({
+          id: "pause-pulse-check",
+          label: "Pause for Rhythm Check",
+          labelKey: "task.pause-pulse-check.rhythm",
+          kind: "critical",
+        });
+      }
       if (s.breathing !== "ETT" && s.rescuers === "Team")
         push({ id: "airway", label: "Airway → advanced (ETT)" });
       if (!s.doneTasks["access"])
