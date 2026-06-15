@@ -205,6 +205,18 @@ These tasks appear for **all** rhythms when the entry condition is met:
 | `ecg` | Always |
 | `access` | `!doneTasks["access"]` |
 
+**NSR sub-pathway** (`rhythm === "NSR"`):
+
+| Task | Condition | Recurring | Popup |
+|------|-----------|-----------|-------|
+| `sinusTachDiff` | Always | Yes | `sinusTachDiff` |
+| `sepsisBloodCx` | `sepsisSuspected === "Yes"` | No | — |
+| `sepsisAbx` | `sepsisSuspected === "Yes"` | No | — |
+| `sepsisLactate` | `sepsisSuspected === "Yes"` | No | — |
+| `sepsisIVF` | `sepsisSuspected === "Yes"` | No | — |
+
+The `sinusTachDiff` popup shows a two-section differential: **Shock Causes** (sepsis, hemorrhage, PE, anaphylaxis, transfusion reaction, tension pneumo, tamponade, neurogenic) and **Other Causes** (hypoxia, pain/anxiety, fever, hyperthyroidism, drug effect).
+
 **SVT sub-pathway** (`rhythm === "SVT"`):
 
 ```
@@ -460,13 +472,16 @@ The following table summarises when each editable status field is rendered in th
 | `weightKg` | `type === "pediatric"` | — |
 | `glucose` | `alert === "Altered" && pulse !== "No"` | — |
 | `strokeSx` | `alert === "Altered" && pulse !== "No"` | — |
+| `sepsisSuspected` | `pulse === "Yes" && rate === "Fast" && rhythm === "NSR"` | — |
 
 Rhythm option sets by context:
 
 - **Arrest rhythm** options: VF/VT, PEA, Asystole, NSR
-- **Fast pulse** options: SVT, AF, Wide VT
-- **Slow pulse** options: Sinus Bradycardia, 1° AVB, 2° AVB, 3° AVB
+- **Fast pulse** options: NSR, SVT, AF, Wide VT, TdP
+- **Slow pulse** options: NSR, Sinus Bradycardia, 1° AVB, 2° AVB, 3° AVB
 - **Normal pulse** options: NSR, AF
+
+`sepsisSuspected` resets to `"?"` whenever `rate` changes (alongside rhythm reset).
 
 ---
 
@@ -504,6 +519,11 @@ Rhythm option sets by context:
 | `wean-pacing` | `rate === "Fast"` | `given("pace") % 2 === 1` | Yes |
 | `ecg` | `pulse === "Yes" && rate === "Fast" && symptomatic === "Yes"` | Always within tach pathway | No |
 | `access` (tach) | `pulse === "Yes" && rate === "Fast" && symptomatic === "Yes"` | Always within tach pathway | No |
+| `sinusTachDiff` | `pulse === "Yes" && rate === "Fast" && symptomatic === "Yes"` | `rhythm === "NSR"` | Yes |
+| `sepsisBloodCx` | `pulse === "Yes" && rate === "Fast" && symptomatic === "Yes"` | `rhythm === "NSR" && sepsisSuspected === "Yes"` | No |
+| `sepsisAbx` | `pulse === "Yes" && rate === "Fast" && symptomatic === "Yes"` | `rhythm === "NSR" && sepsisSuspected === "Yes"` | No |
+| `sepsisLactate` | `pulse === "Yes" && rate === "Fast" && symptomatic === "Yes"` | `rhythm === "NSR" && sepsisSuspected === "Yes"` | No |
+| `sepsisIVF` | `pulse === "Yes" && rate === "Fast" && symptomatic === "Yes"` | `rhythm === "NSR" && sepsisSuspected === "Yes"` | No |
 | `adenosine` | `pulse === "Yes" && rate === "Fast" && symptomatic === "Yes"` | `rhythm === "SVT" && adenoGiven < 3` | No |
 | `amio` (tach) | `pulse === "Yes" && rate === "Fast" && symptomatic === "Yes"` | `rhythm === "WideTach" && amioReadyTach` | No |
 | `cardiovert` | `pulse === "Yes" && rate === "Fast" && symptomatic === "Yes"` | `rhythm ∈ {AF, SVT, WideTach}` | No |

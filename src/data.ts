@@ -277,6 +277,7 @@ export const STATUS_FIELD_LABELS: Record<StatusField, string> = {
   strokeSx: "Stroke Sx",
   symptomatic: "Symptomatic",
   weight: "Weight",
+  sepsisSuspected: "Sepsis Concern",
 };
 
 export const TASK_LABELS: Record<TaskId, string> = {
@@ -319,6 +320,11 @@ export const TASK_LABELS: Record<TaskId, string> = {
   "check-weight": "Enter Patient Weight",
   "check-rescuers": "Confirm Rescuers",
   "wean-pacing": "Wean Transcutaneous Pacing",
+  sinusTachDiff: "Sinus Tachycardia Differential",
+  sepsisBloodCx: "Blood cultures × 2 (before antibiotics)",
+  sepsisAbx: "Broad-spectrum antibiotics within 1 hour",
+  sepsisLactate: "Check serum lactate",
+  sepsisIVF: "30 mL/kg IV crystalloid",
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -349,9 +355,14 @@ export const TASK_PRIORITY: TaskId[] = [
   "access",
   "reversible",
   "check-rescuers",
-  // Tachycardia
+  // Tachycardia — rhythm-specific
   "ecg",
   "adenosine",
+  "sinusTachDiff",
+  "sepsisBloodCx",
+  "sepsisAbx",
+  "sepsisLactate",
+  "sepsisIVF",
   // Bradycardia
   "atropine",
   "pace",
@@ -743,6 +754,15 @@ export function crNextTasks(s: Patient, now: number = Date.now()): NextTask[] {
   if (s.pulse === "Yes" && s.rate === "Fast" && s.symptomatic === "Yes") {
     push({ id: "ecg", label: "12-Lead ECG" });
     push({ id: "access", label: "Obtain IV / IO Access" });
+    if (s.rhythm === "NSR") {
+      push({ id: "sinusTachDiff", label: "Sinus Tachycardia Differential", recurring: true, popup: "sinusTachDiff" });
+      if (s.sepsisSuspected === "Yes") {
+        push({ id: "sepsisBloodCx", label: "Blood cultures × 2 (before antibiotics)", kind: "critical" });
+        push({ id: "sepsisAbx",     label: "Broad-spectrum antibiotics within 1 hour", kind: "critical" });
+        push({ id: "sepsisLactate", label: "Check serum lactate" });
+        push({ id: "sepsisIVF",     label: "30 mL/kg IV crystalloid" });
+      }
+    }
     if (s.rhythm === "SVT") {
       const adenoGiven = given("adenosine");
       if (adenoGiven < 3) {

@@ -33,11 +33,13 @@ export type TaskId =
   | "glucose" | "d50" | "check-stroke-sx" | "fast" | "ct"
   | "choking-cycles" | "reassess-responsiveness"
   | "check-rhythm" | "check-symptomatic" | "check-weight" | "check-rescuers"
-  | "wean-pacing";
+  | "wean-pacing"
+  | "sinusTachDiff" | "sepsisBloodCx" | "sepsisAbx" | "sepsisLactate" | "sepsisIVF";
 
 export type StatusField =
   | "alert" | "breathing" | "pulse" | "rate" | "rhythm"
-  | "rescuers" | "glucose" | "strokeSx" | "symptomatic" | "weight";
+  | "rescuers" | "glucose" | "strokeSx" | "symptomatic" | "weight"
+  | "sepsisSuspected";
 
 // ─────────────────────────────────────────────────────────────
 // Clinical value types
@@ -56,6 +58,7 @@ export type PatientType = "adult" | "pediatric";
 export type RescuersValue = "?" | "One" | "Two" | "Team";
 export type GlucoseValue = "?" | "Low" | "Normal" | "High";
 export type StrokeSxValue = "?" | "Yes" | "No";
+export type SepsisSuspectedValue = "?" | "No" | "Yes";
 
 // ─────────────────────────────────────────────────────────────
 // Log entry — discriminated union (no free-text parsing needed)
@@ -71,9 +74,10 @@ export type StatusLogEntry = { at: number; type: "status" } & (
   | { field: "rhythm";      value: RhythmValue }
   | { field: "rescuers";    value: RescuersValue }
   | { field: "glucose";     value: GlucoseValue }
-  | { field: "strokeSx";    value: StrokeSxValue }
-  | { field: "symptomatic"; value: SymptomaticValue }
-  | { field: "weight";      value: number }
+  | { field: "strokeSx";         value: StrokeSxValue }
+  | { field: "symptomatic";      value: SymptomaticValue }
+  | { field: "weight";           value: number }
+  | { field: "sepsisSuspected";  value: SepsisSuspectedValue }
 );
 
 export type MedLogEntry = { at: number; type: "med" } & (
@@ -131,6 +135,7 @@ export interface Patient {
   rescuers: RescuersValue;
   glucose: GlucoseValue;
   strokeSx: StrokeSxValue;
+  sepsisSuspected: SepsisSuspectedValue;
   weightKg: number | null;
   cpr: CPRState;
   gave: DoseEntry[];
@@ -162,7 +167,7 @@ export interface NextTask {
   medKey?: MedKey;
   need?: "alert" | "breathing" | "pulse" | "rate" | "rhythm" | "symptomatic" | "rescuers" | "weightKg" | "glucose" | "strokeSx";
   recurring?: boolean;
-  popup?: "shock" | "ht" | "strokeSx" | "strokeScale" | "rhythm" | "rescueBreaths" | "choking";
+  popup?: "shock" | "ht" | "strokeSx" | "strokeScale" | "rhythm" | "rescueBreaths" | "choking" | "sinusTachDiff";
 }
 
 export type DropdownOptionObj = {

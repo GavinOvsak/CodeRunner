@@ -23,6 +23,7 @@ import type {
   RescuersValue,
   GlucoseValue,
   StrokeSxValue,
+  SepsisSuspectedValue,
   MedKey,
   DiscreteMedKey,
   ContinuousMedKey,
@@ -90,12 +91,14 @@ function useCROptions() {
       { value: "NSR", label: "NSR" },
     ],
     CR_OPTS_RHYTHM_TACH: [
+      { value: "NSR", label: "NSR" },
       { value: "SVT", label: "SVT" },
       { value: "AF", label: "AF" },
       { value: "WideTach", label: t("opt.wideVT") },
       { value: "TdP", label: "TdP" },
     ],
     CR_OPTS_RHYTHM_BRADY: [
+      { value: "NSR", label: "NSR" },
       { value: "SinusBrady", label: t("opt.sinusBrady") },
       { value: "AVB1", label: "1°" },
       { value: "AVB2", label: "2°" },
@@ -281,6 +284,7 @@ export function CRPatientScreen({
     | "symptomatic"
     | "rescueBreaths"
     | "choking"
+    | "sinusTachDiff"
     | null
   >(null);
   const [fadingTasks, setFadingTasks] = useState<Record<string, boolean>>({});
@@ -431,6 +435,10 @@ export function CRPatientScreen({
   function setStrokeSx(v: string) {
     if (v === s.strokeSx) return;
     log({ type: "status", field: "strokeSx", value: v as StrokeSxValue });
+  }
+  function setSepsisSuspected(v: string) {
+    if (v === s.sepsisSuspected) return;
+    log({ type: "status", field: "sepsisSuspected", value: v as SepsisSuspectedValue });
   }
   function setWeightKg(raw: string) {
     const v = raw === "" ? null : parseFloat(raw);
@@ -853,6 +861,26 @@ export function CRPatientScreen({
                   tone="auto"
                   flashRedKey={flashTargets.has("rhythm") ? flashKey : null}
                   wrapGroup
+                />
+              </CRStatusRow>
+            </AnimatedReveal>
+            {/* Sepsis Concern — shown when sinus tachycardia is identified */}
+            <AnimatedReveal visible={s.pulse === "Yes" && s.rate === "Fast" && s.rhythm === "NSR"}>
+              <CRStatusRow
+                label="Sepsis Concern?"
+                uncertain={s.sepsisSuspected === "?"}
+                flashKey={flashTargets.has("sepsisSuspected") ? flashKey : null}
+              >
+                <CRDropdown
+                  value={s.sepsisSuspected}
+                  options={[
+                    { value: "Yes", label: t("common.yes") },
+                    { value: "No", label: t("common.no") },
+                  ]}
+                  onChange={setSepsisSuspected}
+                  tone="auto"
+                  buttonGroup
+                  flashRedKey={flashTargets.has("sepsisSuspected") ? flashKey : null}
                 />
               </CRStatusRow>
             </AnimatedReveal>
@@ -2150,7 +2178,8 @@ export function CRNextList({
                     | "rhythm"
                     | "symptomatic"
                     | "rescueBreaths"
-                    | "choking")
+                    | "choking"
+                    | "sinusTachDiff")
             }
             patient={patient}
             onClose={() => setActiveTask(null)}
@@ -3614,7 +3643,8 @@ export function CRPopupModal({
     | "rhythm"
     | "symptomatic"
     | "rescueBreaths"
-    | "choking";
+    | "choking"
+    | "sinusTachDiff";
   patient: Patient;
   onClose: () => void;
   onTrigger?: () => void;
@@ -3754,6 +3784,44 @@ export function CRPopupModal({
               <li>{t("modal.ht.toxins")}</li>
               <li>{t("modal.ht.pulmonary")}</li>
               <li>{t("modal.ht.coronary")}</li>
+            </ul>
+          </div>
+        </div>
+      </CRModalShell>
+    );
+  }
+
+  if (type === "sinusTachDiff") {
+    return (
+      <CRModalShell title="Sinus Tachycardia Differential" onClose={onClose}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: "0 16px",
+          }}
+        >
+          <div>
+            <p style={{ marginTop: 0, fontWeight: 600 }}>Shock Causes</p>
+            <ul style={{ margin: 0, paddingLeft: 16 }}>
+              <li>Sepsis / Septic shock</li>
+              <li>Hemorrhage / Hypovolemia</li>
+              <li>Pulmonary embolism</li>
+              <li>Anaphylaxis / Allergic reaction</li>
+              <li>Transfusion reaction (TRALI/TACO)</li>
+              <li>Tension pneumothorax</li>
+              <li>Cardiac tamponade</li>
+              <li>Neurogenic shock</li>
+            </ul>
+          </div>
+          <div>
+            <p style={{ marginTop: 0, fontWeight: 600 }}>Other Causes</p>
+            <ul style={{ margin: 0, paddingLeft: 16 }}>
+              <li>Hypoxia / hypercapnia</li>
+              <li>Pain / anxiety</li>
+              <li>Fever / infection (non-septic)</li>
+              <li>Hyperthyroidism / thyroid storm</li>
+              <li>Drug effect (stimulants, sympathomimetics)</li>
             </ul>
           </div>
         </div>
