@@ -29,6 +29,7 @@ export function reconstructStateFromLog(p: Patient): Patient {
     rescuers: "?",
     glucose: "?",
     strokeSx: "?",
+    sepsisSuspected: "?",
     weightKg: null,
     cpr: {
       active: false,
@@ -76,7 +77,10 @@ export function reconstructStateFromLog(p: Patient): Patient {
             }
             break;
           case "rate":
-            if (entry.value !== base.rate) base.rhythm = "?";
+            if (entry.value !== base.rate) {
+              base.rhythm = "?";
+              base.sepsisSuspected = "?";
+            }
             base.rate = entry.value;
             break;
           case "rhythm": {
@@ -100,6 +104,9 @@ export function reconstructStateFromLog(p: Patient): Patient {
             break;
           case "strokeSx":
             base.strokeSx = entry.value;
+            break;
+          case "sepsisSuspected":
+            base.sepsisSuspected = entry.value;
             break;
           case "symptomatic":
             base.symptomatic = entry.value;

@@ -68,6 +68,7 @@ export function makeBlankPatient(type: PatientType, name?: string): Patient {
     rescuers: '?',
     glucose: '?',
     strokeSx: '?',
+    sepsisSuspected: '?',
     weightKg: null,
     cpr: { active: false, cycleNumber: 0, cycleStartAt: 0, pausedAt: null, metronomeAnchor: 0 },
     gave: [],
