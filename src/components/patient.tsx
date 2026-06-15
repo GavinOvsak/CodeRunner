@@ -3023,9 +3023,9 @@ function CRAddInterventionModal({
         zIndex: 150,
         background: "rgba(20,18,12,0.55)",
         display: "flex",
-        alignItems: "center",
+        alignItems: "flex-start",
         justifyContent: "center",
-        padding: 20,
+        padding: "16px 20px 20px",
       }}
     >
       <div
