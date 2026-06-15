@@ -868,7 +868,7 @@ export function CRPatientScreen({
             {/* Sepsis Concern — shown when sinus tachycardia is identified */}
             <AnimatedReveal visible={s.pulse === "Yes" && s.rate === "Fast" && s.rhythm === "NSR"}>
               <CRStatusRow
-                label="Sepsis Concern?"
+                label={t("field.sepsisSuspected")}
                 uncertain={s.sepsisSuspected === "?"}
                 flashKey={flashTargets.has("sepsisSuspected") ? flashKey : null}
               >
@@ -3796,7 +3796,7 @@ export function CRPopupModal({
 
   if (type === "sinusTachDiff") {
     return (
-      <CRModalShell title="Sinus Tachycardia Differential" onClose={onClose}>
+      <CRModalShell title={t("modal.sinusTachDiff.title")} onClose={onClose}>
         <div
           style={{
             display: "grid",
@@ -3805,26 +3805,26 @@ export function CRPopupModal({
           }}
         >
           <div>
-            <p style={{ marginTop: 0, fontWeight: 600 }}>Shock Causes</p>
+            <p style={{ marginTop: 0, fontWeight: 600 }}>{t("modal.sinusTachDiff.shockHeading")}</p>
             <ul style={{ margin: 0, paddingLeft: 16 }}>
-              <li>Sepsis / Septic shock</li>
-              <li>Hemorrhage / Hypovolemia</li>
-              <li>Pulmonary embolism</li>
-              <li>Anaphylaxis / Allergic reaction</li>
-              <li>Transfusion reaction (TRALI/TACO)</li>
-              <li>Tension pneumothorax</li>
-              <li>Cardiac tamponade</li>
-              <li>Neurogenic shock</li>
+              <li>{t("modal.sinusTachDiff.sepsis")}</li>
+              <li>{t("modal.sinusTachDiff.hemorrhage")}</li>
+              <li>{t("modal.sinusTachDiff.pe")}</li>
+              <li>{t("modal.sinusTachDiff.anaphylaxis")}</li>
+              <li>{t("modal.sinusTachDiff.transfusion")}</li>
+              <li>{t("modal.sinusTachDiff.tension")}</li>
+              <li>{t("modal.sinusTachDiff.tamponade")}</li>
+              <li>{t("modal.sinusTachDiff.neurogenic")}</li>
             </ul>
           </div>
           <div>
-            <p style={{ marginTop: 0, fontWeight: 600 }}>Other Causes</p>
+            <p style={{ marginTop: 0, fontWeight: 600 }}>{t("modal.sinusTachDiff.otherHeading")}</p>
             <ul style={{ margin: 0, paddingLeft: 16 }}>
-              <li>Hypoxia / hypercapnia</li>
-              <li>Pain / anxiety</li>
-              <li>Fever / infection (non-septic)</li>
-              <li>Hyperthyroidism / thyroid storm</li>
-              <li>Drug effect (stimulants, sympathomimetics)</li>
+              <li>{t("modal.sinusTachDiff.hypoxia")}</li>
+              <li>{t("modal.sinusTachDiff.pain")}</li>
+              <li>{t("modal.sinusTachDiff.fever")}</li>
+              <li>{t("modal.sinusTachDiff.thyroid")}</li>
+              <li>{t("modal.sinusTachDiff.drug")}</li>
             </ul>
           </div>
         </div>
@@ -3834,18 +3834,17 @@ export function CRPopupModal({
 
   if (type === "lactate") {
     return (
-      <CRModalShell title="Serum Lactate" onClose={onClose}>
+      <CRModalShell title={t("modal.lactate.title")} onClose={onClose}>
         <p style={{ marginTop: 0, marginBottom: 8 }}>
-          Lactate reflects tissue oxygen debt — elevated levels identify occult
-          hypoperfusion even when blood pressure appears normal.
+          {t("modal.lactate.intro")}
         </p>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
           <tbody>
-            {[
-              ["< 2 mmol/L", "Normal", "var(--ink)"],
-              ["2 – 4 mmol/L", "Elevated — suggests hypoperfusion; resuscitate and recheck", "var(--amber, #d97706)"],
-              ["≥ 4 mmol/L", "Septic shock criteria (even without hypotension)", "var(--red)"],
-            ].map(([range, meaning, color]) => (
+            {([
+              ["< 2 mmol/L", t("modal.lactate.normal"), "var(--ink)"],
+              ["2 – 4 mmol/L", t("modal.lactate.elevated"), "var(--amber, #d97706)"],
+              ["≥ 4 mmol/L", t("modal.lactate.septicShock"), "var(--red)"],
+            ] as [string, string, string][]).map(([range, meaning, color]) => (
               <tr key={range} style={{ borderBottom: "1px solid var(--line)" }}>
                 <td style={{ padding: "6px 8px 6px 0", fontWeight: 600, color, whiteSpace: "nowrap" }}>{range}</td>
                 <td style={{ padding: "6px 0 6px 8px", color: "var(--ink-2)" }}>{meaning}</td>
@@ -3854,8 +3853,7 @@ export function CRPopupModal({
           </tbody>
         </table>
         <p style={{ marginTop: 10, marginBottom: 0, color: "var(--ink-3)", fontSize: 12 }}>
-          If initial lactate ≥ 2: repeat within 2 hours — target &gt; 10% clearance as a sign of response.
-          Part of CMS SEP-1 Hour-1 Bundle.
+          {t("modal.lactate.footer")}
         </p>
         {onTrigger && triggerLabel && (
           <button

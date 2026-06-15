@@ -65,6 +65,7 @@ const en = {
   "field.weight": "Weight",
   "field.glucose": "Glucose",
   "field.strokeSx": "Stroke Sx",
+  "field.sepsisSuspected": "Sepsis Concern?",
   "field.rate": "Rate",
 
   // Status field labels (used in log formatting)
@@ -78,6 +79,7 @@ const en = {
   "statusField.strokeSx": "Stroke Sx",
   "statusField.symptomatic": "Symptomatic",
   "statusField.weight": "Weight",
+  "statusField.sepsisSuspected": "Sepsis Concern",
 
   // Dropdown options
   "opt.altered": "Altered",
@@ -268,6 +270,11 @@ const en = {
   "task.check-weight": "Enter Patient Weight",
   "task.check-rescuers": "Confirm Rescuers",
   "task.wean-pacing": "Wean Transcutaneous Pacing",
+  "task.sinusTachDiff": "Sinus Tachycardia Differential",
+  "task.sepsisBloodCx": "Blood cultures × 2 (before antibiotics)",
+  "task.sepsisAbx": "Broad-spectrum antibiotics within 1 hour",
+  "task.sepsisLactate": "Check serum lactate",
+  "task.sepsisIVF": "30 mL/kg IV crystalloid",
 
   // ── Modals ───────────────────────────────────────────────────
 
@@ -305,6 +312,30 @@ const en = {
   "modal.ht.toxins": "Toxins",
   "modal.ht.pulmonary": "Thrombosis, pulmonary",
   "modal.ht.coronary": "Thrombosis, coronary",
+
+  "modal.sinusTachDiff.title": "Sinus Tachycardia Differential",
+  "modal.sinusTachDiff.shockHeading": "Shock Causes",
+  "modal.sinusTachDiff.otherHeading": "Other Causes",
+  "modal.sinusTachDiff.sepsis": "Sepsis / Septic shock",
+  "modal.sinusTachDiff.hemorrhage": "Hemorrhage / Hypovolemia",
+  "modal.sinusTachDiff.pe": "Pulmonary embolism",
+  "modal.sinusTachDiff.anaphylaxis": "Anaphylaxis / Allergic reaction",
+  "modal.sinusTachDiff.transfusion": "Transfusion reaction (TRALI/TACO)",
+  "modal.sinusTachDiff.tension": "Tension pneumothorax",
+  "modal.sinusTachDiff.tamponade": "Cardiac tamponade",
+  "modal.sinusTachDiff.neurogenic": "Neurogenic shock",
+  "modal.sinusTachDiff.hypoxia": "Hypoxia / hypercapnia",
+  "modal.sinusTachDiff.pain": "Pain / anxiety",
+  "modal.sinusTachDiff.fever": "Fever / infection (non-septic)",
+  "modal.sinusTachDiff.thyroid": "Hyperthyroidism / thyroid storm",
+  "modal.sinusTachDiff.drug": "Drug effect (stimulants, sympathomimetics)",
+
+  "modal.lactate.title": "Serum Lactate",
+  "modal.lactate.intro": "Lactate reflects tissue oxygen debt — elevated levels identify occult hypoperfusion even when blood pressure appears normal.",
+  "modal.lactate.normal": "Normal",
+  "modal.lactate.elevated": "Elevated — suggests hypoperfusion; resuscitate and recheck",
+  "modal.lactate.septicShock": "Septic shock criteria (even without hypotension)",
+  "modal.lactate.footer": "If initial lactate ≥ 2: repeat within 2 hours — target > 10% clearance as a sign of response. Part of CMS SEP-1 Hour-1 Bundle.",
 
   // Stroke symptoms modal
   "modal.strokeSx.title": "Stroke Symptoms",
