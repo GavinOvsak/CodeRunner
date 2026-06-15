@@ -303,7 +303,14 @@ const svtLog: LogEntry[] = [
   { at: BASE + 4000, type: 'status', field: 'rhythm',      value: 'SVT' },
 ];
 const svtTasks = tasks(svtLog);
-assertEqual(hasTask(svtTasks, 'ecg'),      true, 'SVT: ECG shown');
+// ECG shown only when rhythm is unknown — once rhythm is set, it's already been done
+const tachUnknownRhythmTasks = tasks([
+  { at: BASE + 1000, type: 'status', field: 'pulse',       value: 'Yes' },
+  { at: BASE + 2000, type: 'status', field: 'rate',        value: 'Fast' },
+  { at: BASE + 3000, type: 'status', field: 'symptomatic', value: 'Yes' },
+]);
+assertEqual(hasTask(tachUnknownRhythmTasks, 'ecg'), true,  'Tach unknown rhythm: ECG shown');
+assertEqual(hasTask(svtTasks, 'ecg'),               false, 'SVT identified: ECG not shown');
 assertEqual(hasTask(svtTasks, 'access'),   true, 'SVT: access shown');
 assertEqual(hasTask(svtTasks, 'adenosine'), true, 'SVT: adenosine shown');
 
