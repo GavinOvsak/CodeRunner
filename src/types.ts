@@ -167,7 +167,7 @@ export interface NextTask {
   medKey?: MedKey;
   need?: "alert" | "breathing" | "pulse" | "rate" | "rhythm" | "symptomatic" | "rescuers" | "weightKg" | "glucose" | "strokeSx";
   recurring?: boolean;
-  popup?: "shock" | "ht" | "strokeSx" | "strokeScale" | "rhythm" | "rescueBreaths" | "choking" | "sinusTachDiff";
+  popup?: "shock" | "ht" | "strokeSx" | "strokeScale" | "rhythm" | "rescueBreaths" | "choking" | "sinusTachDiff" | "lactate";
 }
 
 export type DropdownOptionObj = {

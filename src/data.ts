@@ -752,14 +752,14 @@ export function crNextTasks(s: Patient, now: number = Date.now()): NextTask[] {
 
   // ===== Tachycardia with a pulse =====
   if (s.pulse === "Yes" && s.rate === "Fast" && s.symptomatic === "Yes") {
-    push({ id: "ecg", label: "12-Lead ECG" });
+    if (s.rhythm === "?") push({ id: "ecg", label: "12-Lead ECG" });
     push({ id: "access", label: "Obtain IV / IO Access" });
     if (s.rhythm === "NSR") {
       push({ id: "sinusTachDiff", label: "Sinus Tachycardia Differential", recurring: true, popup: "sinusTachDiff" });
       if (s.sepsisSuspected === "Yes") {
         push({ id: "sepsisBloodCx", label: "Blood cultures × 2 (before antibiotics)", kind: "critical" });
         push({ id: "sepsisAbx",     label: "Broad-spectrum antibiotics within 1 hour", kind: "critical" });
-        push({ id: "sepsisLactate", label: "Check serum lactate" });
+        push({ id: "sepsisLactate", label: "Check serum lactate", popup: "lactate" });
         push({ id: "sepsisIVF",     label: "30 mL/kg IV crystalloid" });
       }
     }
