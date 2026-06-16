@@ -58,7 +58,7 @@ const zh = {
   "field.weight": "体重",
   "field.glucose": "血糖",
   "field.strokeSx": "卒中症状",
-  "field.sepsisSuspected": "Sepsis Concern?",
+  "field.sepsisSuspected": "Sepsis Concern",
   "field.rate": "频率",
 
   "statusField.alert": "意识",

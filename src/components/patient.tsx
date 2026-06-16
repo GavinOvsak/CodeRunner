@@ -380,6 +380,25 @@ export function CRPatientScreen({
   const tasks = crNextTasks(s, taskNow);
   const recKeys = crRecommendedMedKeys(tasks);
 
+  // Undo the last task log entry
+  const lastTaskLogIdx = s.log.reduce((acc, e, i) => e.type === "task" ? i : acc, -1);
+  const canUndo = lastTaskLogIdx !== -1;
+  function undoLastTask() {
+    if (lastTaskLogIdx === -1) return;
+    const taskEntry = s.log[lastTaskLogIdx] as { type: "task"; taskId: TaskId };
+    const taskId = taskEntry.taskId;
+    update((p) => {
+      const idx = p.log.reduce((acc, e, i) => e.type === "task" ? i : acc, -1);
+      if (idx === -1) return p;
+      return { ...p, log: [...p.log.slice(0, idx), ...p.log.slice(idx + 1)] };
+    });
+    setFadingTasks((prev) => {
+      const next = { ...prev };
+      delete next[taskId];
+      return next;
+    });
+  }
+
   // Status field setters — log entries drive all state via reconstructStateFromLog
   function setAlert(v: string) {
     if (v === s.alert) return;
@@ -530,10 +549,12 @@ export function CRPatientScreen({
 
     if (t.id === "start-cpr") {
       log({ type: "cpr", event: "start", cycleNumber: 1 });
+      hideTask(t.id);
       return;
     }
     if (t.id === "resume-cpr") {
       log({ type: "cpr", event: "resume", cycleNumber: s.cpr.cycleNumber + 1 });
+      hideTask(t.id);
       return;
     }
     if (t.id === "rosc") {
@@ -544,6 +565,7 @@ export function CRPatientScreen({
     }
     if (t.id === "pause-pulse-check" || t.id === "pause-to-shock") {
       toggleCprPause();
+      hideTask(t.id);
       return;
     }
     if (t.id === "pulse-rhythm-check") {
@@ -552,6 +574,7 @@ export function CRPatientScreen({
     }
     if (t.id === "pace") {
       giveMed("pace");
+      hideTask(t.id);
       return;
     }
     if (t.id === "get-aed") {
@@ -571,14 +594,17 @@ export function CRPatientScreen({
     }
     if (t.id === "shock") {
       giveMed("shock");
+      hideTask(t.id);
       return;
     }
     if (t.id === "cardiovert") {
       giveMed("shock");
+      hideTask(t.id);
       return;
     }
     if (t.kind === "med" && t.medKey) {
       giveMed(t.medKey);
+      hideTask(t.id);
       return;
     }
 
@@ -986,7 +1012,35 @@ export function CRPatientScreen({
             </AnimatedReveal>
           </CRSection>
 
-          <CRSection className="cr-s-next" title={t("nextSteps.section")}>
+          <CRSection
+            className="cr-s-next"
+            title={t("nextSteps.section")}
+            right={
+              canUndo ? (
+                <button
+                  onClick={undoLastTask}
+                  title={t("common.undo")}
+                  aria-label={t("common.undo")}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: "4px 6px",
+                    borderRadius: 7,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
+                    color: "var(--accent)",
+                    fontSize: 12,
+                    fontWeight: 600,
+                  }}
+                >
+                  <CRIcon name="undo" size={14} color="var(--accent)" />
+                  {t("common.undo")}
+                </button>
+              ) : undefined
+            }
+          >
             <CRNextList
               tasks={tasks}
               fading={fadingTasks}
@@ -1978,6 +2032,7 @@ export function CRNextList({
   const { t: tr } = useTranslation();
   const [activeTask, setActiveTask] = useState<NextTask | null>(null);
 
+  // Enter animation tracking
   const isFirstRender = useRef(true);
   const prevTaskIds = useRef<Set<string>>(new Set());
   const newTaskIds = useMemo(() => {
@@ -1993,7 +2048,40 @@ export function CRNextList({
     prevTaskIds.current = new Set(tasks.map((t) => t.id));
   }, [tasks]);
 
-  if (tasks.length === 0) {
+  // Exit animation tracking — keep dismissed tasks visible while they fade out
+  const [exitingTasks, setExitingTasks] = useState<Map<string, NextTask>>(new Map());
+  const prevTaskMapRef = useRef<Map<string, NextTask>>(new Map());
+  const exitingTimeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  useEffect(() => () => { exitingTimeoutsRef.current.forEach(clearTimeout); }, []);
+  useEffect(() => {
+    const currentIds = new Set<string>(tasks.map((t) => t.id));
+    // Remove from exiting if a task reappeared (e.g. after undo)
+    const toRestore: string[] = [];
+    exitingTimeoutsRef.current.forEach((_, id) => { if (currentIds.has(id)) toRestore.push(id); });
+    if (toRestore.length > 0) {
+      toRestore.forEach((id) => { clearTimeout(exitingTimeoutsRef.current.get(id)!); exitingTimeoutsRef.current.delete(id); });
+      setExitingTasks((prev) => { const next = new Map(prev); toRestore.forEach((id) => next.delete(id)); return next; });
+    }
+    // Add newly dismissed tasks to exiting
+    prevTaskMapRef.current.forEach((prevTask, id) => {
+      if (!currentIds.has(id) && fading[id] && !exitingTimeoutsRef.current.has(id)) {
+        setExitingTasks((prev) => new Map(prev).set(id, prevTask));
+        const timeout = setTimeout(() => {
+          setExitingTasks((prev) => { const next = new Map(prev); next.delete(id); return next; });
+          exitingTimeoutsRef.current.delete(id);
+        }, 700);
+        exitingTimeoutsRef.current.set(id, timeout);
+      }
+    });
+    prevTaskMapRef.current = new Map(tasks.map((t) => [t.id, t]));
+  }, [tasks, fading]);
+
+  const allDisplayed = [
+    ...tasks.map((t) => ({ task: t, isExiting: false })),
+    ...Array.from(exitingTasks.values()).map((t) => ({ task: t, isExiting: true })),
+  ];
+
+  if (allDisplayed.length === 0) {
     return (
       <div
         style={{ padding: "18px 14px", color: "var(--ink-3)", fontSize: 14 }}
@@ -2004,21 +2092,22 @@ export function CRNextList({
   }
   return (
     <div>
-      {tasks.map((t, i) => {
+      {allDisplayed.map(({ task: t, isExiting }, i) => {
         const critical = t.kind === "critical";
         const shock = t.kind === "shock";
-        const isFading = fading[t.id];
         const isNew = newTaskIds.has(t.id);
         return (
           <div
             key={t.id}
-            className={isFading ? "cr-fade" : isNew ? "cr-task-new" : ""}
+            className={isExiting ? "cr-fade" : isNew ? "cr-task-new" : ""}
             onClick={
-              t.popup || t.medKey || t.id === "shock" || t.id === "cardiovert"
-                ? () => setActiveTask(t)
-                : !t.recurring
-                  ? () => onCheck(t)
-                  : undefined
+              isExiting
+                ? undefined
+                : t.popup || t.medKey || t.id === "shock" || t.id === "cardiovert"
+                  ? () => setActiveTask(t)
+                  : !t.recurring
+                    ? () => onCheck(t)
+                    : undefined
             }
             style={{
               display: "flex",
@@ -2026,16 +2115,18 @@ export function CRNextList({
               gap: 10,
               padding: "10px 10px 10px 14px",
               borderBottom:
-                i === tasks.length - 1 ? "none" : "1px solid var(--line)",
+                i === allDisplayed.length - 1 ? "none" : "1px solid var(--line)",
               background: critical
                 ? "color-mix(in srgb, var(--red) 6%, white)"
                 : "transparent",
               cursor:
-                t.popup ||
-                t.medKey ||
-                t.id === "shock" ||
-                t.id === "cardiovert" ||
-                !t.recurring
+                !isExiting && (
+                  t.popup ||
+                  t.medKey ||
+                  t.id === "shock" ||
+                  t.id === "cardiovert" ||
+                  !t.recurring
+                )
                   ? "pointer"
                   : undefined,
             }}

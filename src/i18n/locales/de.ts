@@ -58,7 +58,7 @@ const de = {
   "field.weight": "Gewicht",
   "field.glucose": "Blutzucker",
   "field.strokeSx": "Schlaganfall-Sx",
-  "field.sepsisSuspected": "Sepsis Concern?",
+  "field.sepsisSuspected": "Sepsis Concern",
   "field.rate": "Frequenz",
 
   "statusField.alert": "Bewusstsein",

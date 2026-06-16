@@ -8,6 +8,7 @@ const en = {
   "common.add": "Add",
   "common.kg": "kg",
   "common.now": "now",
+  "common.undo": "Undo",
 
   // ── Language names ───────────────────────────────────────────
   "lang.en": "English",
@@ -65,7 +66,7 @@ const en = {
   "field.weight": "Weight",
   "field.glucose": "Glucose",
   "field.strokeSx": "Stroke Sx",
-  "field.sepsisSuspected": "Sepsis Concern?",
+  "field.sepsisSuspected": "Sepsis Concern",
   "field.rate": "Rate",
 
   // Status field labels (used in log formatting)

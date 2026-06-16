@@ -58,7 +58,7 @@ const vi = {
   "field.weight": "Cân nặng",
   "field.glucose": "Đường máu",
   "field.strokeSx": "Triệu chứng đột quỵ",
-  "field.sepsisSuspected": "Sepsis Concern?",
+  "field.sepsisSuspected": "Sepsis Concern",
   "field.rate": "Tần số",
 
   "statusField.alert": "Ý thức",

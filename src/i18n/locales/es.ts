@@ -58,7 +58,7 @@ const es = {
   "field.weight": "Peso",
   "field.glucose": "Glucosa",
   "field.strokeSx": "Sx ACV",
-  "field.sepsisSuspected": "Sepsis Concern?",
+  "field.sepsisSuspected": "Sepsis Concern",
   "field.rate": "Frecuencia",
 
   "statusField.alert": "Alerta",

@@ -198,6 +198,13 @@ export function CRIcon({
           <path d="M3.6 8h16.8M3.6 16h16.8" />
         </svg>
       );
+    case "undo":
+      return (
+        <svg {...props}>
+          <path d="M3 7v6h6" />
+          <path d="M3 13C4 7 9 3 15 3a9 9 0 0 1 0 18H3" />
+        </svg>
+      );
     default:
       return null;
   }

@@ -58,7 +58,7 @@ const id = {
   "field.weight": "Berat",
   "field.glucose": "Glukosa",
   "field.strokeSx": "Gejala Stroke",
-  "field.sepsisSuspected": "Sepsis Concern?",
+  "field.sepsisSuspected": "Sepsis Concern",
   "field.rate": "Frekuensi",
 
   "statusField.alert": "Kesadaran",

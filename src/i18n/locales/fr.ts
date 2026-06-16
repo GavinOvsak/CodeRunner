@@ -58,7 +58,7 @@ const fr = {
   "field.weight": "Poids",
   "field.glucose": "Glycémie",
   "field.strokeSx": "Sx AVC",
-  "field.sepsisSuspected": "Sepsis Concern?",
+  "field.sepsisSuspected": "Sepsis Concern",
   "field.rate": "Fréquence",
 
   "statusField.alert": "Vigilance",
