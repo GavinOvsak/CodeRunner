@@ -180,7 +180,7 @@ even before CPR starts:
 | Task | Condition |
 |------|-----------|
 | `opioid-reversal` | Always |
-| `rescue-breaths` | `pulse === "Yes"` — `recurring: true` |
+| `rescue-breaths` | `pulse === "Yes"` — `recurring: true`, `kind: "critical"` |
 
 ---
 
