@@ -739,6 +739,7 @@ export function crNextTasks(s: Patient, now: number = Date.now()): NextTask[] {
         label: "Give Rescue Breaths",
         recurring: true,
         popup: "rescueBreaths",
+        kind: "critical",
       });
   }
 
